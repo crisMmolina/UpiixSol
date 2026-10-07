@@ -67,9 +67,19 @@ async def _rate_limited(_: Request, exc: RateLimitExceeded) -> JSONResponse:
     return error_response(429, code, message, {"limit": str(exc.detail)})
 
 
-async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
-    log.exception("unhandled error on %s %s", request.method, request.url.path)
+def log_unhandled(request: Request, exc: Exception) -> None:
+    # Only the type: exception text can carry PII (e.g. IntegrityError "Key (email)=(...)").
+    log.error("unhandled %s on %s %s request_id=%s", type(exc).__name__, request.method,
+              request.url.path, getattr(request.state, "request_id", None))
+
+
+def internal_error() -> JSONResponse:
     return error_response(500, "internal_error", "Ocurrió un error inesperado.")
+
+
+async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+    log_unhandled(request, exc)
+    return internal_error()
 
 
 def register_error_handlers(app: FastAPI) -> None:

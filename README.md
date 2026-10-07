@@ -20,6 +20,9 @@ npm --prefix web run dev                             # Web → http://localhost:
 
 En un worktree de uak usa `$UAK_PORT` (API) y `$UAK_PORT+1` (web): `vite.config.ts` ya los lee.
 
+## Producción (detrás de nginx)
+Corre uvicorn con `--proxy-headers --forwarded-allow-ips=<IP del proxy>` (nunca `*`): el rate limit usa la IP del cliente. Detalle en UPS-015 / `docs/runbook.md`.
+
 ## Pruebas
 ```bash
 uv run ruff check app

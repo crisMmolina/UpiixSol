@@ -4,6 +4,7 @@ import importlib
 import json
 import logging
 import pkgutil
+import re
 import time
 import uuid
 from pathlib import Path
@@ -18,7 +19,7 @@ from sqlalchemy import text
 from app import routers
 from app.config import get_settings
 from app.db import engine
-from app.errors import AppError, error_response, register_error_handlers
+from app.errors import AppError, error_response, internal_error, log_unhandled, register_error_handlers
 from app.ratelimit import limiter
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -35,12 +36,15 @@ SECURITY_HEADERS = {
 }
 # Uploaded files (including SVG) can never run scripts.
 MEDIA_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox"
+REQUEST_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="UpiixSol Campus API", version="0.1.0",
-                  docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
+    docs = settings.docs_enabled
+    app = FastAPI(title="UpiixSol Campus API", version="0.1.0", redoc_url=None,
+                  docs_url="/api/docs" if docs else None,
+                  openapi_url="/api/openapi.json" if docs else None)
     app.state.limiter = limiter
     register_error_handlers(app)
     app.add_middleware(SlowAPIMiddleware)
@@ -54,10 +58,15 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def request_context(request: Request, call_next) -> Response:
-        request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+        incoming = request.headers.get("X-Request-ID", "")
+        request_id = incoming if REQUEST_ID.fullmatch(incoming) else uuid.uuid4().hex
         request.state.request_id = request_id
         started = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:  # 500s still get request id, security headers and an access log
+            log_unhandled(request, exc)
+            response = internal_error()
         response.headers["X-Request-ID"] = request_id
         for name, value in SECURITY_HEADERS.items():
             response.headers.setdefault(name, value)

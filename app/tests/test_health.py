@@ -156,16 +156,77 @@ def test_spa_fallback(tmp_path: Path) -> None:
     assert client.get("/api").status_code == 404
 
 
-def test_settings_parse_cors_list_and_require_prod_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_settings_parse_cors_list(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CORS_ORIGINS", "https://a.mx, https://b.mx")
     assert Settings(_env_file=None).cors_origins == ["https://a.mx", "https://b.mx"]
 
-    monkeypatch.setenv("ENV", "prod")
-    monkeypatch.delenv("JWT_SECRET", raising=False)
-    with pytest.raises(ValidationError):
+
+@pytest.mark.parametrize(
+    ("env", "message"),
+    [
+        ({"CORS_ORIGINS": "*"}, "CORS_ORIGINS"),
+        ({"JWT_SECRET": "short"}, "32 chars"),
+        ({"ENV": "prod", "SEED_DEFAULT_PASSWORD": "a-long-seed-password"}, "JWT_SECRET is required"),
+        ({"ENV": "prod", "JWT_SECRET": "x" * 40}, "SEED_DEFAULT_PASSWORD"),
+        ({"ENV": "prod", "JWT_SECRET": "x" * 40, "SEED_DEFAULT_PASSWORD": "admin123"}, "SEED_DEFAULT"),
+        ({"ENV": "prod", "JWT_SECRET": "x" * 40, "SEED_DEFAULT_PASSWORD": "short"}, "SEED_DEFAULT"),
+    ],
+)
+def test_settings_reject_unsafe_values(monkeypatch: pytest.MonkeyPatch, env: dict, message: str) -> None:
+    for name in ("ENV", "JWT_SECRET", "SEED_DEFAULT_PASSWORD", "CORS_ORIGINS"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    with pytest.raises(ValidationError, match=message):
         Settings(_env_file=None)
+
+
+def test_empty_env_values_fall_back_to_safe_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET", "")
+    assert len(Settings(_env_file=None).jwt_secret) >= 32
+
+
+def test_prod_settings_with_strong_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENV", "prod")
     monkeypatch.setenv("JWT_SECRET", "x" * 40)
-    assert Settings(_env_file=None).env == "prod"
+    monkeypatch.setenv("SEED_DEFAULT_PASSWORD", "a-long-seed-password")
+    settings = Settings(_env_file=None)
+    assert settings.env == "prod"
+    assert settings.docs_enabled is False
+
+
+def test_docs_are_hidden_in_prod(monkeypatch: pytest.MonkeyPatch) -> None:
+    prod = Settings.model_construct(env="prod", cors_origins=[], media_dir="media")
+    monkeypatch.setattr("app.main.get_settings", lambda: prod)
+    probe = TestClient(create_app())
+    assert probe.get("/api/docs").status_code == 404
+    assert probe.get("/api/openapi.json").status_code == 404
+    assert TestClient(app).get("/api/openapi.json").status_code == 200
+
+
+def test_bad_request_id_is_replaced(client: TestClient) -> None:
+    response = client.get("/api/health", headers={"X-Request-ID": "x" * 65})
+    assert response.headers["X-Request-ID"] != "x" * 65
+    assert len(response.headers["X-Request-ID"]) == 32
+
+
+def test_500_keeps_headers_and_does_not_log_pii(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("app.main.WEB_DIST", tmp_path / "no-dist")  # keep the SPA catch-all out
+    probe = create_app()
+
+    @probe.get("/api/boom")
+    def boom() -> dict:
+        raise RuntimeError("Key (email)=(alumno@ipn.mx) already exists")
+
+    with caplog.at_level("INFO"):
+        response = TestClient(probe, raise_server_exceptions=False).get("/api/boom")
+    assert response.status_code == 500
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert "X-Request-ID" in response.headers
+    assert "alumno@ipn.mx" not in caplog.text
+    assert "RuntimeError" in caplog.text
 
 
 def test_get_db_yields_a_working_session() -> None:
