@@ -205,3 +205,59 @@ def test_failed_post_removes_uploaded_image(
     )
     assert response.status_code == 500
     assert (set(folder.iterdir()) if folder.exists() else set()) == before
+
+
+def test_oversized_body_is_rejected_before_parsing(as_member: TestClient, db: Session) -> None:
+    """Security review UPS-011: a huge multipart body must not be spooled before any check."""
+    from app.body_limit import MAX_BODY_BYTES
+
+    path = f"/api/channels/{_channel(db, 'general').id}/posts"
+    big = b"x" * (MAX_BODY_BYTES + 1)
+    response = as_member.post(path, data={"body": "x"}, files={"image": ("big.png", big, "image/png")})
+    assert response.status_code == 413 and response.json()["error"]["code"] == "payload_too_large"
+
+
+def test_streamed_body_over_limit_is_cut(as_member: TestClient, db: Session) -> None:
+    from app.body_limit import MAX_BODY_BYTES
+
+    path = f"/api/channels/{_channel(db, 'general').id}/posts"
+
+    def chunks():
+        for _ in range(7):
+            yield b"y" * (MAX_BODY_BYTES // 6)
+
+    response = as_member.post(
+        path, content=chunks(), headers={"Content-Type": "multipart/form-data; boundary=zzz"}
+    )
+    assert response.status_code == 413
+
+
+def test_cannot_moderate_comment_under_hidden_post(
+    as_admin_ia: TestClient, db: Session, seeded: dict
+) -> None:
+    post = db.scalar(select(Post).where(Post.channel_id == _channel(db, "upiixia").id))
+    comment = Comment(post_id=post.id, author_id=seeded["member_id"], body="x")
+    db.add(comment)
+    post.is_hidden = True
+    db.flush()
+    assert as_admin_ia.post(f"/api/comments/{comment.id}/hide").status_code == 404
+
+
+def test_body_limit_passes_through_disconnect_messages() -> None:
+    import asyncio
+
+    from app.body_limit import BodySizeLimitMiddleware
+
+    seen: list[str] = []
+
+    async def inner(scope, receive, send) -> None:
+        seen.append((await receive())["type"])
+
+    async def receive():
+        return {"type": "http.disconnect"}
+
+    async def send(_message) -> None:
+        return None
+
+    asyncio.run(BodySizeLimitMiddleware(inner)({"type": "http", "headers": []}, receive, send))
+    assert seen == ["http.disconnect"]

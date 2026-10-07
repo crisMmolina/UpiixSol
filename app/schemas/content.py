@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import Field, model_validator
 
 from app.models.common import ProjectStatus, ResourceType
-from app.schemas.common import HttpUrl, InModel, MarkdownText, OutModel, Slug, Title
+from app.schemas.common import HttpUrl, InModel, MarkdownText, OutModel, Slug, Title, UTCDatetime
 from app.schemas.users import PublicUser
 
 
@@ -32,8 +32,8 @@ class EventIn(InModel):
     description: MarkdownText = ""
     location: str | None = Field(default=None, max_length=200)
     link: HttpUrl | None = None
-    starts_at: datetime
-    ends_at: datetime
+    starts_at: UTCDatetime
+    ends_at: UTCDatetime
 
     @model_validator(mode="after")
     def _ends_after_start(self) -> "EventIn":
