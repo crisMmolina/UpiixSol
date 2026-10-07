@@ -263,3 +263,28 @@ def test_home_content_created_when_missing(as_superadmin: TestClient, db: Sessio
 def test_inactive_superadmin_token_rejected(client: TestClient, db: Session) -> None:
     ghost = make_user(db, role=Role.superadmin, email="off@upiixsol.dev", is_active=False)
     assert client.get("/api/admin/users", headers=auth_headers(ghost)).status_code == 401
+
+
+def test_update_academy_renames_channel_and_ignores_nulls(
+    as_superadmin: TestClient, seeded: dict, db: Session
+) -> None:
+    aid = seeded["academy_id"]
+    body = as_superadmin.patch(
+        f"/api/admin/academies/{aid}",
+        json={"name": "UpiixIA Pro", "welcome_text": "Hola <script>x</script>", "color_primary": None},
+    ).json()
+    assert body["color_primary"] == "#00BF63" and "<script" not in body["welcome_text"]
+    assert db.scalar(select(Channel).where(Channel.academy_id == aid)).name == "UpiixIA Pro"
+    # An academy without a channel (legacy data) can still be renamed.
+    legacy = Academy(slug="legacy", name="Legacy")
+    db.add(legacy)
+    db.flush()
+    assert (
+        as_superadmin.patch(f"/api/admin/academies/{legacy.id}", json={"name": "Nueva"}).json()["name"]
+        == "Nueva"
+    )
+
+
+def test_update_user_ignores_null_fields(as_superadmin: TestClient, seeded: dict) -> None:
+    body = as_superadmin.patch(f"/api/admin/users/{seeded['member_id']}", json={"full_name": None}).json()
+    assert body["full_name"] == "Alumno Demo"
