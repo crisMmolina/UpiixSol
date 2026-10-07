@@ -125,7 +125,7 @@ function GalleryPage() {
           <button
             type="button"
             onClick={() => setParams(drafts ? { borradores: "1" } : {})}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-accent px-4 font-semibold text-on-accent"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-4 font-semibold text-ink"
           >
             #{tag}
             <X weight="bold" aria-hidden />
