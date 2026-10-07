@@ -1,0 +1,65 @@
+# Product CI. marathon: make "backend", "backend-postgres" and "web" required checks on main.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  ENV: test
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check app
+      # Coverage target is 100 % (PROJECT.md); this floor only goes up.
+      - run: uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+      - run: uv run alembic upgrade head && uv run alembic downgrade base
+        env:
+          DATABASE_URL: sqlite:///./ci-migrations.db
+
+  backend-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: upiixsol
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: upiixsol
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U upiixsol" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://upiixsol:ci-only@localhost:5432/upiixsol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run alembic upgrade head && uv run alembic downgrade base && uv run alembic upgrade head
+      - run: uv run pytest
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci --no-audit --no-fund
+      - run: npm --prefix web run lint
+      - run: npm --prefix web run build
+      - run: npm --prefix web audit --omit=dev --audit-level=high
