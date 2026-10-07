@@ -28,8 +28,9 @@ _DEFAULT_CODES = {
 class AppError(Exception):
     """Raise from services/routers for an expected, user-facing error."""
 
-    def __init__(self, status: int, message: str | None = None, code: str | None = None,
-                 details: Any = None) -> None:
+    def __init__(
+        self, status: int, message: str | None = None, code: str | None = None, details: Any = None
+    ) -> None:
         default_code, default_message = _DEFAULT_CODES.get(status, ("error", "Ocurrió un error."))
         self.status = status
         self.code = code or default_code
@@ -38,8 +39,9 @@ class AppError(Exception):
         super().__init__(self.message)
 
 
-def error_response(status: int, code: str, message: str, details: Any = None,
-                   headers: dict[str, str] | None = None) -> JSONResponse:
+def error_response(
+    status: int, code: str, message: str, details: Any = None, headers: dict[str, str] | None = None
+) -> JSONResponse:
     body = {"error": {"code": code, "message": message, "details": jsonable_encoder(details)}}
     return JSONResponse(body, status_code=status, headers=headers)
 
@@ -69,8 +71,13 @@ async def _rate_limited(_: Request, exc: RateLimitExceeded) -> JSONResponse:
 
 def log_unhandled(request: Request, exc: Exception) -> None:
     # Only the type: exception text can carry PII (e.g. IntegrityError "Key (email)=(...)").
-    log.error("unhandled %s on %s %s request_id=%s", type(exc).__name__, request.method,
-              request.url.path, getattr(request.state, "request_id", None))
+    log.error(
+        "unhandled %s on %s %s request_id=%s",
+        type(exc).__name__,
+        request.method,
+        request.url.path,
+        getattr(request.state, "request_id", None),
+    )
 
 
 def internal_error() -> JSONResponse:

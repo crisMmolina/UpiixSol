@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -87,9 +87,12 @@ def update_user(
 
 
 @router.post("/users/{user_id}/reset-password", response_model=PasswordResetOut)
-def reset_password(user_id: int, _user: Superadmin, db: Session = Depends(get_db)) -> PasswordResetOut:
+def reset_password(
+    user_id: int, _user: Superadmin, response: Response, db: Session = Depends(get_db)
+) -> PasswordResetOut:
     result = service.reset_password(db, user_id)
     db.commit()
+    response.headers["Cache-Control"] = "no-store"  # carries a temporary password
     return result
 
 

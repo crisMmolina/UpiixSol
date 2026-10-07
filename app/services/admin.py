@@ -3,6 +3,7 @@
 import secrets
 
 from sqlalchemy import Select, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError
@@ -27,20 +28,32 @@ def _invalid(message: str) -> AppError:
 # ── Academies ────────────────────────────────────────────────
 
 
-def create_academy(db: Session, data: AcademyCreateIn) -> AcademyOut:
-    taken = db.scalar(select(Academy.id).where(Academy.slug == data.slug)) or db.scalar(
-        select(Channel.id).where(Channel.slug == data.slug)
+def _slug_taken(db: Session, slug: str) -> bool:
+    return slug in RESERVED_SLUGS or bool(
+        db.scalar(select(Academy.id).where(Academy.slug == slug))
+        or db.scalar(select(Channel.id).where(Channel.slug == slug))
     )
-    if taken or data.slug in RESERVED_SLUGS:
-        raise _conflict("Ese identificador (slug) ya está en uso.")
+
+
+def create_academy(db: Session, data: AcademyCreateIn) -> AcademyOut:
+    message = "Ese identificador (slug) ya está en uso."
+    if _slug_taken(db, data.slug):
+        raise _conflict(message)
     values = data.model_dump()
     values["welcome_text"] = clean_markdown(values["welcome_text"])
     academy = Academy(**values)
-    db.add(academy)
-    db.flush()
-    # Same transaction: every academy has its community channel (IDEA §6).
-    db.add(Channel(type=ChannelType.academy, academy_id=academy.id, name=academy.name, slug=academy.slug))
-    db.flush()
+    try:
+        # Savepoint: a concurrent create with the same slug is a 409, not a 500 (security review UPS-009).
+        with db.begin_nested():
+            db.add(academy)
+            db.flush()
+            # Same transaction: every academy has its community channel (IDEA §6).
+            db.add(
+                Channel(type=ChannelType.academy, academy_id=academy.id, name=academy.name, slug=academy.slug)
+            )
+            db.flush()
+    except IntegrityError as exc:
+        raise _conflict(message) from exc
     return AcademyOut.model_validate(academy)
 
 
@@ -76,32 +89,40 @@ def users_stmt(role: Role | None, academy_id: int | None, q: str | None) -> Sele
         stmt = stmt.where(User.role == role)
     if academy_id is not None:
         stmt = stmt.where(User.academy_id == academy_id)
-    if q:
-        needle = f"%{q.strip().lower()}%"
+    if q and q.strip():
+        # LIKE wildcards in the search are literal characters (security review UPS-009).
+        escaped = q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        needle = f"%{escaped}%"
         stmt = stmt.where(
             or_(
-                User.email.ilike(needle),
-                User.full_name.ilike(needle),
-                User.nickname.ilike(needle),
-                User.boleta.like(needle),
+                User.email.ilike(needle, escape="\\"),
+                User.full_name.ilike(needle, escape="\\"),
+                User.nickname.ilike(needle, escape="\\"),
+                User.boleta.like(needle, escape="\\"),
             )
         )
     return stmt
 
 
 def _check_academy(db: Session, academy_id: int | None) -> None:
-    if academy_id is None or db.get(Academy, academy_id) is None:
-        raise _invalid("Elige una academia existente para el admin.")
+    academy = db.get(Academy, academy_id) if academy_id is not None else None
+    if academy is None or not academy.is_active:
+        raise _invalid("Elige una academia activa para el admin.")
+
+
+def _user_exists(db: Session, email: str, boleta: str | None) -> bool:
+    clauses = [User.email == email]
+    if boleta:
+        clauses.append(User.boleta == boleta)
+    return bool(db.scalar(select(User.id).where(or_(*clauses)).limit(1)))
 
 
 def create_user(db: Session, data: AdminUserCreateIn) -> UserAdminOut:
+    message = "Ya existe un usuario con ese correo o esa boleta."
     if data.role == Role.academy_admin:
         _check_academy(db, data.academy_id)
-    clauses = [User.email == data.email]
-    if data.boleta:
-        clauses.append(User.boleta == data.boleta)
-    if db.scalar(select(User.id).where(or_(*clauses)).limit(1)):
-        raise _conflict("Ya existe un usuario con ese correo o esa boleta.")
+    if _user_exists(db, data.email, data.boleta):
+        raise _conflict(message)
     user = User(
         role=data.role,
         email=data.email,
@@ -112,8 +133,12 @@ def create_user(db: Session, data: AdminUserCreateIn) -> UserAdminOut:
         password_hash=hash_password(data.password),
         must_change_password=True,
     )
-    db.add(user)
-    db.flush()
+    try:
+        with db.begin_nested():  # concurrent duplicate → 409, not 500
+            db.add(user)
+            db.flush()
+    except IntegrityError as exc:
+        raise _conflict(message) from exc
     return UserAdminOut.model_validate(user)
 
 

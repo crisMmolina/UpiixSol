@@ -176,6 +176,48 @@ def test_create_user_errors(as_superadmin: TestClient, seeded: dict) -> None:
     assert superadmin.status_code == 422
 
 
+def test_cannot_assign_admin_to_inactive_academy(
+    as_superadmin: TestClient, db: Session, seeded: dict
+) -> None:
+    closed = Academy(slug="cerrada", name="Cerrada", is_active=False)
+    db.add(closed)
+    db.flush()
+    base = {"email": "x@upiixsol.dev", "full_name": "Equis Persona", "password": "temporal-123"}
+    created = as_superadmin.post(
+        "/api/admin/users", json={**base, "role": "academy_admin", "academy_id": closed.id}
+    )
+    assert created.status_code == 422
+    moved = as_superadmin.patch(f"/api/admin/users/{seeded['admin_ia_id']}", json={"academy_id": closed.id})
+    assert moved.status_code == 422
+
+
+def test_concurrent_duplicates_are_409_not_500(
+    as_superadmin: TestClient, monkeypatch: pytest.MonkeyPatch, seeded: dict
+) -> None:
+    """Simulates the check-then-insert race: the pre-check passes but the unique constraint fires."""
+    from app.services import admin as service
+
+    monkeypatch.setattr(service, "_slug_taken", lambda _db, _slug: False)
+    monkeypatch.setattr(service, "_user_exists", lambda _db, _email, _boleta: False)
+    academy = as_superadmin.post("/api/admin/academies", json={**NEW_ACADEMY, "slug": "upiixia"})
+    assert academy.status_code == 409
+    user = as_superadmin.post(
+        "/api/admin/users",
+        json={
+            "email": "alumno.demo@upiixsol.dev",
+            "full_name": "Duplicado",
+            "password": "temporal-123",
+            "role": "member",
+        },
+    )
+    assert user.status_code == 409
+    # The session is still usable after the rolled-back savepoint.
+    assert (
+        as_superadmin.get("/api/admin/users?q=alumno").json()["items"][0]["email"]
+        == "alumno.demo@upiixsol.dev"
+    )
+
+
 def test_list_users_filters_and_paginates(as_superadmin: TestClient, seeded: dict) -> None:
     all_users = as_superadmin.get("/api/admin/users?limit=50").json()["items"]
     assert len(all_users) == 6 and all("password_hash" not in u for u in all_users)
@@ -187,6 +229,10 @@ def test_list_users_filters_and_paginates(as_superadmin: TestClient, seeded: dic
     assert [u["email"] for u in search] == ["alumno.demo@upiixsol.dev"]
     boleta = as_superadmin.get("/api/admin/users?q=2026000001").json()["items"]
     assert len(boleta) == 1
+    # LIKE wildcards are literal, and a blank search is no filter.
+    assert as_superadmin.get("/api/admin/users?q=%25").json()["items"] == []
+    assert as_superadmin.get("/api/admin/users?q=_").json()["items"] == []
+    assert len(as_superadmin.get("/api/admin/users?q=%20").json()["items"]) == 6
     first = as_superadmin.get("/api/admin/users?limit=4").json()
     second = as_superadmin.get(f"/api/admin/users?limit=4&cursor={first['next_cursor']}").json()
     assert len(first["items"]) == 4 and len(second["items"]) == 2
@@ -224,7 +270,7 @@ def test_reset_password(as_superadmin: TestClient, client: TestClient, seeded: d
     member_id = seeded["member_id"]
     client.post("/api/auth/login", json={"email": "alumno.demo@upiixsol.dev", "password": "admin123"})
     response = as_superadmin.post(f"/api/admin/users/{member_id}/reset-password")
-    assert response.status_code == 200
+    assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
     temporary = response.json()["temporary_password"]
     assert len(temporary) >= 12
     user = db.get(User, member_id)
