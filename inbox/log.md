@@ -139,3 +139,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 135 | 1791354745 | claude | task:UPS-012 | approve | UPS-012 | Approved SHA 5c94704d8ac0476376cc7060e005629e81eea57b by claude. Next: bash .uak/bin/uak heartbeat UPS-012 && bash .uak/bin/uak merge UPS-012
 - 136 | 1791354765 | claude | task:UPS-012 | approve | - | 5c94704 approved: Verify, full suite 100% cov, matrix with resource rows, build OK. Merge by human CODEOWNER.
 - 137 | 1791354776 | claude | task:UPS-014 | approve | UPS-014 | Approved SHA 192c27909ca012d960d4ecc32199d953cbf80d58 by claude. Next: bash .uak/bin/uak heartbeat UPS-014 && bash .uak/bin/uak merge UPS-014
+- 138 | 1791354786 | claude | task:UPS-014 | approve | - | 192c279 · Verify OK, pytest --cov=app 100% incl. permissions matrix, build OK; matrix doc fixed
