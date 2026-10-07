@@ -47,7 +47,9 @@ def user_me(db: Session, user: User) -> UserMe:
 
 
 def register_member(db: Session, data: RegisterIn) -> User:
-    exists = db.scalar(select(User.id).where(or_(User.email == data.email, User.boleta == data.boleta)).limit(1))
+    exists = db.scalar(
+        select(User.id).where(or_(User.email == data.email, User.boleta == data.boleta)).limit(1)
+    )
     if exists:
         raise AppError(409, DUPLICATE_ACCOUNT, code="account_exists")
     user = User(
@@ -105,7 +107,9 @@ def revoke_family(db: Session, family_id: str) -> None:
 
 def rotate_refresh(db: Session, raw: str | None) -> tuple[TokenOut, str]:
     """Consume a refresh token and issue the next one of the same family. 401 on any problem."""
-    stored = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_token(raw))) if raw else None
+    stored = (
+        db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_token(raw))) if raw else None
+    )
     if stored is None:
         raise AppError(401, code="invalid_refresh")
     if stored.used_at is not None or stored.revoked_at is not None:

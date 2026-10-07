@@ -11,6 +11,7 @@ from app.routers.auth import REFRESH_COOKIE
 from app.security import decode_access_token, hash_token
 from app.tests.conftest import make_academy, make_user
 
+
 @pytest.fixture
 def client(db: Session):
     """HTTPS client: the refresh cookie is `Secure`, so it only travels over https (as in production)."""
@@ -18,7 +19,7 @@ def client(db: Session):
     from app.main import app
 
     app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app, base_url="https://testserver") as test_client:
+    with TestClient(app, base_url="https://testserver", headers={"X-Requested-With": "fetch"}) as test_client:
         yield test_client
     app.dependency_overrides.pop(get_db, None)
 
@@ -32,7 +33,7 @@ REGISTER = {
 }
 
 
-def _login(client: TestClient, email: str = "ana.lopez@alumno.ipn.mx", password: str = "segura-123"):
+def _login(client: TestClient, email: str = "ana.lopez@alumno.ipn.mx", password: str = "segura-123"):  # noqa: S107
     return client.post("/api/auth/login", json={"email": email, "password": password})
 
 
@@ -65,8 +66,11 @@ def test_register_uses_given_nickname(client: TestClient) -> None:
 
 @pytest.mark.parametrize("field", ["boleta", "email"])
 def test_register_duplicate_is_generic_409(client: TestClient, db: Session, field: str) -> None:
-    make_user(db, email="otro@ipn.mx" if field == "boleta" else REGISTER["email"].lower(),
-              boleta=REGISTER["boleta"] if field == "boleta" else "2026000099")
+    make_user(
+        db,
+        email="otro@ipn.mx" if field == "boleta" else REGISTER["email"].lower(),
+        boleta=REGISTER["boleta"] if field == "boleta" else "2026000099",
+    )
     response = client.post("/api/auth/register", json=REGISTER)
     assert response.status_code == 409
     message = response.json()["error"]["message"]
@@ -89,11 +93,17 @@ def test_login_returns_session_for_each_role(client: TestClient, db: Session) ->
     response = _login(client, "ADMIN.IA@upiixsol.dev", "password123")
     assert response.status_code == 200
     user = response.json()["user"]
-    assert (user["role"], user["academy_id"], user["academy_slug"]) == ("academy_admin", academy.id, "upiixia")
+    assert (user["role"], user["academy_id"], user["academy_slug"]) == (
+        "academy_admin",
+        academy.id,
+        "upiixia",
+    )
 
 
 @pytest.mark.parametrize(("email", "password"), [("nadie@ipn.mx", "password123"), ("m@ipn.mx", "incorrecta")])
-def test_login_wrong_credentials_are_generic_401(client: TestClient, db: Session, email: str, password: str) -> None:
+def test_login_wrong_credentials_are_generic_401(
+    client: TestClient, db: Session, email: str, password: str
+) -> None:
     make_user(db, email="m@ipn.mx")
     response = _login(client, email, password)
     assert response.status_code == 401
@@ -105,7 +115,9 @@ def test_inactive_user_cannot_login(client: TestClient, db: Session) -> None:
     assert _login(client, "off@ipn.mx", "password123").status_code == 401
 
 
-def test_login_rehashes_outdated_password(client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_login_rehashes_outdated_password(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     user = make_user(db, email="m@ipn.mx")
     old_hash = user.password_hash
     monkeypatch.setattr("app.services.auth.password_needs_rehash", lambda _hash: True)
@@ -185,8 +197,47 @@ def test_me_requires_auth_and_hides_nothing_of_own_data(client: TestClient, as_m
 
 
 def test_seeded_accounts_can_log_in(client: TestClient, seeded: dict) -> None:
-    for email, role in [("superadmin1@upiixsol.dev", "superadmin"), ("admin.ia@upiixsol.dev", "academy_admin"),
-                        ("alumno.demo@upiixsol.dev", "member")]:
+    for email, role in [
+        ("superadmin1@upiixsol.dev", "superadmin"),
+        ("admin.ia@upiixsol.dev", "academy_admin"),
+        ("alumno.demo@upiixsol.dev", "member"),
+    ]:
         response = _login(client, email, "admin123")
         assert response.status_code == 200, email
         assert response.json()["user"]["role"] == role
+
+
+def test_cookie_endpoints_require_fetch_header(client: TestClient) -> None:
+    """CSRF guard: a cross-site form post (no custom header) cannot rotate or revoke the session."""
+    client.post("/api/auth/register", json=REGISTER)
+    for path in ("/api/auth/refresh", "/api/auth/logout"):
+        response = client.post(path, headers={"X-Requested-With": ""})
+        assert response.status_code == 403, path
+        assert response.json()["error"]["code"] == "csrf"
+    assert client.post("/api/auth/refresh").status_code == 200  # the session was not touched
+
+
+def test_logout_without_cookie_and_unknown_cookie(client: TestClient) -> None:
+    assert client.post("/api/auth/logout").status_code == 204
+    client.cookies.set(REFRESH_COOKIE, "desconocido", path="/api/auth")
+    assert client.post("/api/auth/logout").status_code == 204
+
+
+def test_revoke_all_for_user_kills_every_session(client: TestClient, db: Session) -> None:
+    from app.services.auth import revoke_all_for_user
+
+    client.post("/api/auth/register", json=REGISTER)
+    _login(client)
+    user = db.scalar(select(User).filter_by(email="ana.lopez@alumno.ipn.mx"))
+    revoke_all_for_user(db, user.id)
+    tokens = list(db.scalars(select(RefreshToken).filter_by(user_id=user.id)))
+    assert len(tokens) == 2 and all(t.revoked_at is not None for t in tokens)
+    assert client.post("/api/auth/refresh").status_code == 401
+
+
+def test_default_nickname_handles_accents_and_short_names() -> None:
+    from app.services.auth import default_nickname
+
+    assert default_nickname("Íñigo Pérez") == "inigo"
+    assert default_nickname("A B") == "miembro"
+    assert default_nickname("   ") == "miembro"
