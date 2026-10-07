@@ -1,6 +1,6 @@
 # Runbook · UpiixSol Campus
 
-Operación del stack de producción (UPS-015): `docker-compose.yml` levanta **db** (PostgreSQL 16 con volumen `pgdata`), **api** (FastAPI; aplica migraciones al arrancar) y **nginx** (SPA compilada, `/media` con caché y proxy a `/api`). Solo nginx publica un puerto; db y api quedan en la red interna.
+Operación del stack de producción (UPS-015): `docker-compose.yml` levanta **db** (PostgreSQL 16 con volumen `pgdata`), **api** (FastAPI; aplica migraciones al arrancar) y **nginx** (SPA compilada, `/media` con caché y proxy a `/api`). Solo nginx publica un puerto, y solo en `127.0.0.1`. db y api viven en `backend`, una red interna sin salida a internet; nginx está en `backend` y en `edge`, la red por la que entra el puerto publicado. Los tres corren con `no-new-privileges`.
 
 Todos los comandos se corren desde la raíz del repo en el servidor (p. ej. `/opt/upiixsol`). On-call: @crisMmolina.
 
@@ -21,7 +21,7 @@ Todos los comandos se corren desde la raíz del repo en el servidor (p. ej. `/op
 5. Pon `SEED_ON_START=false` en `.env` y rota las contraseñas sembradas (§Seed).
 
 ## 2. Actualizar a una versión nueva
-1. Haz un respaldo antes de cada actualización: `deploy/backup.sh`.
+1. Haz un respaldo antes de cada actualización (`deploy/backup.sh`) y anota la migración actual: `docker compose run --rm --no-deps -T --entrypoint alembic api current`.
 2. `git fetch --tags && git checkout vX.Y.Z`.
 3. En `.env`, pon `APP_VERSION=X.Y.Z` para que la imagen anterior siga etiquetada y se pueda hacer rollback.
 4. `docker compose up -d --build --wait`. Las migraciones nuevas se aplican solas al arrancar la API.
@@ -29,7 +29,7 @@ Todos los comandos se corren desde la raíz del repo en el servidor (p. ej. `/op
 
 ## 3. Rollback
 1. Mira en qué migración está la BD: `docker compose run --rm --no-deps -T --entrypoint alembic api current`.
-2. Si la versión nueva trajo una migración, deshazla **con la imagen nueva** (es la que conoce esa migración): `docker compose run --rm --no-deps -T --entrypoint alembic api downgrade -1`. Las migraciones son reversibles (CI corre `upgrade` → `downgrade base` → `upgrade`).
+2. Si la versión nueva trajo migraciones, regresa **con la imagen nueva** (es la que las conoce) a la revisión que anotaste en §2.1: `docker compose run --rm --no-deps -T --entrypoint alembic api downgrade <rev anotada>`. Usa `downgrade -1` solo si la versión trajo exactamente una migración. Las migraciones son reversibles (CI corre `upgrade` → `downgrade base` → `upgrade`).
 3. Vuelve al código y la imagen anteriores: `git checkout vANTERIOR`, `APP_VERSION=ANTERIOR` en `.env`, y luego `docker compose up -d --wait`. Si la imagen ya no existe, agrega `--build`.
 4. Si el downgrade no es posible, restaura el respaldo previo a la actualización (§5).
 
@@ -39,7 +39,7 @@ Todos los comandos se corren desde la raíz del repo en el servidor (p. ej. `/op
   - `media-<UTC>.tar.gz`: las imágenes subidas.
 
   Escribe primero en `*.partial`: un respaldo fallido nunca parece válido. Borra solo sus propios archivos con más de `KEEP_DAYS` días (default 14). Los archivos quedan con permisos `600`, porque contienen datos personales.
-- Variables: `BACKUP_DIR` (default `./backups`) y `KEEP_DAYS`.
+- Variables: `BACKUP_DIR` (default `~/upiixsol-backups`, fuera del clon de git para que un `git add -A` nunca suba dumps) y `KEEP_DAYS`. El directorio y los archivos quedan con permisos solo para el dueño, y una ejecución fallida no deja archivos `*.partial`.
 - Cron diario:
   ```
   30 3 * * * cd /opt/upiixsol && deploy/backup.sh >> /var/log/upiixsol-backup.log 2>&1
@@ -49,8 +49,8 @@ Todos los comandos se corren desde la raíz del repo en el servidor (p. ej. `/op
 ## 5. Restaurar (RTO 4 h)
 Ensayado en el stack local: borrar datos → restaurar → los datos y `/media` vuelven.
 ```bash
-DUMP=backups/db-AAAAMMDDTHHMMSSZ.dump
-MEDIA=backups/media-AAAAMMDDTHHMMSSZ.tar.gz
+DUMP=~/upiixsol-backups/db-AAAAMMDDTHHMMSSZ.dump
+MEDIA=~/upiixsol-backups/media-AAAAMMDDTHHMMSSZ.tar.gz
 docker compose stop api
 docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --single-transaction' < "$DUMP"
 docker compose run --rm --no-deps -T --entrypoint tar api -C /data -xzf - < "$MEDIA"
@@ -66,15 +66,23 @@ Las cuentas del seed (`IDEA.md` §2.3) nacen con `must_change_password = true` y
 3. Cambia también `SEED_DEFAULT_PASSWORD` en `.env`, para que un seed accidental no use el valor que ya se compartió.
 
 ## 7. TLS
-nginx escucha HTTP en `${HTTP_BIND}:${HTTP_PORT}` (default `127.0.0.1:8080`). Pon delante un terminador TLS del host (nginx o Caddy del sistema con Let's Encrypt) que haga proxy a ese puerto. El hosting de producción sigue sin decidirse (spec 001, preguntas abiertas). Con TLS activo:
-- `COOKIE_SECURE=true` y `CORS_ORIGINS=https://<dominio>`.
-- El terminador debe **sobrescribir** `X-Forwarded-For` con la IP real del cliente; el nginx del stack la vuelve a sobrescribir con la IP que ve. Si el terminador vive fuera del stack, el rate limit verá la IP del terminador: en ese caso, hay que agregar `set_real_ip_from <IP del terminador>; real_ip_header X-Forwarded-For;` en `deploy/nginx.conf`.
+nginx escucha HTTP en `${HTTP_BIND}:${HTTP_PORT}` (default `127.0.0.1:8080`). Pon delante un terminador TLS **en el mismo host** (nginx o Caddy del sistema con Let's Encrypt) que haga proxy a `http://127.0.0.1:8080`. El hosting de producción sigue sin decidirse (spec 001, preguntas abiertas). El terminador debe:
+- Agregar `X-Forwarded-For` con la IP del cliente. nginx usa la **última** dirección de ese encabezado, así que da igual si el terminador sobrescribe o agrega: un valor que mande el cliente nunca se toma.
+- Enviar `X-Forwarded-Proto https`.
+- Agregar HSTS (`Strict-Transport-Security: max-age=31536000`) y fijar su `server_name` al dominio.
+
+Además: `COOKIE_SECURE=true` y `CORS_ORIGINS=https://<dominio>`.
+
+**Nunca** cambies `HTTP_BIND` a `0.0.0.0`. nginx confía en el `X-Forwarded-For` de todo lo que entra por ese puerto (§8); si el puerto quedara público, cualquiera podría elegir su IP y evadir el rate limit.
 
 ## 8. Seguridad del proxy
-- uvicorn corre con `--proxy-headers --forwarded-allow-ips=172.30.0.10`: solo confía en el nginx del stack, que tiene IP fija en la red `internal`. Nunca `*`, porque el rate limit (5/min/IP en login y registro) se basa en la IP del cliente.
-- nginx sobrescribe `X-Forwarded-For` con `$remote_addr`: un cliente no puede elegir su llave de rate limit. Probado: 7 logins con `X-Forwarded-For` falsos distintos → 429 al llegar al límite.
-- `client_max_body_size 6m`, igual que `app/body_limit.py` (probado: un body de 7 MB → 413).
-- nginx agrega los mismos encabezados de seguridad que la app. `/media` lleva la misma CSP `sandbox`, para que un archivo subido (incluso SVG) no pueda ejecutar scripts.
+- **IP del cliente.** Todo lo que entra por el puerto publicado llega a nginx desde el gateway de la red `edge` (`172.31.0.1`), nunca desde el cliente. nginx confía en el `X-Forwarded-For` solo de esa dirección (`set_real_ip_from`), toma la última entrada y se la pasa a uvicorn sobrescribiendo el encabezado. uvicorn corre con `--proxy-headers --forwarded-allow-ips=172.30.0.10`: solo confía en nginx. Nunca `*`, porque el rate limit (5/min/IP en login y registro) se basa en la IP del cliente.
+- **Probado en el stack local**, con curl en el papel del terminador:
+  - Dos clientes distintos tienen cada uno su propio límite.
+  - Un `X-Forwarded-For` inyectado por el cliente antes de la IP real no cambia la llave.
+- **Límite de body:** `client_max_body_size 6m`, igual que `app/body_limit.py` (probado: un body de 7 MB → 413).
+- **Encabezados:** nginx agrega los mismos encabezados de seguridad que la app (en `/api` oculta los de la app para que no salgan duplicados). `/media` lleva la misma CSP `sandbox`, para que un archivo subido (incluso SVG) no pueda ejecutar scripts.
+- **Imágenes:** las base se fijan por tag dentro de ramas con soporte (`nginx:1.30` estable, `postgres:16`, `python:3.12`, `node:24`). Reconstruye (`docker compose build --pull`) al menos una vez al mes para recibir parches.
 
 ## 9. Diagnóstico rápido
 | Síntoma | Revisa |
@@ -82,5 +90,5 @@ nginx escucha HTTP en `${HTTP_BIND}:${HTTP_PORT}` (default `127.0.0.1:8080`). Po
 | 502 en `/api` | `docker compose ps` (¿api healthy?) y `docker compose logs --tail 100 api` |
 | La API no arranca | Un `ValueError` de settings en los logs: falta `JWT_SECRET` o `SEED_DEFAULT_PASSWORD` es débil (§1.2) |
 | `/api/ready` → 503 | `docker compose logs db`, espacio en disco, `POSTGRES_PASSWORD` igual en db y api (sale de la misma variable) |
-| 429 a todos los usuarios | El rate limit ve una sola IP: revisa §7 (`set_real_ip_from`) |
+| 429 a todos los usuarios | El rate limit ve una sola IP: el terminador no manda `X-Forwarded-For` o no está en el host (§7, §8) |
 | Imágenes 404 tras un deploy | ¿Se recreó el volumen `media`? Restaura `media-*.tar.gz` (§5) |

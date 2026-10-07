@@ -2,18 +2,19 @@
 # Daily backup (UPS-015): Postgres dump (custom format) + uploaded media, with rotation.
 #   deploy/backup.sh                    # run from the repo root on the server
 #   cron: 30 3 * * * cd /opt/upiixsol && deploy/backup.sh >> /var/log/upiixsol-backup.log 2>&1
-# Env: BACKUP_DIR (default ./backups), KEEP_DAYS (default 14). Restore: docs/runbook.md §Restore.
+# Env: BACKUP_DIR (default ~/upiixsol-backups, outside the git clone), KEEP_DAYS (default 14). Restore: docs/runbook.md §Restore.
 set -euo pipefail
 
 cd "$(dirname -- "$0")/.."
-backup_dir=${BACKUP_DIR:-./backups}
+umask 077  # dumps contain personal data (emails, boletas): owner-only dir and files
+backup_dir=${BACKUP_DIR:-$HOME/upiixsol-backups}
 keep_days=${KEEP_DAYS:-14}
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 mkdir -p "$backup_dir"
-umask 077  # dumps contain personal data (emails, boletas)
 
 db_file="$backup_dir/db-$stamp.dump"
 media_file="$backup_dir/media-$stamp.tar.gz"
+trap 'rm -f "$db_file.partial" "$media_file.partial"' EXIT  # a failed run leaves nothing behind
 
 # pg_dump runs inside the db container, so the password never leaves it. Write to a .partial name first:
 # a failed dump never looks like a valid backup and is never rotated in.

@@ -35,7 +35,8 @@ EXPOSE 8000
 ENTRYPOINT ["entrypoint.sh"]
 
 # ── nginx (static SPA + reverse proxy) ──────────────────────
-FROM nginx:1.27-alpine AS web
+# Stable branch, pinned by tag (not digest) so a rebuild picks up its security patches.
+FROM nginx:1.30-alpine AS web
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY deploy/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=web-build /web/dist /usr/share/nginx/html
