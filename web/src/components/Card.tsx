@@ -17,7 +17,8 @@ export function Card({ interactive = false, stripe = false, className = "", chil
       }
       {...props}
     >
-      {stripe && <div aria-hidden className="h-1.5 w-full bg-primary" />}
+      {/* Absolute so it never becomes a grid/flex cell of the card's own layout. */}
+      {stripe && <div aria-hidden className="absolute inset-x-0 top-0 h-1.5 bg-primary" />}
       {children}
     </div>
   );

@@ -102,7 +102,7 @@ export function EventItem({ event }: { event: EventOut }) {
       </div>
       <div className="min-w-0">
         <p className="font-semibold text-ink">{event.title}</p>
-        <p className="text-sm capitalize text-muted">{formatDate(event.starts_at)}</p>
+        <p className="text-sm text-muted first-letter:uppercase">{formatDate(event.starts_at)}</p>
         {event.location && <p className="truncate text-sm text-muted">{event.location}</p>}
       </div>
     </li>

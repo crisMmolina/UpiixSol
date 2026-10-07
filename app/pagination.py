@@ -18,6 +18,7 @@ from typing import Annotated, Any
 from fastapi import Query
 from sqlalchemy import Select, tuple_
 from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy.types import TypeDecorator
 
 from app.errors import AppError
 from app.schemas.common import Page
@@ -32,6 +33,13 @@ def encode_cursor(values: Sequence[Any]) -> str:
     return base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
 
 
+def _python_type(column: InstrumentedAttribute) -> type:
+    sql_type = column.type
+    if isinstance(sql_type, TypeDecorator):  # e.g. UTCDateTime → its DateTime impl
+        sql_type = sql_type.impl_instance
+    return sql_type.python_type
+
+
 def decode_cursor(cursor: str, columns: Sequence[InstrumentedAttribute]) -> list[Any]:
     try:
         raw = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4))
@@ -39,7 +47,7 @@ def decode_cursor(cursor: str, columns: Sequence[InstrumentedAttribute]) -> list
         if not isinstance(values, list) or len(values) != len(columns):
             raise ValueError
         return [
-            datetime.fromisoformat(v) if col.type.python_type is datetime else col.type.python_type(v)
+            datetime.fromisoformat(v) if _python_type(col) is datetime else _python_type(col)(v)
             for v, col in zip(values, columns, strict=True)
         ]
     except (ValueError, TypeError, OverflowError, binascii.Error, json.JSONDecodeError) as exc:

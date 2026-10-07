@@ -203,3 +203,22 @@ def test_home_without_home_content_or_unpublished_featured(client: TestClient, d
     db.add(HomeContent(id=1, hero_title="Hola", featured_project_ids=[draft.id]))
     db.flush()
     assert client.get("/api/home", headers=auth_headers(user)).json()["featured_projects"] == []
+
+
+def test_api_datetimes_carry_utc_offset(as_member: TestClient) -> None:
+    """Regression: SQLite gave naive datetimes; browsers read them as local time ("dentro de 5 horas")."""
+    body = as_member.get("/api/home").json()
+    stamps = [p["created_at"] for p in body["recent_activity"]] + [
+        e["starts_at"] for e in body["upcoming_events"]
+    ]
+    assert stamps and all(s.endswith(("Z", "+00:00")) for s in stamps)
+
+
+def test_seeded_events_are_at_club_local_time(as_member: TestClient) -> None:
+    from datetime import datetime
+
+    from app.seed import CLUB_TZ
+
+    events = as_member.get("/api/home").json()["upcoming_events"]
+    local_hours = {datetime.fromisoformat(e["starts_at"]).astimezone(CLUB_TZ).hour for e in events}
+    assert local_hours == {17, 18}

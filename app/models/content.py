@@ -1,10 +1,18 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, CheckConstraint, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
-from app.models.common import CreatedAtMixin, ProjectStatus, ResourceType, enum_check, str_enum, utcnow
+from app.models.common import (
+    CreatedAtMixin,
+    ProjectStatus,
+    ResourceType,
+    UTCDateTime,
+    enum_check,
+    str_enum,
+    utcnow,
+)
 
 
 class Resource(CreatedAtMixin, Base):
@@ -38,8 +46,8 @@ class Event(CreatedAtMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     location: Mapped[str | None] = mapped_column(String(200))
     link: Mapped[str | None] = mapped_column(String(500))
-    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
-    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True, nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     cover_url: Mapped[str | None] = mapped_column(String(500))
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
 
@@ -62,7 +70,7 @@ class Project(CreatedAtMixin, Base):
     status: Mapped[ProjectStatus] = mapped_column(
         str_enum(ProjectStatus), default=ProjectStatus.draft, nullable=False
     )
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    published_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), index=True)
 
 
 class BlogPost(CreatedAtMixin, Base):
@@ -74,7 +82,7 @@ class BlogPost(CreatedAtMixin, Base):
     body: Mapped[str] = mapped_column(Text, default="", nullable=False)
     cover_url: Mapped[str | None] = mapped_column(String(500))
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)  # NULL = draft
+    published_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), index=True)  # NULL = draft
 
 
 class HomeContent(Base):
@@ -88,5 +96,5 @@ class HomeContent(Base):
     highlighted_academy_ids: Mapped[list[int]] = mapped_column(JSON, default=list, nullable=False)
     featured_project_ids: Mapped[list[int]] = mapped_column(JSON, default=list, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now(), nullable=False
+        UTCDateTime(), default=utcnow, onupdate=utcnow, server_default=func.now(), nullable=False
     )
