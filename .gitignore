@@ -3,3 +3,23 @@
 !.env.example
 .uak-env
 .claude/settings.local.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# App runtime
+*.db
+*.db-journal
+media/
+e2e/artifacts/
+
+# Web
+node_modules/
+web/dist/
