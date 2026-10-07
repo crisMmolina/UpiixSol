@@ -14,6 +14,9 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/db.py | UPS-001 |
 | app/errors.py | UPS-001 |
 | app/ratelimit.py | UPS-001 |
+| alembic.ini | UPS-001 |
+| app/migrations/env.py | UPS-001 |
+| app/migrations/script.py.mako | UPS-001 |
 | web/src/App.tsx | UPS-001 |
 | web/vite.config.ts | UPS-001 |
 | .github/workflows/ | UPS-001 |
