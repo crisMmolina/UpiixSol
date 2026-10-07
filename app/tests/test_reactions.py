@@ -112,3 +112,10 @@ def test_mine_is_per_user(as_member: TestClient, db: Session, post: Post) -> Non
 @pytest.mark.parametrize("post_ids", ["", "a,b", ",".join(str(i) for i in range(1, 52)), "1," * 300])
 def test_mine_validates_ids_422(as_member: TestClient, post_ids: str) -> None:
     assert as_member.get("/api/reactions/mine", params={"post_ids": post_ids}).status_code == 422
+
+
+def test_out_of_range_ids_422(as_member: TestClient) -> None:
+    huge = 10**30
+    assert as_member.put(f"/api/posts/{huge}/reactions/like").status_code == 422
+    assert as_member.delete(f"/api/posts/{huge}/reactions/like").status_code == 422
+    assert as_member.get("/api/reactions/mine", params={"post_ids": f"1,{huge}"}).status_code == 422
