@@ -18,3 +18,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1791382058 | UPS-012 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
 - 1791382066 | UPS-017 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
 - 1791382074 | UPS-019 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
+- 1791385392 | UPS-018 | front-end only; API unchanged | Why: Joahan asked to apply the UX/UI skills
