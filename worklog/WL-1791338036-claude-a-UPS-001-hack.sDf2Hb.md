@@ -1,12 +1,12 @@
 # worklog/WL-1791338036-claude-a-UPS-001-hack.sDf2Hb.md · UPS-001
 
 ## Live summary
-- Done: smoke PRODUCT_PASS; pytest 33 passed 100% cov; web build 98KB gzip; real app probes ok; security-reviewer no HIGH; uak gates toolchain fixed in 2dc493e
+- Done: human merge after uak review approve
 - Decision: deps installed by human (guard); TS6 no baseUrl
 - Why: marathon guard; TS5101
 - Failing: none
 - Commands: bash .uak/bin/smoke
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/4; run .uak/bin/smoke
+- Next: Integrated in main: e5657a9a8688c54cb089440f9adb47e49d622647; claim next P0
 
 ## History
 - 1791338036 | CLAIMED | claude-a | claim; next: follow `.uak/stacks/fastapi-react/STACK.md` §Backend setup, adding the full dependency list above in a single `uv add`.
@@ -15,3 +15,4 @@
 - 1791338714 | REVIEW | claude-a | checkpoint; next: Wait for review of SHA 54ac53b
 - 1791338741 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/4; evidence: smoke PRODUCT_PASS; pytest 33 passed 100% cov; web build 98KB gzip; real app probes ok; security-reviewer no HIGH; uak gates toolchain fixed in 2dc493e; reviewer: -
 - 1791339052 | REVIEW | claude | review; approve; SHA 2dc493edfd450b7d554283588b73a7783f86fc09; reviewer claude
+- 1791339215 | INTEGRATED | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/4; evidence: human merge after uak review approve; reviewer: claude
