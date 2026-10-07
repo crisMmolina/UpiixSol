@@ -4,6 +4,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  DotsSixVertical,
   Eye,
   EyeSlash,
   ImageSquare,
@@ -30,6 +31,8 @@ import { RequireRole, useAuth } from "@/lib/auth";
 import { AcademyTheme, contrastRatio, meetsAA, readableTextOn, safeAssetPath } from "@/lib/theme";
 import type { AcademyOut, BrandingUpdateIn, LessonLinkOut, Page } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
+
+import { useSortable } from "./sortable";
 
 export const order = 50;
 
@@ -435,6 +438,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
   const [content, setContent] = useState<ContentOut | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
+  const sortable = useSortable();
 
   const load = useCallback(
     () =>
@@ -470,7 +474,9 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
     <div className="grid gap-5">
       {error && <Notice tone="alert">{error}</Notice>}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted">Usa las flechas para ordenar. Lo que no esté publicado solo lo ves tú.</p>
+        <p className="text-muted">
+          Arrastra módulos y clases para ordenarlos, o usa las flechas. Lo que no esté publicado solo lo ves tú.
+        </p>
         <Button
           icon={<Plus weight="bold" />}
           onClick={() =>
@@ -528,8 +534,15 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
 
           <ol className="grid gap-3">
             {route.modules.map((module, moduleIndex) => (
-              <li key={module.id} className="rounded-2xl border border-line">
+              <li
+                key={module.id}
+                className="rounded-2xl border border-line cursor-grab data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
+                {...sortable.item(`route-${route.id}`, route.modules.map((m) => m.id), module.id, (ids) =>
+                  reorder(`/routes/${route.id}/modules/order`, ids),
+                )}
+              >
                 <div className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
+                  <DotsSixVertical weight="bold" aria-hidden className="text-muted" />
                   <span className="mr-auto font-semibold">
                     Módulo {moduleIndex + 1} · {module.title}
                   </span>
@@ -562,7 +575,14 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                 </div>
                 <ol className="grid gap-1 p-2">
                   {module.lessons.map((lesson, lessonIndex) => (
-                    <li key={lesson.id} className="flex flex-wrap items-center gap-1 rounded-xl px-2 py-1 hover:bg-line/30">
+                    <li
+                      key={lesson.id}
+                      className="flex flex-wrap items-center gap-1 rounded-xl px-2 py-1 hover:bg-line/30 cursor-grab data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
+                      {...sortable.item(`module-${module.id}`, module.lessons.map((l) => l.id), lesson.id, (ids) =>
+                        reorder(`/modules/${module.id}/lessons/order`, ids),
+                      )}
+                    >
+                      <DotsSixVertical weight="bold" aria-hidden className="text-muted" />
                       <span className="mr-auto min-w-0 text-sm">
                         {lessonIndex + 1}. {lesson.title}
                         {lesson.duration_min ? <span className="text-muted"> · {lesson.duration_min} min</span> : null}
