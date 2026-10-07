@@ -87,3 +87,62 @@ def test_step3_player_complete_lesson(site: Site) -> None:
         page.get_by_role("button", name="Contenido").click()
     expect(page.get_by_role("progressbar").first).to_have_attribute("aria-valuenow", "75")
     site.shot("3-player")
+
+
+def test_step4_community_post_with_image(site: Site) -> None:
+    page = site.page
+    text = f"Hallazgo e2e {site.name}: una red neuronal aprende XOR"
+    page.goto(site.url("/comunidad?canal=upiixia"))
+    page.get_by_label("Escribe en #upiixia").fill(text)
+    page.locator('input[type="file"][name="image"]').set_input_files(
+        files=[{"name": "hallazgo.png", "mimeType": "image/png", "buffer": _png_bytes()}]
+    )
+    page.get_by_role("button", name="Publicar").click()
+    post = page.locator("article", has_text=text)
+    expect(post).to_be_visible()
+    expect(post.locator("img[src^='/media/']")).to_be_visible()
+    site.shot("4-community")
+    page.goto(site.url("/comunidad?canal=feed"))
+    expect(page.locator("article", has_text=text)).to_be_visible()
+
+
+def test_step5_academy_admin_adds_lesson_and_changes_accent(site: Site) -> None:
+    sign_in(site, ADMIN_IA, "/panel/academia/upiixia")
+    page = site.page
+    module_title = f"Módulo e2e {site.name}"
+    lesson_title = f"Clase e2e {site.name}"
+    page.goto(site.url("/panel/academia/upiixia?tab=contenido"))
+    page.get_by_role("button", name="Agregar módulo").first.click()
+    page.get_by_label("Título del nuevo módulo").fill(module_title)
+    page.get_by_role("dialog").get_by_role("button", name="Guardar").click()
+    module = page.locator("li", has_text=module_title).first
+    expect(module).to_be_visible()
+    module.get_by_role("button", name="Agregar clase").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Título de la clase").fill(lesson_title)
+    dialog.get_by_label("URL de YouTube").fill("https://youtu.be/aircAruvnKk")
+    dialog.get_by_label("Descripción (markdown)").fill("Repaso de **redes neuronales**.")
+    for i, (label, url) in enumerate(
+        [("Notas", "https://upiixsol.dev/notas"), ("Ejercicios", "https://upiixsol.dev/ejercicios")], start=1
+    ):
+        dialog.get_by_role("button", name="Agregar link").click()
+        dialog.get_by_label(f"Etiqueta del link {i}").fill(label)
+        dialog.get_by_label(f"URL del link {i}").fill(url)
+    dialog.get_by_role("button", name="Agregar clase").click()
+    expect(page.get_by_text(lesson_title)).to_be_visible()
+
+    page.goto(site.url("/panel/academia/upiixia?tab=identidad"))
+    page.get_by_label("Acento", exact=True).fill("#FFB400")
+    page.get_by_role("button", name="Guardar identidad").click()
+    expect(page.get_by_role("status")).to_be_visible()
+    site.shot("5-panel")
+
+    # The new lesson shows in the player's sidebar and the academy uses the new accent.
+    page.goto(site.url("/a/upiixia/rutas"))
+    page.locator('main a[href^="/a/upiixia/rutas/"]').first.click()  # same first route as in the panel
+    if site.name == "mobile":
+        page.get_by_role("button", name="Contenido").click()
+    sidebar = page.get_by_role("navigation", name="Contenido de la ruta")
+    sidebar.get_by_placeholder("Buscar por el título de la lección").fill(lesson_title)  # opens its module
+    expect(sidebar.get_by_text(lesson_title)).to_be_visible()
+    assert page.evaluate(THEMED_ACCENT).strip().upper() == "#FFB400"  # noqa: S101
