@@ -1,11 +1,12 @@
 """Academy panel endpoints (flow step 5). Scope: own academy for academy_admin, any for superadmin."""
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import LearningRoute, Lesson, Module, User
 from app.pagination import CursorParam, LimitParam
+from app.ratelimit import limiter
 from app.schemas.academies import AcademyOut, BrandingUpdateIn
 from app.schemas.common import Page, ReorderIn
 from app.schemas.learning import LessonIn, LessonUpdateIn, ModuleIn, RouteIn, RouteUpdateIn
@@ -15,6 +16,7 @@ from app.services import academy_admin as service
 router = APIRouter(prefix="/api", tags=["academy-admin"])
 
 NO_CONTENT = Response(status_code=status.HTTP_204_NO_CONTENT)
+ENROLL_LIMIT = "20/minute"
 
 
 # ── Identity ─────────────────────────────────────────────────
@@ -31,9 +33,7 @@ def update_branding(
 
 async def _upload(academy_id: int, kind: str, file: UploadFile, user: User, db: Session) -> AcademyOut:
     academy = service.academy_for(db, academy_id, user)  # scope check before reading the upload
-    result = await service.upload_image(db, academy, file, kind)
-    db.commit()
-    return result
+    return await service.upload_image(db, academy, file, kind)  # commits itself (file cleanup on failure)
 
 
 @router.post("/academies/{academy_id}/logo", response_model=AcademyOut)
@@ -206,9 +206,18 @@ def list_enrollments(
     return service.enrollees(db, service.academy_for(db, academy_id, user), cursor, limit)
 
 
+def _per_user(request: Request) -> str:
+    return f"user:{getattr(request.state, 'user_id', None)}"
+
+
 @router.post("/academies/{academy_id}/enrollments", response_model=service.EnrolleeOut, status_code=201)
+@limiter.limit(ENROLL_LIMIT, key_func=_per_user)  # blocks boleta enumeration
 def enroll_member(
-    academy_id: int, data: service.EnrollIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+    request: Request,
+    academy_id: int,
+    data: service.EnrollIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ) -> service.EnrolleeOut:
     result = service.enroll_by_boleta(db, service.academy_for(db, academy_id, user), data.boleta)
     db.commit()

@@ -389,3 +389,53 @@ def test_partial_updates_keep_untouched_fields(
     assert updated["title"] == "Solo título" and updated["duration_min"] is None
     assert updated["youtube_video_id"] == before[0] and updated["description"] == before[1]
     assert len(updated["links"]) == 1  # links untouched when not sent
+
+
+def test_enroll_requires_exact_boleta_and_is_rate_limited(as_admin_ia: TestClient, ia: Academy) -> None:
+    """Security review UPS-008: boleta enumeration through the enroll endpoint."""
+    path = f"/api/academies/{ia.id}/enrollments"
+    for bad in ("2026%", "123", "20260000011", "abcdefghij"):
+        assert as_admin_ia.post(path, json={"boleta": bad}).status_code == 422
+    assert as_admin_ia.post(path, json={"boleta": "2026000001", "extra": 1}).status_code == 422
+    statuses = [as_admin_ia.post(path, json={"boleta": f"20269{i:05d}"}).status_code for i in range(21)]
+    assert statuses[:20] == [404] * 20 and statuses[20] == 429
+
+
+def test_lesson_stores_canonical_youtube_url(
+    as_admin_ia: TestClient, route: LearningRoute, db: Session
+) -> None:
+    module = db.scalars(select(Module).where(Module.route_id == route.id)).first()
+    body = as_admin_ia.post(
+        f"/api/modules/{module.id}/lessons",
+        json={"title": "x", "youtube_url": "https://m.youtube.com/watch?feature=share&v=dQw4w9WgXcQ&t=9"},
+    ).json()
+    assert body["youtube_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    patched = as_admin_ia.patch(
+        f"/api/lessons/{body['id']}", json={"youtube_url": "https://youtu.be/aircAruvnKk?si=zz"}
+    )
+    assert patched.json()["youtube_url"] == "https://www.youtube.com/watch?v=aircAruvnKk"
+
+
+def test_failed_upload_commit_keeps_previous_logo(
+    as_admin_ia: TestClient, ia: Academy, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pathlib import Path
+
+    from app.config import get_settings
+
+    first = as_admin_ia.post(
+        f"/api/academies/{ia.id}/logo", files={"file": ("a.png", _png(), "image/png")}
+    ).json()
+    media_dir = Path(get_settings().media_dir)
+    before = {p.name for p in (media_dir / "logo").iterdir()}
+
+    def boom() -> None:
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(db, "commit", boom)
+    response = as_admin_ia.post(
+        f"/api/academies/{ia.id}/logo", files={"file": ("b.png", _png(), "image/png")}
+    )
+    assert response.status_code == 500
+    assert {p.name for p in (media_dir / "logo").iterdir()} == before  # new file removed, previous kept
+    assert (media_dir / first["logo_url"].removeprefix("/media/")).exists()
