@@ -35,18 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<UserMe | null>(null);
 
-  const applySession = useCallback((session: TokenOut | null) => {
-    setAccessToken(session?.access_token ?? null);
+  // UI state only. Refresh results arrive through onSessionChange (already epoch-checked in api.ts).
+  const showSession = useCallback((session: TokenOut | null) => {
     setUser(session?.user ?? null);
     setStatus(session ? "authenticated" : "anonymous");
   }, []);
 
+  // Explicit login/register/logout: owns the token and invalidates any refresh in flight.
+  const applySession = useCallback(
+    (session: TokenOut | null) => {
+      setAccessToken(session?.access_token ?? null);
+      showSession(session);
+    },
+    [showSession],
+  );
+
   useEffect(() => {
-    const unsubscribe = onSessionChange(applySession);
+    const unsubscribe = onSessionChange(showSession);
     // Restore the session from the refresh cookie on first load.
-    void refreshSession().then(applySession);
+    void refreshSession();
     return unsubscribe;
-  }, [applySession]);
+  }, [showSession]);
 
   const login = useCallback(
     async (data: LoginIn) => {

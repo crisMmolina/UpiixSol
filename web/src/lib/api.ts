@@ -5,7 +5,8 @@
 //   await api<PostOut>("/channels/3/posts", { method: "POST", form });   // multipart (images)
 //
 // The access token lives only in memory. On a 401 the client calls /api/auth/refresh once
-// (refresh token in an HttpOnly cookie) and retries the request.
+// (refresh token in an HttpOnly cookie) and retries the request. Every request carries
+// `X-Requested-With: fetch`: the API requires it on cookie-authenticated endpoints (CSRF guard).
 
 import type { ApiError as ApiErrorBody, TokenOut } from "./types";
 
@@ -33,11 +34,18 @@ export interface ApiOptions extends Omit<RequestInit, "body"> {
   skipRefresh?: boolean;
 }
 
+const CSRF_HEADER = { "X-Requested-With": "fetch" };
+
 let accessToken: string | null = null;
 let refreshing: Promise<TokenOut | null> | null = null;
+// Bumped by every explicit login/logout: a refresh that started before it is stale and ignored,
+// so a slow startup refresh can never undo a login (or bring back a session after logout).
+let sessionEpoch = 0;
 const listeners = new Set<(session: TokenOut | null) => void>();
 
+/** Explicit session change (login, register, logout). */
 export function setAccessToken(token: string | null): void {
+  sessionEpoch += 1;
   accessToken = token;
 }
 
@@ -68,20 +76,27 @@ async function toError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, "http_error", "No pudimos completar la solicitud. Intenta de nuevo.");
 }
 
-/** Single-flight refresh: concurrent 401s share one /auth/refresh call. */
+/** Single-flight refresh: concurrent 401s share one /auth/refresh call. Listeners get the result. */
 export function refreshSession(): Promise<TokenOut | null> {
   refreshing ??= (async () => {
+    const epoch = sessionEpoch;
+    let session: TokenOut | null = null;
     try {
-      const response = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
-      const session = response.ok ? ((await response.json()) as TokenOut) : null;
-      accessToken = session?.access_token ?? null;
-      listeners.forEach((listener) => listener(session));
-      return session;
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+        headers: CSRF_HEADER,
+      });
+      session = response.ok ? ((await response.json()) as TokenOut) : null;
     } catch {
-      return null;
+      session = null; // network error: treat as no session
     } finally {
       refreshing = null;
     }
+    if (epoch !== sessionEpoch) return null; // a login/logout happened meanwhile: drop this result
+    accessToken = session?.access_token ?? null;
+    listeners.forEach((listener) => listener(session));
+    return session;
   })();
   return refreshing;
 }
@@ -90,6 +105,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   const { json, form, query, skipRefresh, headers, ...init } = options;
   const send = () => {
     const finalHeaders = new Headers(headers);
+    finalHeaders.set("X-Requested-With", CSRF_HEADER["X-Requested-With"]);
     if (json !== undefined) finalHeaders.set("Content-Type", "application/json");
     if (accessToken) finalHeaders.set("Authorization", `Bearer ${accessToken}`);
     return fetch(buildUrl(path, query), {

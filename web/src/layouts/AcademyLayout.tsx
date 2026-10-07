@@ -5,7 +5,7 @@ import { Link, Outlet, useParams } from "react-router";
 import { PageSkeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { ApiError, errorMessage } from "@/lib/api";
-import { AcademyTheme, useAcademyBranding } from "@/lib/theme";
+import { AcademyTheme, safeAssetPath, useAcademyBranding } from "@/lib/theme";
 import type { AcademyBranding } from "@/lib/types";
 
 import { CampusLayout } from "./CampusLayout";
@@ -71,8 +71,8 @@ export function AcademyLayout({ children }: { children?: ReactNode }) {
             </div>
           }
           brand={
-            branding.logo_url ? (
-              <img src={branding.logo_url} alt={branding.name} className="h-8 w-auto sm:h-10" />
+            safeAssetPath(branding.logo_url) ? (
+              <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className="h-8 w-auto sm:h-10" />
             ) : (
               <span className="font-display text-2xl font-bold text-ink">{branding.name}</span>
             )
