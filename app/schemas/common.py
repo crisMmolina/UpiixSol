@@ -1,5 +1,6 @@
 """Base classes and shared types for every API contract."""
 
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
@@ -22,6 +23,14 @@ HttpUrl = Annotated[str, StringConstraints(max_length=500), AfterValidator(safe_
 Title = Annotated[str, StringConstraints(min_length=1, max_length=120)]
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", min_length=2, max_length=60)]
 MarkdownText = Annotated[str, StringConstraints(max_length=20_000)]
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Naive input is read as UTC; aware input is converted, so comparisons never mix the two."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+UTCDatetime = Annotated[datetime, AfterValidator(_as_utc)]
 
 
 class Page[T](BaseModel):
