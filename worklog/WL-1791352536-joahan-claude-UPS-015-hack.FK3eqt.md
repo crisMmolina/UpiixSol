@@ -1,13 +1,14 @@
 # worklog/WL-1791352536-joahan-claude-UPS-015-hack.FK3eqt.md · UPS-015
 
 ## Live summary
-- Done: c5857e1: docker compose config -q && bash -n deploy/backup.sh exit 0; smoke PRODUCT_PASS; live stack on Postgres 16: 3 services healthy, migrations+seed, nginx headers/SPA/media CSP+cache, 7MB→413, per-client rate limit (A 429 after 5, B unaffected, injected XFF ignored), api no internet, backup+restore rehearsed; security-reviewer MEDIUMs fixed+retested
-- Decision: Own branch and worktree
-- Why: Parallel work without touching the main checkout
-- Failing: No validation run yet
-- Commands: `docker compose config -q && bash -n deploy/backup.sh`
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-015; run .uak/bin/smoke
+- Done: Compose+nginx+backup+runbook; security review MEDIUMs (rate limit tras TLS, nginx EOL) corregidos y re-probados; SHA c5857e1
+- Decision: real_ip desde gateway edge 172.31.0.1 + HTTP_BIND loopback obligatorio; red backend internal
+- Why: Terminador TLS del host llega via docker-proxy: sin real_ip todos comparten llave de rate limit
+- Failing: gh sin permiso createPullRequest; pendiente: server_name/HSTS dependen del dominio (hosting sin decidir)
+- Commands: docker compose config -q && bash -n deploy/backup.sh
+- Next: Review de c5857e1; PR lo abre el humano
 
 ## History
 - 1791352536 | CLAIMED | joahan-claude | claim; next: multi-stage `Dockerfile` (node build → python runtime).
 - 1791353491 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-015; evidence: c5857e1: docker compose config -q && bash -n deploy/backup.sh exit 0; smoke PRODUCT_PASS; live stack on Postgres 16: 3 services healthy, migrations+seed, nginx headers/SPA/media CSP+cache, 7MB→413, per-client rate limit (A 429 after 5, B unaffected, injected XFF ignored), api no internet, backup+restore rehearsed; security-reviewer MEDIUMs fixed+retested; reviewer: -
+- 1791353499 | REVIEW | joahan-claude | checkpoint; next: Review de c5857e1; PR lo abre el humano
