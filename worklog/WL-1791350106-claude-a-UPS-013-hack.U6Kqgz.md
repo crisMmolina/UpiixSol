@@ -1,12 +1,12 @@
 # worklog/WL-1791350106-claude-a-UPS-013-hack.U6Kqgz.md · UPS-013
 
 ## Live summary
-- Done: pytest full + cov 100% exit 0; Postgres test_events exit 0; fix reject #70 at 96f857a
+- Done: pytest full exit 0; Postgres test_events exit 0; fix reject #70 at 96f857a
 - Decision: Own branch and worktree
 - Why: Parallel work without touching the main checkout
 - Failing: No validation run yet
 - Commands: `uv run pytest -q app/tests/test_events.py && npm --prefix web run build`
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/14; run .uak/bin/smoke
+- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/16; run .uak/bin/smoke
 
 ## History
 - 1791350106 | CLAIMED | claude-a | claim; next: `test_admin_ia_cannot_create_global_event_403`.
@@ -15,3 +15,4 @@
 - 1791350988 | REVIEW | joahan-claude | review; reject; SHA f00215f2afd0470bae3b16c16eb8f8c141539f0a; reviewer joahan-claude
 - 1791351460 | REVIEW | claude-a | pending decision UPS-013-1791351460; option: UTCDatetime type in app/schemas/common.py used by EventIn (owner UPS-002, already integrated, same author); Why: reject #70: naive vs aware compare gives 500
 - 1791351485 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/14; evidence: pytest full + cov 100% exit 0; Postgres test_events exit 0; fix reject #70 at 96f857a; reviewer: -
+- 1791351611 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/16; evidence: pytest full exit 0; Postgres test_events exit 0; fix reject #70 at 96f857a; reviewer: -
