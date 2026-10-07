@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **42/42 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **44/44 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -41,6 +41,8 @@ Cobertura: **42/42 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/posts/{post_id}/comments` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/posts/{post_id}/hide` | 🔒 | ❌ | ✅ | ❌ | ✅ | moderation: academy channel |
 | POST | `/api/comments/{comment_id}/hide` | 🔒 | ❌ | ✅ | ❌ | ✅ | moderation: academy channel |
+| PUT | `/api/posts/{post_id}/reactions/{kind}` | 🔒 | ✅ | ✅ | ✅ | ✅ | idempotent, 60/min per user (UPS-018) |
+| DELETE | `/api/posts/{post_id}/reactions/{kind}` | 🔒 | ✅ | ✅ | ✅ | ✅ | idempotent (UPS-018) |
 | POST | `/api/events` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | PATCH | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | DELETE | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
