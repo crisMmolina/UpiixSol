@@ -153,7 +153,7 @@ function PostPage() {
 
   useEffect(() => {
     let alive = true;
-    api<BlogPostOut>(`/blog/${slug}`)
+    api<BlogPostOut>(`/blog/${encodeURIComponent(slug)}`)
       .then((p) => alive && setPost(p))
       .catch((err) => alive && setError(err));
     return () => {

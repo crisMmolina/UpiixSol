@@ -4,6 +4,9 @@ Drafts are invisible (404) to everyone but superadmins. `published_at` is set th
 is published and cleared when it goes back to draft.
 """
 
+import re
+import unicodedata
+
 from fastapi import UploadFile
 from sqlalchemy import Select, String, cast, select
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +24,15 @@ def _not_found() -> AppError:
     return AppError(404, "No encontramos ese proyecto.")
 
 
+MAX_TAG = 40
+
+
+def normalize_tag(tag: str) -> str:
+    """'Robótica IA' → 'robotica-ia': accent-free so the JSON text filter matches what users type."""
+    plain = unicodedata.normalize("NFD", tag).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")
+
+
 def is_superadmin(user: User | None) -> bool:
     return user is not None and user.role == Role.superadmin
 
@@ -31,7 +43,7 @@ def list_stmt(tag: str | None, drafts: bool) -> Select:
         stmt = stmt.where(Project.status == ProjectStatus.published)
     if tag:
         # JSON list column: portable filter on its serialized text (SQLite and Postgres), wildcards escaped.
-        stmt = stmt.where(cast(Project.tags, String).contains(f'"{tag.lower()}"', autoescape=True))
+        stmt = stmt.where(cast(Project.tags, String).contains(f'"{normalize_tag(tag)}"', autoescape=True))
     return stmt
 
 
@@ -58,7 +70,10 @@ def _apply(db: Session, project: Project, data: ProjectIn) -> None:
     project.body = clean_markdown(data.body)
     project.authors = data.authors
     project.academy_id = data.academy_id
-    project.tags = [tag.strip().lower() for tag in data.tags if tag.strip()]
+    tags = list(dict.fromkeys(normalize_tag(tag) for tag in data.tags))
+    if any(len(tag) > MAX_TAG for tag in tags):
+        raise AppError(422, f"Cada etiqueta puede tener hasta {MAX_TAG} caracteres.", code="invalid_tag")
+    project.tags = [tag for tag in tags if tag]
     if data.status == ProjectStatus.published and project.published_at is None:
         project.published_at = utcnow()
     elif data.status == ProjectStatus.draft:

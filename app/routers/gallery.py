@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Path, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -14,6 +14,7 @@ from app.security import optional_user, require_role
 from app.services import gallery as service
 
 router = APIRouter(prefix="/api/projects", tags=["gallery"])
+DbId = Annotated[int, Path(ge=1, le=2**31 - 1)]  # out-of-range ids are a 422, never a DB overflow 500
 Superadmin = Annotated[User, Depends(require_role(Role.superadmin))]
 
 
@@ -54,7 +55,7 @@ def create_project(data: ProjectIn, _user: Superadmin, db: Session = Depends(get
 
 @router.put("/{project_id}", response_model=ProjectOut)
 def update_project(
-    project_id: int, data: ProjectIn, _user: Superadmin, db: Session = Depends(get_db)
+    project_id: DbId, data: ProjectIn, _user: Superadmin, db: Session = Depends(get_db)
 ) -> ProjectOut:
     result = service.save(db, service.get(db, project_id), data)
     db.commit()
@@ -63,12 +64,12 @@ def update_project(
 
 @router.post("/{project_id}/cover", response_model=ProjectOut)
 async def upload_cover(
-    project_id: int, _user: Superadmin, file: UploadFile = File(...), db: Session = Depends(get_db)
+    project_id: DbId, _user: Superadmin, file: UploadFile = File(...), db: Session = Depends(get_db)
 ) -> ProjectOut:
     return await service.replace_cover(db, service.get(db, project_id), file)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, _user: Superadmin, db: Session = Depends(get_db)) -> Response:
+def delete_project(project_id: DbId, _user: Superadmin, db: Session = Depends(get_db)) -> Response:
     service.delete(db, service.get(db, project_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

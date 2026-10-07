@@ -146,3 +146,20 @@ def test_cover_kept_when_commit_fails(
 def test_missing_project_404(as_superadmin: TestClient) -> None:
     assert as_superadmin.put("/api/projects/9999", json=NEW).status_code == 404
     assert as_superadmin.delete("/api/projects/9999").status_code == 404
+
+
+def test_tags_normalized_accent_free_and_bounded(as_superadmin: TestClient, client: TestClient) -> None:
+    created = as_superadmin.post(
+        "/api/projects", json={**NEW, "tags": ["Robótica IA", "robotica-ia", " "], "status": "published"}
+    )
+    assert created.json()["tags"] == ["robotica-ia"]
+    assert [
+        p["slug"] for p in client.get("/api/projects", params={"tag": "Robótica IA"}).json()["items"]
+    ] == ["dron-reparto"]
+    too_long = as_superadmin.post("/api/projects", json={**NEW, "slug": "otro", "tags": ["x" * 41]})
+    assert too_long.status_code == 422 and too_long.json()["error"]["code"] == "invalid_tag"
+
+
+def test_out_of_range_ids_422(as_superadmin: TestClient) -> None:
+    assert as_superadmin.put(f"/api/projects/{10**30}", json=NEW).status_code == 422
+    assert as_superadmin.delete(f"/api/blog/{10**30}").status_code == 422

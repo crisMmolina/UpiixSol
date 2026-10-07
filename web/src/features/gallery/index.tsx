@@ -165,7 +165,7 @@ function ProjectPage() {
 
   useEffect(() => {
     let alive = true;
-    api<ProjectOut>(`/projects/${slug}`)
+    api<ProjectOut>(`/projects/${encodeURIComponent(slug)}`)
       .then((p) => alive && setProject(p))
       .catch((err) => alive && setError(err));
     return () => {

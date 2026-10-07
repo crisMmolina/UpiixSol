@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Path, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -15,6 +15,7 @@ from app.services import blog as service
 from app.services.gallery import is_superadmin
 
 router = APIRouter(prefix="/api/blog", tags=["blog"])
+DbId = Annotated[int, Path(ge=1, le=2**31 - 1)]  # out-of-range ids are a 422, never a DB overflow 500
 Superadmin = Annotated[User, Depends(require_role(Role.superadmin))]
 
 
@@ -48,7 +49,7 @@ def create_post(data: BlogPostIn, user: Superadmin, db: Session = Depends(get_db
 
 @router.put("/{blog_id}", response_model=BlogPostOut)
 def update_post(
-    blog_id: int, data: BlogPostIn, user: Superadmin, db: Session = Depends(get_db)
+    blog_id: DbId, data: BlogPostIn, user: Superadmin, db: Session = Depends(get_db)
 ) -> BlogPostOut:
     result = service.save(db, service.get(db, blog_id), data, user)
     db.commit()
@@ -57,12 +58,12 @@ def update_post(
 
 @router.post("/{blog_id}/cover", response_model=BlogPostOut)
 async def upload_cover(
-    blog_id: int, _user: Superadmin, file: UploadFile = File(...), db: Session = Depends(get_db)
+    blog_id: DbId, _user: Superadmin, file: UploadFile = File(...), db: Session = Depends(get_db)
 ) -> BlogPostOut:
     return await service.replace_cover(db, service.get(db, blog_id), file)
 
 
 @router.delete("/{blog_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(blog_id: int, _user: Superadmin, db: Session = Depends(get_db)) -> Response:
+def delete_post(blog_id: DbId, _user: Superadmin, db: Session = Depends(get_db)) -> Response:
     service.delete(db, service.get(db, blog_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
