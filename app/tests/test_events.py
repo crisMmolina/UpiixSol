@@ -149,3 +149,21 @@ def test_pagination(as_superadmin: TestClient, db: Session) -> None:
     first = as_superadmin.get("/api/events", params=params).json()
     second = as_superadmin.get("/api/events", params={**params, "cursor": first["next_cursor"]}).json()
     assert [e["title"] for e in first["items"] + second["items"]] == ["E0", "E1", "E2", "E3"]
+
+
+def test_naive_and_aware_datetimes_mix_without_500(as_superadmin: TestClient) -> None:
+    """Naive values are read as UTC (reject #70 by joahan-claude)."""
+    mixed = as_superadmin.get(
+        "/api/events", params={"from": "2026-10-01T00:00:00Z", "to": "2026-10-31T00:00:00"}
+    )
+    assert mixed.status_code == 200
+    inverted = as_superadmin.get(
+        "/api/events", params={"from": "2026-10-31T00:00:00Z", "to": "2026-10-01T00:00:00"}
+    )
+    assert inverted.status_code == 422
+    payload = {**_event(), "starts_at": "2027-03-01T18:00:00Z", "ends_at": "2027-03-01T20:00:00"}
+    created = as_superadmin.post("/api/events", json=payload)
+    assert created.status_code == 201
+    assert created.json()["ends_at"].startswith("2027-03-01T20:00:00")
+    shifted = {**payload, "starts_at": "2027-03-01T13:00:00-06:00", "ends_at": "2027-03-01T18:30:00"}
+    assert as_superadmin.post("/api/events", json=shifted).status_code == 422  # 19:00Z > 18:30Z

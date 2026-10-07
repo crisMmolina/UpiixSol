@@ -1,6 +1,5 @@
 """Events and calendar (month view + list, academy filter)."""
 
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -10,7 +9,7 @@ from app.db import get_db
 from app.errors import AppError
 from app.models import Role, User
 from app.pagination import CursorParam, LimitParam
-from app.schemas.common import Page
+from app.schemas.common import Page, UTCDatetime
 from app.schemas.content import EventIn, EventOut
 from app.security import current_user, require_role
 from app.services import events as service
@@ -21,8 +20,8 @@ Manager = Annotated[User, Depends(require_role(Role.superadmin, Role.academy_adm
 
 @router.get("", response_model=Page[EventOut])
 def list_events(
-    start: Annotated[datetime | None, Query(alias="from")] = None,
-    end: Annotated[datetime | None, Query(alias="to")] = None,
+    start: Annotated[UTCDatetime | None, Query(alias="from")] = None,
+    end: Annotated[UTCDatetime | None, Query(alias="to")] = None,
     academy: Annotated[str | None, Query(max_length=60)] = None,
     include_global: bool = True,
     cursor: CursorParam = None,
