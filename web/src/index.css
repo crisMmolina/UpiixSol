@@ -1,2 +1,132 @@
-/* Stub created by UPS-001 so the app builds. Owner: UPS-004 (tokens from web/DESIGN.md). */
+/* Design tokens from web/DESIGN.md (owner UPS-004). Light theme only in v1. */
 @import "tailwindcss";
+@import "@fontsource/fredoka/500.css";
+@import "@fontsource/fredoka/600.css";
+@import "@fontsource/fredoka/700.css";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fredoka", "Inter Variable", ui-sans-serif, sans-serif;
+
+  --color-bg: #fbf8ef;
+  --color-surface: #ffffff;
+  --color-ink: #1f2a24;
+  --color-muted: #5b6b62;
+  --color-line: #e7e2d3;
+  --color-video: #111714;
+  --color-link: #037a41;
+  --color-danger: #b4422f;
+
+  /* Academy theme: defaults = UpiixSol palette; AcademyTheme overrides the --academy-* vars. */
+  --color-primary: var(--academy-primary);
+  --color-secondary: var(--academy-secondary);
+  --color-accent: var(--academy-accent);
+  --color-accent-2: var(--academy-accent-2);
+  --color-on-primary: var(--academy-on-primary);
+  --color-on-accent: var(--academy-on-accent);
+
+  --radius-card: 1.25rem;
+  --radius-field: 0.75rem;
+  --shadow-soft: 0 1px 2px rgb(31 42 36 / 6%), 0 8px 24px rgb(31 42 36 / 6%);
+  --shadow-lift: 0 2px 4px rgb(31 42 36 / 8%), 0 12px 32px rgb(31 42 36 / 10%);
+}
+
+:root {
+  --academy-primary: #00bf63;
+  --academy-secondary: #04944f;
+  --academy-accent: #f28034;
+  --academy-accent-2: #b4422f;
+  --academy-on-primary: #1f2a24;
+  --academy-on-accent: #1f2a24;
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-semibold tracking-tight text-ink;
+    line-height: 1.2;
+  }
+
+  a {
+    @apply text-link;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--academy-secondary);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--academy-primary) 30%, transparent);
+  }
+
+  /* Theme switch between academies: short cross-fade of colors (disabled by reduced motion). */
+  [data-academy-theme] {
+    transition:
+      background-color 200ms ease-out,
+      color 200ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Rendered markdown (lesson descriptions, posts, blog). Content is sanitized before render. */
+  .prose-campus {
+    @apply text-ink;
+  }
+  .prose-campus > * + * {
+    margin-top: 0.75em;
+  }
+  .prose-campus h1,
+  .prose-campus h2,
+  .prose-campus h3 {
+    margin-top: 1.25em;
+  }
+  .prose-campus ul {
+    @apply list-disc pl-6;
+  }
+  .prose-campus ol {
+    @apply list-decimal pl-6;
+  }
+  .prose-campus blockquote {
+    @apply border-l-4 pl-4 text-muted;
+    border-color: var(--academy-accent);
+  }
+  .prose-campus code {
+    @apply rounded bg-line/60 px-1 py-0.5 text-[0.9em];
+  }
+  .prose-campus pre {
+    @apply overflow-x-auto rounded-xl bg-video p-4 text-sm text-white;
+  }
+  .prose-campus pre code {
+    @apply bg-transparent p-0;
+  }
+  .prose-campus a {
+    @apply font-medium underline underline-offset-2;
+  }
+}
