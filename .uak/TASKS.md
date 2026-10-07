@@ -372,3 +372,26 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - `must_change_password` is enforced: every authenticated endpoint except `GET /api/auth/me`, `POST /api/auth/logout|refresh` and `POST /api/account/password` → 403 `password_change_required`; the UI sends the user to `/cuenta?tab=seguridad` until they change it. Setting `REQUIRE_PASSWORD_CHANGE` (default `true`) can be set to `false` for a demo with the seeded accounts (IDEA §2.3).
 - **Verify:** `uv run pytest -q app/tests/test_auth.py app/tests/test_security.py && npm --prefix web run build`
 - **Next step:** `test_concurrent_refresh_only_one_wins`.
+
+## UPS-021 · UX/UI pass over the whole campus with `redesign-existing-projects`
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** S001 · `web/DESIGN.md` · skills `.uak/skills/redesign-existing-projects` (audit + fix) and `.uak/skills/design-taste-frontend` (sections 4, 9, 14 for the home hero only)
+- **Depends on:** UPS-012, UPS-014, UPS-016, UPS-017, UPS-018, UPS-019
+- **Uses contract:** UPS-002, UPS-004
+- **Related:** UPS-004, UPS-007, UPS-008, UPS-009, UPS-011, UPS-013
+- **Paths:** web/DESIGN.md, web/src/index.css, web/src/components/, web/src/layouts/, web/src/features/home/, web/src/features/academy/, web/src/features/learning/, web/src/features/community/, web/src/features/academy-admin/, web/src/features/superadmin/, web/src/features/account/, web/src/features/events/, web/src/features/auth/
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Audit first: screenshots at 390 px and 1280 px of every route for member, academy admin and superadmin, run through the `redesign-existing-projects` checklist; the findings list goes in the PR body. Stay inside `web/DESIGN.md` (no new fonts, palette or dependencies); DESIGN.md gains a short "Layout" section with the rules this pass settles.
+  - One section-header pattern everywhere (title + optional subtitle on the left, action link on the right, aligned to the title baseline). Today Home mixes headers inside cards (Próximos eventos, Actividad) with headers outside cards (Academias, Proyectos destacados), and "Ver todas" sits on the subtitle line.
+  - No stretched or lonely blocks: a single academy card does not leave two empty columns at 1280 px; side-by-side cards do not stretch to the tallest one with empty space (Home events vs. activity).
+  - Mobile: stacked CTAs share one width (Home hero); the provisional-password banner is one compact line with its link and does not eat the first screen on every route; tab bars that do not fit scroll horizontally instead of touching the edge (academy panel tabs).
+  - Academy panel on 390 px: each route/module/lesson keeps its controls (move, edit, publish, delete) in one toolbar row; today the up arrow stays next to the title and the rest wraps to a second line.
+  - No duplicated information (e.g. "Continuar: Clase 3 · 50 %" under a bar that already shows 50 %).
+  - Review the already-integrated screens (UPS-004 … UPS-013) against DESIGN.md and the checklist, and the features from UPS-012/017/018 for consistency (they get their own pass in their PRs).
+  - No horizontal scroll at 390 px, touch targets ≥ 44 px, AA contrast, `prefers-reduced-motion` respected; UPS-016 e2e stays green.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && bash .uak/bin/smoke`
+- **Next step:** run the 390/1280 screenshot sweep with `webapp-testing` and write the findings list before touching code.
