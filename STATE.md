@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1791354509
+Updated: 1791354518
 AVAILABLE: UPS-017 UPS-018 UPS-019 UPS-020 
 CLAIMED: -
 BLOCKED: -
@@ -11,7 +11,7 @@ CANCELLED: -
 
 Claims (first 24; status --task ID shows detail):
 UPS-012 | REVIEW | joahan-claude | until 1791440520
-UPS-014 | REVIEW | claude-a | until 1791440688
+UPS-014 | REVIEW | claude-a | until 1791440918
 UPS-015 | REVIEW | joahan-claude | until 1791439899
 UPS-016 | REVIEW | claude-a | until 1791440577
 
