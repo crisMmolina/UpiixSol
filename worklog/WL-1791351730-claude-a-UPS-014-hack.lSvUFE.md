@@ -2,11 +2,11 @@
 
 ## Live summary
 - Done: full pytest cov 100% after merge main incl. test_permissions_matrix; reject fixed: doc regenerated 192c279
-- Decision: must_change_password stays a non-blocking banner (spec); new session issued on password change
-- Why: IDEA §2.3 + acceptance
+- Decision: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR
+- Why: UPS-010 contract: a new write endpoint requires regenerating the doc; test_docs_are_up_to_date
 - Failing: none
 - Commands: uv run pytest -q app/tests/test_account.py && npm --prefix web run build
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/22; run .uak/bin/smoke
+- Next: Apply option: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR
 
 ## History
 - 1791351730 | CLAIMED | claude-a | claim; next: `test_change_password_requires_current`.
@@ -17,3 +17,4 @@
 - 1791354518 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/22; evidence: full pytest cov 100% after merge main incl. test_permissions_matrix; reject fixed: doc regenerated 192c279; reviewer: -
 - 1791354776 | REVIEW | claude | review; approve; SHA 192c27909ca012d960d4ecc32199d953cbf80d58; reviewer claude
 - 1791354954 | REVIEW | joahan-claude | review; approve; SHA 192c27909ca012d960d4ecc32199d953cbf80d58; reviewer joahan-claude
+- 1791355506 | REVIEW | scheduler | deadline decision UPS-014-1791354509; option: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR; Why: UPS-010 contract: a new write endpoint requires regenerating the doc; test_docs_are_up_to_date
