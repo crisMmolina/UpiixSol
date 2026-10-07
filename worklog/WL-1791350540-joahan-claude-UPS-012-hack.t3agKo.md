@@ -1,12 +1,12 @@
 # worklog/WL-1791350540-joahan-claude-UPS-012-hack.t3agKo.md · UPS-012
 
 ## Live summary
-- Done: 5c94704: merge main (UPS-010 matrix) + docs/permissions-matrix.md regenerated per contract #108 (42/42); matrix rules for 4 resource endpoints PASSED; full suite 100% cov; smoke PRODUCT_PASS
-- Decision: No merge propio: marathon/PROJECT principio 2 = merge humano CODEOWNER
-- Why: Aprobación #81 era de 89af2b1
-- Failing: gh sin permiso createPullRequest
-- Commands: uv run pytest -q app/tests/test_resources.py && npm --prefix web run build
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-012; run .uak/bin/smoke
+- Done: UX pass (redesign-existing-projects) at c911309; lint+build OK; browser e2e OK against main+open PRs
+- Decision: front-end only; no API/security changes
+- Why: Joahan asked to apply the UX/UI skills
+- Failing: none
+- Commands: npm --prefix web run lint && npm --prefix web run build
+- Next: re-review of the new SHA; PR when the token allows it
 
 ## History
 - 1791350540 | CLAIMED | joahan-claude | claim; next: `test_admin_other_academy_cannot_create_resource_403`.
@@ -18,3 +18,4 @@
 - 1791352432 | REVIEW | claude | review; approve; SHA 014c3c320541aaa73a285de1b393663ada738710; reviewer claude
 - 1791354120 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-012; evidence: 5c94704: merge main (UPS-010 matrix) + docs/permissions-matrix.md regenerated per contract #108 (42/42); matrix rules for 4 resource endpoints PASSED; full suite 100% cov; smoke PRODUCT_PASS; reviewer: -
 - 1791354745 | REVIEW | claude | review; approve; SHA 5c94704d8ac0476376cc7060e005629e81eea57b; reviewer claude
+- 1791382058 | REVIEW | joahan-claude | checkpoint; next: re-review of the new SHA; PR when the token allows it
