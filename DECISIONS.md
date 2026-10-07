@@ -8,3 +8,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1791340307 | UPS-002 | position instead of order; SVG allowlist; & stays escaped | Why: reserved word; review findings
 - 1791351367 | UPS-012 | Gestión en /a/:slug/recursos (dentro de Paths); link desde el panel pedido a claude-a | Why: academy-admin/index.tsx es de UPS-008
 - 1791352226 | UPS-012 | No merge propio: marathon/PROJECT principio 2 = merge humano CODEOWNER | Why: Aprobación #81 era de 89af2b1
+- 1791352323 | UPS-014 | must_change_password stays a non-blocking banner (spec); new session issued on password change | Why: IDEA §2.3 + acceptance
