@@ -17,6 +17,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 
 from app import routers
+from app.body_limit import BodySizeLimitMiddleware
 from app.config import get_settings
 from app.db import engine
 from app.errors import AppError, error_response, internal_error, log_unhandled, register_error_handlers
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     register_error_handlers(app)
     app.add_middleware(SlowAPIMiddleware)
+    app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
