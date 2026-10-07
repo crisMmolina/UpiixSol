@@ -102,15 +102,18 @@ export function ResourceBoard({ slug, academyId, canManage, mascotUrl }: {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
+        {/* One row on phones that scrolls sideways inside itself instead of wrapping into two. `w-0 min-w-full`
+            keeps the row from widening its grid ancestors (the academy panel) to the chips' full width. */}
+        <div role="group" aria-label="Filtrar por tipo" className="flex w-0 min-w-full gap-2 overflow-x-auto pb-1 sm:w-auto sm:min-w-0 sm:flex-wrap">
           {[{ id: null, plural: "Todos" }, ...TYPES].map(({ id, plural }) => (
             <button
               key={plural}
               type="button"
               aria-pressed={filter === id}
               onClick={() => changeFilter(id)}
-              className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition ${
-                filter === id ? "border-ink bg-ink text-surface" : "border-line bg-surface text-ink hover:border-ink"
+              // Active state matches the active item of the main navigation.
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold text-ink transition ${
+                filter === id ? "border-primary/40 bg-primary/15" : "border-line bg-surface hover:border-secondary"
               }`}
             >
               {plural}
@@ -194,13 +197,14 @@ function ResourceCard({ resource, canManage, onEdit, onDelete }: {
   const TypeIcon = info.icon;
   const href = resource.url ?? resource.file_url;
   return (
-    <Card stripe className="flex h-full flex-col gap-3 p-5">
-      <div className="flex items-start justify-between gap-2">
+    <Card className="flex h-full flex-col gap-3 p-5">
+      <div className="flex min-h-7 items-center justify-between gap-2">
         <Badge tone="primary" icon={<TypeIcon weight="bold" aria-hidden />}>
           {info.label}
         </Badge>
         {canManage && (
-          <div className="-mr-2 -mt-2 flex">
+          // Negative margins keep the 44 px targets without pushing the title down.
+          <div className="-my-2 -mr-2 flex">
             <button type="button" aria-label={`Editar ${resource.title}`} title="Editar" onClick={onEdit}
               className="grid size-11 place-items-center rounded-full hover:bg-line/60">
               <PencilSimple weight="bold" />
