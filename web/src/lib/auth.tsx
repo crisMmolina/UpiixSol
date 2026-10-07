@@ -7,7 +7,7 @@ import { Navigate, useLocation } from "react-router";
 
 import { PageSkeleton } from "@/components/Skeleton";
 
-import { api, onSessionChange, refreshSession, setAccessToken } from "./api";
+import { api, onPasswordChangeRequired, onSessionChange, refreshSession, setAccessToken } from "./api";
 import type { LoginIn, RegisterIn, Role, TokenOut, UserMe } from "./types";
 
 type Status = "loading" | "authenticated" | "anonymous";
@@ -20,6 +20,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Re-read the current user (after profile/email changes). */
   reload: () => Promise<void>;
+  /** The API refuses everything but the password change until the provisional password is changed. */
+  passwordChangeRequired: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,6 +36,9 @@ export function homeFor(user: Pick<UserMe, "role">): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<UserMe | null>(null);
+  // Only the API knows whether REQUIRE_PASSWORD_CHANGE is on, so the first 403 tells us.
+  const [changeDemanded, setChangeDemanded] = useState(false);
+  const passwordChangeRequired = changeDemanded && Boolean(user?.must_change_password);
 
   // UI state only. Refresh results arrive through onSessionChange (already epoch-checked in api.ts).
   const showSession = useCallback((session: TokenOut | null) => {
@@ -49,6 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [showSession],
   );
+
+  useEffect(() => onPasswordChangeRequired(() => setChangeDemanded(true)), []);
 
   useEffect(() => {
     const unsubscribe = onSessionChange(showSession);
@@ -88,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, login, register, logout, reload }),
-    [status, user, login, register, logout, reload],
+    () => ({ status, user, login, register, logout, reload, passwordChangeRequired }),
+    [status, user, login, register, logout, reload, passwordChangeRequired],
   );
   return <AuthContext value={value}>{children}</AuthContext>;
 }
@@ -100,9 +107,10 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
-/** Route guard: anonymous → /login?next=…; wrong role → that role's home. UI only; the API enforces too. */
+/** Route guard: anonymous → /login?next=…; provisional password the API refuses → Mi cuenta → Seguridad;
+ *  wrong role → that role's home. UI only; the API enforces too. */
 export function RequireRole({ roles, children }: { roles?: Role[]; children: ReactNode }) {
-  const { status, user } = useAuth();
+  const { status, user, passwordChangeRequired } = useAuth();
   const location = useLocation();
 
   if (status === "loading") return <PageSkeleton />;
@@ -110,6 +118,7 @@ export function RequireRole({ roles, children }: { roles?: Role[]; children: Rea
     const next = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?next=${next}`} replace />;
   }
+  if (passwordChangeRequired && location.pathname !== "/cuenta") return <Navigate to="/cuenta?tab=seguridad" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to={homeFor(user)} replace />;
   return <>{children}</>;
 }

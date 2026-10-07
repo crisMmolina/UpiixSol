@@ -4,6 +4,9 @@
     user: User = Depends(require_role(Role.superadmin))      # 403 otherwise
     ensure_academy_scope(user, academy_id)                   # 403 unless superadmin or admin of that academy
 
+An access token is valid only while the password it was issued under is current (`pwd` claim), and an
+account with a provisional password gets 403 `password_change_required` until it changes it (UPS-020).
+
 Always resolve `academy_id` from the database row being changed, never from the request body.
 """
 
@@ -29,6 +32,14 @@ _hasher = PasswordHasher()  # argon2id with OWASP-aligned defaults
 _bearer = HTTPBearer(auto_error=False)
 # Verifying against a dummy hash when the user does not exist keeps login timing uniform.
 _DUMMY_HASH = _hasher.hash("timing-equalizer-not-a-password")
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+# What an account with must_change_password may still do (method, path).
+PASSWORD_CHANGE_ALLOWED = {
+    ("GET", "/api/auth/me"),
+    ("POST", "/api/auth/logout"),
+    ("POST", "/api/auth/refresh"),
+    ("POST", "/api/account/password"),
+}
 
 
 def hash_password(password: str) -> str:
@@ -46,6 +57,12 @@ def password_needs_rehash(password_hash: str) -> bool:
     return _hasher.check_needs_rehash(password_hash)
 
 
+def password_stamp(user: User) -> int:
+    """Microseconds since the epoch of the last password change (0 if never): exact on every backend."""
+    changed = user.password_changed_at  # UTCDateTime: always aware
+    return 0 if changed is None else (changed - _EPOCH) // timedelta(microseconds=1)
+
+
 def create_access_token(user: User, *, now: datetime | None = None) -> str:
     settings = get_settings()
     issued = now or datetime.now(UTC)
@@ -54,6 +71,7 @@ def create_access_token(user: User, *, now: datetime | None = None) -> str:
         "role": user.role.value,
         "academy_id": user.academy_id,
         "type": "access",
+        "pwd": password_stamp(user),
         "iat": issued,
         "exp": issued + timedelta(minutes=settings.jwt_access_minutes),
     }
@@ -66,7 +84,7 @@ def decode_access_token(token: str) -> dict:
             token,
             get_settings().jwt_secret,
             algorithms=[JWT_ALGORITHM],
-            options={"require": ["sub", "exp", "type"]},
+            options={"require": ["sub", "exp", "type", "pwd"]},
         )
     except jwt.PyJWTError as exc:
         raise AppError(401, "Tu sesión expiró. Inicia sesión de nuevo.", code="invalid_token") from exc
@@ -94,9 +112,18 @@ def optional_user(
         return None
     payload = decode_access_token(credentials.credentials)
     user = db.get(User, int(payload["sub"]))
-    if user is None or not user.is_active:
-        raise AppError(401, code="invalid_token")
+    # A password change or reset ends every session, including access tokens already issued.
+    if user is None or not user.is_active or payload["pwd"] != password_stamp(user):
+        raise AppError(401, "Tu sesión expiró. Inicia sesión de nuevo.", code="invalid_token")
     request.state.user_id = user.id  # for the access log (never email/boleta)
+    if (
+        user.must_change_password
+        and get_settings().require_password_change
+        and (request.method, request.url.path) not in PASSWORD_CHANGE_ALLOWED
+    ):
+        raise AppError(
+            403, "Cambia tu contraseña provisional para continuar.", code="password_change_required"
+        )
     return user
 
 
