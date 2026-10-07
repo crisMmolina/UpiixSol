@@ -20,7 +20,11 @@ function Overlay({
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      // showModal() focuses the first focusable element (the close button). Forms start at their first field.
+      dialog.querySelector<HTMLElement>("input:not([type=hidden]), textarea, select")?.focus();
+    }
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
