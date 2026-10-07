@@ -83,7 +83,7 @@ Se usa el dominio `upiixsol.dev` porque varios validadores de email rechazan `.l
 | Miembro demo [Recommended] | `alumno.demo@upiixsol.dev` | `admin123` |
 
 - El seed lee la contraseña inicial de `SEED_DEFAULT_PASSWORD` (default `admin123`) y la guarda con hash.
-- Las cuentas sembradas llevan `must_change_password = true`; tras el login se muestra un aviso para cambiar correo y contraseña (no bloqueante durante la demo). [Recommended]
+- Las cuentas sembradas llevan `must_change_password = true`; tras el login se muestra un aviso para cambiar correo y contraseña (obligatorio desde UPS-020; `REQUIRE_PASSWORD_CHANGE=false` lo vuelve no bloqueante para una demo). [Decided by @crisMmolina]
 - Pantalla **Mi cuenta → Seguridad**: cambiar correo (pide contraseña actual) y cambiar contraseña (actual + nueva + confirmación). [Decided]
 
 ## 3. Demo case
