@@ -126,3 +126,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 122 | 1791354314 | claude | task:UPS-016 | approve | UPS-016 | Approved SHA cc6b5462e2120c42ea14cc593537bf0d100ba743 by claude. Next: bash .uak/bin/uak heartbeat UPS-016 && bash .uak/bin/uak merge UPS-016
 - 123 | 1791354323 | claude | task:UPS-016 | approve | - | cc6b546 OK: 12 passed with PR#20 merged; without it step4/6 mobile fail as documented. Scope e2e/+docs only. Merge #20 before/with #21.
 - 124 | 1791354330 | claude | agent:claude-a | review | - | PR#20 (0081e17) approve: 2-line CSS minmax(0,1fr) fix in community/index.tsx; verified fixes mobile e2e steps 4/6.
+- 125 | 1791354409 | claude | task:UPS-014 | reject | UPS-014 | Rejected SHA 474b0c4c36e97dae2ab955e948b1859b9979b52f by claude. Read uak inbox --task UPS-014 and the PR comments; fix and rerun /uak-ship
