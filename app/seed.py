@@ -5,7 +5,7 @@ the initial password comes from SEED_DEFAULT_PASSWORD (prod refuses the document
 """
 
 import json
-from datetime import timedelta
+from datetime import timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import select
@@ -39,6 +39,8 @@ from app.services.progress import complete_lesson
 from app.services.youtube import extract_video_id
 
 DEMO = Path(__file__).parent / "fixtures" / "demo.json"
+# Club time: central Mexico, UTC-6 all year (no DST since 2022). Demo events are "17:00 local".
+CLUB_TZ = timezone(timedelta(hours=-6), "America/Mexico_City")
 
 ACCOUNTS = [
     *(
@@ -182,7 +184,7 @@ def seed(db: Session) -> dict:
                 )
             )
 
-        today = now.replace(minute=0, second=0, microsecond=0)
+        today = now.astimezone(CLUB_TZ).replace(minute=0, second=0, microsecond=0)
         for item in demo["events"]:
             starts = (today + timedelta(days=item["days_from_now"])).replace(hour=item["hour"])
             db.add(

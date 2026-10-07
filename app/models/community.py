@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.common import ChannelType, CreatedAtMixin, enum_check, str_enum
+from app.models.common import ChannelType, CreatedAtMixin, UTCDateTime, enum_check, str_enum
 
 
 class Channel(CreatedAtMixin, Base):
@@ -36,7 +36,7 @@ class Post(CreatedAtMixin, Base):
     link_url: Mapped[str | None] = mapped_column(String(500))
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     hidden_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    hidden_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     author = relationship("User", foreign_keys=[author_id], lazy="raise")
 
@@ -58,7 +58,7 @@ class Comment(CreatedAtMixin, Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     hidden_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    hidden_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     author = relationship("User", foreign_keys=[author_id], lazy="raise")
 
