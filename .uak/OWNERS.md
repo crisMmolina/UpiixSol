@@ -10,10 +10,10 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | web/package.json | UPS-001 |
 | web/package-lock.json | UPS-001 |
 | app/main.py | UPS-001 |
-| app/config.py | UPS-001 |
+| app/config.py | UPS-020 |
 | app/db.py | UPS-001 |
 | app/errors.py | UPS-001 |
-| app/ratelimit.py | UPS-001 |
+| app/ratelimit.py | UPS-020 |
 | alembic.ini | UPS-001 |
 | app/migrations/env.py | UPS-001 |
 | app/migrations/script.py.mako | UPS-001 |
@@ -21,11 +21,11 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | web/vite.config.ts | UPS-001 |
 | .github/workflows/ | UPS-001 |
 | .gitignore | UPS-001 |
-| .env.example | UPS-001 |
+| .env.example | UPS-020 |
 | app/schemas/ | UPS-002 |
 | app/models/ | UPS-002 |
 | app/migrations/versions/ | UPS-002 |
-| app/security.py | UPS-002 |
+| app/security.py | UPS-020 |
 | app/pagination.py | UPS-002 |
 | app/sanitize.py | UPS-002 |
 | app/services/media.py | UPS-002 |
@@ -34,8 +34,8 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/seed.py | UPS-002 |
 | web/DESIGN.md | UPS-002 |
 | web/src/lib/types.ts | UPS-002 |
-| web/src/lib/api.ts | UPS-004 |
-| web/src/lib/auth.tsx | UPS-004 |
+| web/src/lib/api.ts | UPS-020 |
+| web/src/lib/auth.tsx | UPS-020 |
 | web/src/lib/theme.tsx | UPS-004 |
 | web/src/lib/providers.tsx | UPS-004 |
 | web/src/components/ | UPS-004 |
