@@ -2,7 +2,7 @@
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-10-06 20:18:46.598499
+Create Date: 2026-10-06 20:39:21.789987
 """
 
 from collections.abc import Sequence
@@ -50,13 +50,12 @@ def upgrade() -> None:
     )
     op.create_table('channels',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('type', sa.Enum('feed', 'general', 'academy', name='channeltype', native_enum=False, create_constraint=True, length=20), nullable=False),
+    sa.Column('type', sa.Enum('feed', 'general', 'academy', name='channeltype', native_enum=False, length=20), nullable=False),
     sa.Column('academy_id', sa.Integer(), nullable=True),
     sa.Column('name', sa.String(length=80), nullable=False),
     sa.Column('slug', sa.String(length=60), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.CheckConstraint("type IN ('feed', 'general', 'academy')", name='channeltype'),
-    sa.CheckConstraint("type IN ('feed', 'general', 'academy')", name=op.f('ck_channels_channeltype')),
+    sa.CheckConstraint("type IN ('feed', 'general', 'academy')", name=op.f('ck_channels_type')),
     sa.ForeignKeyConstraint(['academy_id'], ['academies.id'], name=op.f('fk_channels_academy_id_academies'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_channels'))
     )
@@ -89,11 +88,10 @@ def upgrade() -> None:
     sa.Column('authors', sa.String(length=300), nullable=False),
     sa.Column('academy_id', sa.Integer(), nullable=True),
     sa.Column('tags', sa.JSON(), nullable=False),
-    sa.Column('status', sa.Enum('draft', 'published', name='projectstatus', native_enum=False, create_constraint=True, length=20), nullable=False),
+    sa.Column('status', sa.Enum('draft', 'published', name='projectstatus', native_enum=False, length=20), nullable=False),
     sa.Column('published_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.CheckConstraint("status IN ('draft', 'published')", name='projectstatus'),
-    sa.CheckConstraint("status IN ('draft', 'published')", name=op.f('ck_projects_projectstatus')),
+    sa.CheckConstraint("status IN ('draft', 'published')", name=op.f('ck_projects_status')),
     sa.ForeignKeyConstraint(['academy_id'], ['academies.id'], name=op.f('fk_projects_academy_id_academies'), ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_projects'))
     )
@@ -105,15 +103,14 @@ def upgrade() -> None:
     op.create_table('resources',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('academy_id', sa.Integer(), nullable=False),
-    sa.Column('type', sa.Enum('document', 'link', 'video', 'other', name='resourcetype', native_enum=False, create_constraint=True, length=20), nullable=False),
+    sa.Column('type', sa.Enum('document', 'link', 'video', 'other', name='resourcetype', native_enum=False, length=20), nullable=False),
     sa.Column('title', sa.String(length=120), nullable=False),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('url', sa.String(length=500), nullable=True),
     sa.Column('file_url', sa.String(length=500), nullable=True),
     sa.Column('thumbnail_url', sa.String(length=500), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.CheckConstraint("type IN ('document', 'link', 'video', 'other')", name='resourcetype'),
-    sa.CheckConstraint("type IN ('document', 'link', 'video', 'other')", name=op.f('ck_resources_resourcetype')),
+    sa.CheckConstraint("type IN ('document', 'link', 'video', 'other')", name=op.f('ck_resources_type')),
     sa.CheckConstraint('url IS NOT NULL OR file_url IS NOT NULL', name=op.f('ck_resources_url_or_file')),
     sa.ForeignKeyConstraint(['academy_id'], ['academies.id'], name=op.f('fk_resources_academy_id_academies'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_resources'))
@@ -123,7 +120,7 @@ def upgrade() -> None:
 
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('role', sa.Enum('superadmin', 'academy_admin', 'member', name='role', native_enum=False, create_constraint=True, length=20), nullable=False),
+    sa.Column('role', sa.Enum('superadmin', 'academy_admin', 'member', name='role', native_enum=False, length=20), nullable=False),
     sa.Column('email', sa.String(length=254), nullable=False),
     sa.Column('password_hash', sa.String(length=255), nullable=False),
     sa.Column('full_name', sa.String(length=120), nullable=False),
@@ -134,7 +131,6 @@ def upgrade() -> None:
     sa.Column('must_change_password', sa.Boolean(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.CheckConstraint("role IN ('superadmin', 'academy_admin', 'member')", name='role'),
     sa.CheckConstraint("role IN ('superadmin', 'academy_admin', 'member')", name=op.f('ck_users_role')),
     sa.ForeignKeyConstraint(['academy_id'], ['academies.id'], name=op.f('fk_users_academy_id_academies'), ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))

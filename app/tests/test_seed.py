@@ -105,3 +105,31 @@ def test_migrations_match_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         engine.dispose()
     finally:
         get_settings.cache_clear()
+
+
+def test_postgres_migration_sql_has_unique_constraint_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: enum CHECKs were emitted 3x with the same name in 0001 (Postgres DuplicateObject;
+    SQLite silently accepts it). Renders the migration as Postgres SQL offline (no database needed)."""
+    import io
+    import re
+    from collections import Counter
+
+    from alembic import command
+    from alembic.config import Config
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://user:pw@localhost:5432/offline")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    buffer = io.StringIO()
+    try:
+        config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"), output_buffer=buffer)
+        command.upgrade(config, "head", sql=True)
+    finally:
+        get_settings.cache_clear()
+    sql = buffer.getvalue()
+    assert "CREATE TABLE channels" in sql
+    for statement in sql.split(";"):
+        names = Counter(re.findall(r"CONSTRAINT (\w+)", statement))
+        duplicated = [name for name, count in names.items() if count > 1]
+        assert not duplicated, duplicated
