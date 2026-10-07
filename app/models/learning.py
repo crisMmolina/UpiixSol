@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.common import CreatedAtMixin
+from app.models.common import CreatedAtMixin, UTCDateTime
 
 
 class LearningRoute(CreatedAtMixin, Base):
@@ -99,5 +99,5 @@ class LessonProgress(Base):
     lesson_id: Mapped[int] = mapped_column(
         ForeignKey("lessons.id", ondelete="CASCADE"), primary_key=True, index=True
     )
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_viewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())

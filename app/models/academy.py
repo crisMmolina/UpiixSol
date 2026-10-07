@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
-from app.models.common import CreatedAtMixin, utcnow
+from app.models.common import CreatedAtMixin, UTCDateTime, utcnow
 
 
 class Academy(CreatedAtMixin, Base):
@@ -33,5 +33,5 @@ class Enrollment(Base):
         ForeignKey("academies.id", ondelete="CASCADE"), primary_key=True, index=True
     )
     enrolled_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False
+        UTCDateTime(), default=utcnow, server_default=func.now(), nullable=False
     )

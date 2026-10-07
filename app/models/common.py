@@ -5,10 +5,33 @@ from datetime import UTC, datetime
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, func
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+class UTCDateTime(TypeDecorator):
+    """Timezone-aware UTC datetimes on every backend.
+
+    SQLite drops the offset and returns naive values; the API then serialized them without `Z`
+    and browsers read them as local time (Mexico = UTC-6 → "dentro de 5 horas"). This type
+    stores UTC and always returns aware UTC datetimes.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, _dialect) -> datetime | None:
+        if value is not None and value.tzinfo is not None:
+            value = value.astimezone(UTC)
+        return value
+
+    def process_result_value(self, value: datetime | None, _dialect) -> datetime | None:
+        if value is not None:
+            value = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        return value
 
 
 class Role(enum.StrEnum):
@@ -59,5 +82,5 @@ def enum_check(column: str, enum_cls: type[enum.StrEnum]) -> CheckConstraint:
 
 class CreatedAtMixin:
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, server_default=func.now(), nullable=False
+        UTCDateTime(), default=utcnow, server_default=func.now(), nullable=False
     )
