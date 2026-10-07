@@ -13,3 +13,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1791353499 | UPS-015 | real_ip desde gateway edge 172.31.0.1 + HTTP_BIND loopback obligatorio; red backend internal | Why: Terminador TLS del host llega via docker-proxy: sin real_ip todos comparten llave de rate limit
 - 1791355489 | UPS-018 | mine en endpoint aparte y batch en el cliente: no tocar schemas (UPS-002) ni posts_out | Why: PostOut no tiene 'mine' y ya trae conteos
 - 1791355506 | deadline decision/UPS-014-1791354509/1791355409 | REVERSIBLE_AND_LOG | Option: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR; Why: UPS-010 contract: a new write endpoint requires regenerating the doc; test_docs_are_up_to_date; no money, accounts, publishing or scope expansion.
+- 1791356122 | UPS-019 | HTML5 DnD nativo sin dependencia; rutas siguen solo con flechas (criterio pide módulos y clases) | Why: Paso siguiente del backlog: evaluar sin dependencia nueva
