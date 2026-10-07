@@ -195,11 +195,12 @@ function Comments({ post, moderator, onCount }: { post: PostOut; moderator: bool
   );
 }
 
-function PostCard({ post, channels, moderator, onHidden }: {
+function PostCard({ post, channels, moderator, onHidden, onError }: {
   post: PostOut;
   channels: ChannelOut[];
   moderator: boolean;
   onHidden: (id: number) => void;
+  onError: (message: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(post.comment_count);
@@ -211,7 +212,7 @@ function PostCard({ post, channels, moderator, onHidden }: {
       await api(`/posts/${post.id}/hide`, { method: "POST" });
       onHidden(post.id);
     } catch (err) {
-      window.alert(errorMessage(err));
+      onError(errorMessage(err));
     }
   }
 
@@ -300,7 +301,10 @@ function CommunityPage() {
     setPosts(null);
     setCursor(null);
     void loadFirst(channelId);
-    const timer = window.setInterval(() => void loadFirst(channelId), REFRESH_MS);
+    // Idle/hidden tabs do not poll (security review: constant load from background tabs).
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadFirst(channelId);
+    }, REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [channelId, loadFirst]);
 
@@ -388,6 +392,7 @@ function CommunityPage() {
               channels={channels ?? []}
               moderator={canModerate(user, channels?.find((c) => c.id === post.channel_id))}
               onHidden={(id) => setPosts((prev) => (prev ?? []).filter((p) => p.id !== id))}
+              onError={setError}
             />
           ))
         )}

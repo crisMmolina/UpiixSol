@@ -17,6 +17,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 
 from app import routers
+from app.body_limit import BodySizeLimitMiddleware
 from app.config import get_settings
 from app.db import engine
 from app.errors import AppError, error_response, internal_error, log_unhandled, register_error_handlers
@@ -42,12 +43,17 @@ REQUEST_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
 def create_app() -> FastAPI:
     settings = get_settings()
     docs = settings.docs_enabled
-    app = FastAPI(title="UpiixSol Campus API", version="0.1.0", redoc_url=None,
-                  docs_url="/api/docs" if docs else None,
-                  openapi_url="/api/openapi.json" if docs else None)
+    app = FastAPI(
+        title="UpiixSol Campus API",
+        version="0.1.0",
+        redoc_url=None,
+        docs_url="/api/docs" if docs else None,
+        openapi_url="/api/openapi.json" if docs else None,
+    )
     app.state.limiter = limiter
     register_error_handlers(app)
     app.add_middleware(SlowAPIMiddleware)
+    app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -73,14 +79,18 @@ def create_app() -> FastAPI:
         if request.url.path.startswith("/media/"):
             response.headers["Content-Security-Policy"] = MEDIA_CSP
         # Structured log with no PII: user id only (set by auth dependencies), never email/boleta.
-        access_log.info(json.dumps({
-            "request_id": request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "status": response.status_code,
-            "ms": round((time.perf_counter() - started) * 1000, 1),
-            "user_id": getattr(request.state, "user_id", None),
-        }))
+        access_log.info(
+            json.dumps(
+                {
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "ms": round((time.perf_counter() - started) * 1000, 1),
+                    "user_id": getattr(request.state, "user_id", None),
+                }
+            )
+        )
         return response
 
     @app.get("/api/health", tags=["ops"])
