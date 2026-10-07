@@ -11,3 +11,4 @@
 ## History
 - 1791342784 | CLAIMED | claude-a | claim; next: `test_complete_lesson_moves_progress_50_to_75`.
 - 1791348245 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/11; evidence: Verify exit 0; smoke PRODUCT_PASS; 100% cov; Postgres green; browser flow step 3 incl. 50→75 % persisted, offline fallback, mobile drawer; reviewer: -
+- 1791348367 | REVIEW | claude | review; approve; SHA 7cf837300cb6011c56bf22c0ac899e43076aded3; reviewer claude
