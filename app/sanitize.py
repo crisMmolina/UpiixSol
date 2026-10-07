@@ -5,6 +5,7 @@
 Plain-text fields are not touched here: React escapes them on render.
 """
 
+import re
 from urllib.parse import urlsplit
 
 import nh3
@@ -42,8 +43,12 @@ def clean_markdown(text: str) -> str:
         link_rel="noopener noreferrer nofollow",
         strip_comments=True,
     )
-    # nh3 escapes bare `>` and `&`; restore them so markdown quotes and text survive round trips.
-    return cleaned.replace("&gt;", ">").replace("&amp;", "&")
+    # nh3 escapes `>`; restore it only as a markdown blockquote marker at line start. Never un-escape `&`:
+    # `&amp;colon;` would turn back into `&colon;`, which browsers decode inside href (javascript:).
+    return _QUOTE_MARKER.sub(lambda m: m.group(1) + ">", cleaned)
+
+
+_QUOTE_MARKER = re.compile(r"(?m)^([ \t]*)&gt;")
 
 
 def safe_url(url: str) -> str:

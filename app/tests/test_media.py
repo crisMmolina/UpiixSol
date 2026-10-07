@@ -58,8 +58,16 @@ def test_rejects_empty_and_oversized() -> None:
     assert big.value.status == 413
 
 
+SVG_OPEN = b'<svg xmlns="http://www.w3.org/2000/svg">'
+
+
 def test_svg_only_for_logos_and_must_be_clean() -> None:
-    svg = b'<svg xmlns="http://www.w3.org/2000/svg"><circle r="5" fill="#00BF63"/></svg>'
+    svg = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
+        b' viewBox="0 0 10 10">'
+        b'<defs><linearGradient id="g"><stop offset="0" stop-color="#00BF63"/></linearGradient></defs>'
+        b'<circle r="5" fill="url(#g)"/><use xlink:href="#g"/></svg>'
+    )
     url = save_image_bytes(svg, "logo")
     assert url.endswith(".svg") and _media_path(url).read_bytes() == svg
     assert save_image_bytes(b'<?xml version="1.0"?>\n' + svg, "mascot").endswith(".svg")
@@ -71,6 +79,17 @@ def test_svg_only_for_logos_and_must_be_clean() -> None:
         b'<svg><a href="javascript:alert(1)">x</a></svg>',
         b'<svg><image href="https://evil.com/x.png"/></svg>',
         b"<svg><foreignObject><div/></foreignObject></svg>",
+        # Regressions from the security review (bypassed the old denylist):
+        SVG_OPEN + b'<x:script xmlns:x="http://www.w3.org/2000/svg">alert(1)</x:script></svg>',
+        SVG_OPEN + b'<animate attributeName="href" values="javascript&#58;alert(1)"/></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><style>@import url(https://evil.com/x.css)</style></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://evil.com/p)"/></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><use href="https://evil.com/a.svg#x"/></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><rect data-x="1"/></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:o="urn:other"><rect o:fill="red"/></svg>',
+        b'<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY a "b">]><svg xmlns="http://www.w3.org/2000/svg">&a;</svg>',
+        b"<svg><rect></svg>",
+        b"<svg><rect/></svg>",  # no SVG namespace
     ):
         with pytest.raises(AppError):
             save_image_bytes(evil, "logo")

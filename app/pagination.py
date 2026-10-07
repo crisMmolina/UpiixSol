@@ -42,7 +42,7 @@ def decode_cursor(cursor: str, columns: Sequence[InstrumentedAttribute]) -> list
             datetime.fromisoformat(v) if col.type.python_type is datetime else col.type.python_type(v)
             for v, col in zip(values, columns, strict=True)
         ]
-    except (ValueError, TypeError, binascii.Error, json.JSONDecodeError) as exc:
+    except (ValueError, TypeError, OverflowError, binascii.Error, json.JSONDecodeError) as exc:
         raise AppError(422, "Cursor de paginación inválido.", code="invalid_cursor") from exc
 
 

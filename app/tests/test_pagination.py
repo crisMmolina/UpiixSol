@@ -73,7 +73,14 @@ def test_limit_is_clamped_to_50(db: Session, posts: list[Post]) -> None:
 def test_cursor_roundtrip_and_invalid_cursor() -> None:
     now = utcnow()
     assert decode_cursor(encode_cursor([now, 5]), [Post.created_at, Post.id]) == [now, 5]
-    for bad in ("%%%", encode_cursor([1]), encode_cursor({"a": 1}), encode_cursor(["not-a-date", 1])):  # type: ignore[arg-type]
+    bad_cursors = (
+        "%%%",
+        encode_cursor([1]),
+        encode_cursor({"a": 1}),  # type: ignore[arg-type]
+        encode_cursor(["not-a-date", 1]),
+        encode_cursor(["2024-01-01T00:00:00", 1e400]),  # OverflowError → 422, not 500
+    )
+    for bad in bad_cursors:
         with pytest.raises(AppError) as error:
             decode_cursor(bad, [Post.created_at, Post.id])
         assert error.value.status == 422

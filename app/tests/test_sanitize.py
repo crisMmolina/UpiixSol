@@ -25,10 +25,23 @@ def test_clean_markdown_removes_scripts(payload: str) -> None:
         assert bad not in cleaned.lower()
 
 
+@pytest.mark.parametrize(
+    "payload",
+    ['<a href="javascript&amp;colon;alert(1)">x</a>', '<a href="&amp;#106;avascript:alert(1)">x</a>'],
+)
+def test_encoded_javascript_urls_stay_inert(payload: str) -> None:
+    """Regression (security review UPS-002): un-escaping `&amp;` revived `javascript:` in href."""
+    cleaned = clean_markdown(payload)
+    assert "&colon;" not in cleaned and "&#106;" not in cleaned
+    assert "javascript:" not in cleaned.lower()
+
+
 def test_clean_markdown_keeps_markdown_and_safe_html() -> None:
-    text = "# Título\n\n> cita & más\n\n**negritas** y [liga](https://upiixsol.dev)\n\n<strong>ok</strong>"
+    text = "# Título\n\n> cita & más\n  > anidada\n\n**negritas** y [liga](https://upiixsol.dev)\n\n<strong>ok</strong>"
     cleaned = clean_markdown(text)
-    assert "> cita & más" in cleaned
+    assert "> cita &amp; más" in cleaned  # `&` stays escaped; markdown renders &amp; as &
+    assert "  > anidada" in cleaned
+    assert clean_markdown("1 &gt; 0 y a > b") == "1 &gt; 0 y a &gt; b"  # only line-start `>` is restored
     assert "**negritas**" in cleaned and "<strong>ok</strong>" in cleaned
 
 
