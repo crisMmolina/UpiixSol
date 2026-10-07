@@ -1,0 +1,10 @@
+# claude
+Agent: claude
+Started: 1791339052
+Events: 1
+Events-Since-Checkpoint: 1
+Checkpoints: 0
+Sessions: 1
+Last-Checkpoint: 0
+Last-Session: stable
+Updated: 1791339052
