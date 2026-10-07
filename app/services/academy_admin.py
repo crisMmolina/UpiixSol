@@ -16,7 +16,7 @@ from app.models import Academy, Enrollment, LearningRoute, Lesson, LessonLink, M
 from app.pagination import paginate
 from app.sanitize import clean_markdown
 from app.schemas.academies import AcademyOut, BrandingUpdateIn
-from app.schemas.common import OutModel, Page
+from app.schemas.common import InModel, OutModel, Page
 from app.schemas.learning import (
     LessonIn,
     LessonLinkIn,
@@ -26,6 +26,7 @@ from app.schemas.learning import (
     RouteIn,
     RouteUpdateIn,
 )
+from app.schemas.users import Boleta
 from app.security import ensure_academy_scope
 from app.services import media
 from app.services.youtube import extract_video_id
@@ -78,8 +79,8 @@ class EnrolleeOut(OutModel):
     enrolled_at: datetime
 
 
-class EnrollIn(BaseModel):
-    boleta: str
+class EnrollIn(InModel):
+    boleta: Boleta  # exactly 10 digits: no wildcard or partial lookups
 
 
 # ── Loading with scope ───────────────────────────────────────
@@ -146,11 +147,20 @@ def update_branding(db: Session, academy: Academy, data: BrandingUpdateIn) -> Ac
 
 
 async def upload_image(db: Session, academy: Academy, file: UploadFile, kind: str) -> AcademyOut:
+    """Store the new file, commit, and only then delete the previous one.
+
+    If the commit fails, the new file is removed and the previous one is kept (no orphans, no data loss).
+    """
     url = await media.save_upload(file, kind)  # type: ignore[arg-type]
     field = f"{kind}_url"
     previous = getattr(academy, field)
-    setattr(academy, field, url)
-    db.flush()
+    try:
+        setattr(academy, field, url)
+        db.commit()
+    except Exception:
+        db.rollback()
+        media.delete_media(url)
+        raise
     media.delete_media(previous)  # only removes files we stored under /media
     return AcademyOut.model_validate(academy)
 
@@ -271,6 +281,11 @@ def _video_id(url: str) -> str:
     return video_id
 
 
+def _canonical(video_id: str) -> str:
+    """Store a canonical URL built from the validated id, never the raw user string."""
+    return f"https://www.youtube.com/watch?v={video_id}"
+
+
 def _set_links(db: Session, lesson: Lesson, links: list[LessonLinkIn]) -> None:
     for link in list(db.scalars(select(LessonLink).where(LessonLink.lesson_id == lesson.id))):
         db.delete(link)
@@ -292,7 +307,7 @@ def create_lesson(db: Session, module: Module, data: LessonIn) -> LessonAdminOut
     lesson = Lesson(
         module_id=module.id,
         title=data.title,
-        youtube_url=data.youtube_url,
+        youtube_url=_canonical(_video_id(data.youtube_url)),
         youtube_video_id=_video_id(data.youtube_url),
         description=clean_markdown(data.description),
         duration_min=data.duration_min,
@@ -310,6 +325,7 @@ def update_lesson(db: Session, lesson: Lesson, data: LessonUpdateIn) -> LessonAd
     links = values.pop("links", None)
     if values.get("youtube_url") is not None:
         lesson.youtube_video_id = _video_id(values["youtube_url"])
+        values["youtube_url"] = _canonical(lesson.youtube_video_id)
     if values.get("description") is not None:
         values["description"] = clean_markdown(values["description"])
     for field, value in values.items():
