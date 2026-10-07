@@ -541,69 +541,77 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                   reorder(`/routes/${route.id}/modules/order`, ids),
                 )}
               >
-                <div className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
-                  <DotsSixVertical weight="bold" aria-hidden className="text-muted" />
-                  <span className="mr-auto font-semibold">
+                {/* Title and controls are two units: on a narrow screen the whole toolbar moves under the
+                    title instead of single icons wrapping one by one. */}
+                <div className="flex flex-wrap items-center gap-x-1 border-b border-line px-3 py-2">
+                  <span className="flex min-w-0 flex-1 basis-48 items-center gap-2 font-semibold">
+                    <DotsSixVertical weight="bold" aria-hidden className="shrink-0 text-muted" />
                     Módulo {moduleIndex + 1} · {module.title}
                   </span>
-                  <IconButton label="Subir módulo" disabled={moduleIndex === 0} onClick={() => reorder(`/routes/${route.id}/modules/order`, move(route.modules, moduleIndex, -1))}>
-                    <ArrowUp weight="bold" />
-                  </IconButton>
-                  <IconButton
-                    label="Bajar módulo"
-                    disabled={moduleIndex === route.modules.length - 1}
-                    onClick={() => reorder(`/routes/${route.id}/modules/order`, move(route.modules, moduleIndex, 1))}
-                  >
-                    <ArrowDown weight="bold" />
-                  </IconButton>
-                  <IconButton
-                    label="Renombrar módulo"
-                    onClick={() =>
-                      setDialog({
-                        kind: "title",
-                        title: "Título del módulo",
-                        initial: module.title,
-                        submit: (title) => api(`/modules/${module.id}`, { method: "PATCH", json: { title } }).then(load),
-                      })
-                    }
-                  >
-                    <PencilSimple weight="bold" />
-                  </IconButton>
-                  <IconButton label="Eliminar módulo" danger onClick={() => confirmDelete(`el módulo "${module.title}" y sus clases`, `/modules/${module.id}`)}>
-                    <Trash weight="bold" />
-                  </IconButton>
+                  <span className="ml-auto flex shrink-0 items-center">
+                    <IconButton label="Subir módulo" disabled={moduleIndex === 0} onClick={() => reorder(`/routes/${route.id}/modules/order`, move(route.modules, moduleIndex, -1))}>
+                      <ArrowUp weight="bold" />
+                    </IconButton>
+                    <IconButton
+                      label="Bajar módulo"
+                      disabled={moduleIndex === route.modules.length - 1}
+                      onClick={() => reorder(`/routes/${route.id}/modules/order`, move(route.modules, moduleIndex, 1))}
+                    >
+                      <ArrowDown weight="bold" />
+                    </IconButton>
+                    <IconButton
+                      label="Renombrar módulo"
+                      onClick={() =>
+                        setDialog({
+                          kind: "title",
+                          title: "Título del módulo",
+                          initial: module.title,
+                          submit: (title) => api(`/modules/${module.id}`, { method: "PATCH", json: { title } }).then(load),
+                        })
+                      }
+                    >
+                      <PencilSimple weight="bold" />
+                    </IconButton>
+                    <IconButton label="Eliminar módulo" danger onClick={() => confirmDelete(`el módulo "${module.title}" y sus clases`, `/modules/${module.id}`)}>
+                      <Trash weight="bold" />
+                    </IconButton>
+                  </span>
                 </div>
                 <ol className="grid gap-1 p-2">
                   {module.lessons.map((lesson, lessonIndex) => (
                     <li
                       key={lesson.id}
-                      className="flex flex-wrap items-center gap-1 rounded-xl px-2 py-1 hover:bg-line/30 cursor-grab data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
+                      className="flex flex-wrap items-center gap-x-1 rounded-xl px-2 py-1 hover:bg-line/30 cursor-grab data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
                       {...sortable.item(`module-${module.id}`, module.lessons.map((l) => l.id), lesson.id, (ids) =>
                         reorder(`/modules/${module.id}/lessons/order`, ids),
                       )}
                     >
-                      <DotsSixVertical weight="bold" aria-hidden className="text-muted" />
-                      <span className="mr-auto min-w-0 text-sm">
-                        {lessonIndex + 1}. {lesson.title}
-                        {lesson.duration_min ? <span className="text-muted"> · {lesson.duration_min} min</span> : null}
+                      <span className="flex min-w-0 flex-1 basis-48 items-center gap-2 text-sm">
+                        <DotsSixVertical weight="bold" aria-hidden className="shrink-0 text-muted" />
+                        <span className="min-w-0">
+                          {lessonIndex + 1}. {lesson.title}
+                          {lesson.duration_min ? <span className="text-muted"> · {lesson.duration_min} min</span> : null}
+                        </span>
+                        {!lesson.is_published && <Badge tone="alert">Borrador</Badge>}
                       </span>
-                      {!lesson.is_published && <Badge tone="alert">Borrador</Badge>}
-                      <IconButton label="Subir clase" disabled={lessonIndex === 0} onClick={() => reorder(`/modules/${module.id}/lessons/order`, move(module.lessons, lessonIndex, -1))}>
-                        <ArrowUp weight="bold" />
-                      </IconButton>
-                      <IconButton
-                        label="Bajar clase"
-                        disabled={lessonIndex === module.lessons.length - 1}
-                        onClick={() => reorder(`/modules/${module.id}/lessons/order`, move(module.lessons, lessonIndex, 1))}
-                      >
-                        <ArrowDown weight="bold" />
-                      </IconButton>
-                      <IconButton label="Editar clase" onClick={() => setDialog({ kind: "lesson", state: { moduleId: module.id, lesson } })}>
-                        <PencilSimple weight="bold" />
-                      </IconButton>
-                      <IconButton label="Eliminar clase" danger onClick={() => confirmDelete(`la clase "${lesson.title}"`, `/lessons/${lesson.id}`)}>
-                        <Trash weight="bold" />
-                      </IconButton>
+                      <span className="ml-auto flex shrink-0 items-center">
+                        <IconButton label="Subir clase" disabled={lessonIndex === 0} onClick={() => reorder(`/modules/${module.id}/lessons/order`, move(module.lessons, lessonIndex, -1))}>
+                          <ArrowUp weight="bold" />
+                        </IconButton>
+                        <IconButton
+                          label="Bajar clase"
+                          disabled={lessonIndex === module.lessons.length - 1}
+                          onClick={() => reorder(`/modules/${module.id}/lessons/order`, move(module.lessons, lessonIndex, 1))}
+                        >
+                          <ArrowDown weight="bold" />
+                        </IconButton>
+                        <IconButton label="Editar clase" onClick={() => setDialog({ kind: "lesson", state: { moduleId: module.id, lesson } })}>
+                          <PencilSimple weight="bold" />
+                        </IconButton>
+                        <IconButton label="Eliminar clase" danger onClick={() => confirmDelete(`la clase "${lesson.title}"`, `/lessons/${lesson.id}`)}>
+                          <Trash weight="bold" />
+                        </IconButton>
+                      </span>
                     </li>
                   ))}
                   <li>
