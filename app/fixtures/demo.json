@@ -1,0 +1,99 @@
+{
+  "demo_data": true,
+  "note": "Demo case from IDEA.md §3. Videos verified public via YouTube oEmbed on 2026-10-06 (titles in comments). [To validate with the UpiixIA admin: final videos]",
+  "home": {
+    "hero_title": "Tu club, tus academias, un solo campus",
+    "hero_text": "Entra a cualquier academia del club, retoma la clase donde te quedaste y conversa con tu comunidad."
+  },
+  "academy": {
+    "slug": "upiixia",
+    "name": "UpiixIA",
+    "short_description": "Inteligencia artificial con Python: de cero a tus primeros modelos.",
+    "welcome_text": "¡Bienvenida, bienvenido a **UpiixIA**! Aquí aprendemos IA haciendo proyectos en comunidad.",
+    "logo_url": "/brand/upiixia/wordmark.png",
+    "mascot_url": "/brand/upiixia/mascot.png",
+    "color_primary": "#00BF63",
+    "color_secondary": "#04944F",
+    "color_accent": "#7ED957",
+    "color_accent_2": null
+  },
+  "route": {
+    "title": "Fundamentos de IA con Python",
+    "description": "Ruta de inicio: Python, machine learning y redes neuronales.",
+    "modules": [
+      {
+        "title": "Python para IA",
+        "lessons": [
+          {
+            "title": "Python desde cero",
+            "youtube_url": "https://www.youtube.com/watch?v=rfscVS0vtbw",
+            "youtube_title": "Learn Python - Full Course for Beginners [Tutorial] · freeCodeCamp.org",
+            "description": "Instala Python y escribe tus primeros programas. *Video en inglés.*",
+            "links": [{"label": "Tutorial oficial de Python", "url": "https://docs.python.org/3/tutorial/"}]
+          },
+          {
+            "title": "Machine learning para todos",
+            "youtube_url": "https://www.youtube.com/watch?v=i_LwzRVP7bg",
+            "youtube_title": "Machine Learning for Everybody – Full Course · freeCodeCamp.org",
+            "description": "Qué es el aprendizaje automático y cómo se entrena un modelo. *Video en inglés.*",
+            "links": [{"label": "Guía de scikit-learn", "url": "https://scikit-learn.org/stable/user_guide.html"}]
+          }
+        ]
+      },
+      {
+        "title": "Redes neuronales",
+        "lessons": [
+          {
+            "title": "¿Qué es una red neuronal?",
+            "youtube_url": "https://www.youtube.com/watch?v=aircAruvnKk",
+            "youtube_title": "But what is a neural network? | Deep learning chapter 1 · 3Blue1Brown",
+            "description": "Neuronas, capas y pesos explicados visualmente. *Video en inglés con subtítulos.*",
+            "links": [
+              {"label": "Serie completa de 3Blue1Brown", "url": "https://www.3blue1brown.com/topics/neural-networks"},
+              {"label": "Tutorial oficial de Python", "url": "https://docs.python.org/3/tutorial/"}
+            ]
+          },
+          {
+            "title": "Descenso de gradiente",
+            "youtube_url": "https://www.youtube.com/watch?v=IHZwWFHWa-w",
+            "youtube_title": "Gradient descent, how neural networks learn | Deep Learning Chapter 2 · 3Blue1Brown",
+            "description": "Cómo aprende una red ajustando sus pesos. *Video en inglés con subtítulos.*",
+            "links": []
+          }
+        ]
+      }
+    ]
+  },
+  "member_completed_lessons": 2,
+  "resources": [
+    {"type": "document", "title": "Documentación de Python (PDF y HTML)", "url": "https://docs.python.org/3/download.html",
+     "description": "Descarga la documentación oficial para estudiar sin conexión."},
+    {"type": "link", "title": "Guía de usuario de scikit-learn", "url": "https://scikit-learn.org/stable/user_guide.html",
+     "description": "Referencia de los modelos clásicos de machine learning."},
+    {"type": "video", "title": "Redes neuronales en 20 minutos", "url": "https://www.youtube.com/watch?v=aircAruvnKk",
+     "description": "Repaso visual del capítulo 1 de redes neuronales."}
+  ],
+  "events": [
+    {"title": "Taller: tu primera red neuronal", "days_from_now": 3, "hour": 17, "duration_h": 2,
+     "location": "UPIIZ · Laboratorio de cómputo", "description": "Trae tu laptop con Python instalado.", "academy": true},
+    {"title": "Noche de proyectos UpiixSol", "days_from_now": 10, "hour": 18, "duration_h": 2,
+     "location": "UPIIZ · Auditorio", "description": "Las academias presentan sus avances del mes.", "academy": false}
+  ],
+  "posts": [
+    {"author": "admin.ia@upiixsol.dev", "body": "¡Arrancamos la ruta **Fundamentos de IA con Python**! Empiecen por la clase 1 y compartan aquí sus dudas."},
+    {"author": "alumno.demo@upiixsol.dev", "body": "Terminé la clase 2. Lo de *overfitting* por fin me quedó claro 🙌"},
+    {"author": "superadmin1@upiixsol.dev", "body": "Recuerden: el taller de redes neuronales es esta semana en el laboratorio de cómputo."},
+    {"author": "alumno.demo@upiixsol.dev", "body": "¿Alguien tiene un dataset sencillo para practicar clasificación?", "link_url": "https://scikit-learn.org/stable/datasets/toy_dataset.html"},
+    {"author": "admin.ia@upiixsol.dev", "body": "Tip: si el video no carga en la escuela, revisen los recursos de la clase; están las ligas de lectura."}
+  ],
+  "projects": [
+    {"title": "Clasificador de residuos con visión", "slug": "clasificador-residuos", "summary": "Modelo que separa PET, cartón y orgánico con una cámara.", "authors": "Equipo UpiixIA", "tags": ["vision", "python"]},
+    {"title": "Bot de horarios UPIIZ", "slug": "bot-horarios", "summary": "Asistente que responde dudas de horarios y salones.", "authors": "Equipo UpiixSol", "tags": ["bot"]},
+    {"title": "Tablero de asistencia del club", "slug": "tablero-asistencia", "summary": "Registro de asistencia a talleres con QR.", "authors": "Mesa directiva", "tags": ["web"]}
+  ],
+  "blog": {
+    "title": "Bienvenidos a UpiixSol Campus",
+    "slug": "bienvenidos-a-upiixsol-campus",
+    "body": "Este semestre el material de todas las academias vive en un solo lugar. Entra, inscríbete a tu academia y retoma tus clases donde te quedaste."
+  }
+}
