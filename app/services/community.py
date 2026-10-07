@@ -156,11 +156,12 @@ def hide_comment(db: Session, comment_id: int, moderator: User) -> dict:
         select(Comment, Channel)
         .join(Post, Post.id == Comment.post_id)
         .join(Channel, Channel.id == Post.channel_id)
-        .where(Comment.id == comment_id, Comment.is_hidden.is_(False))
+        .where(Comment.id == comment_id, Comment.is_hidden.is_(False), Post.is_hidden.is_(False))
     ).first()
     if row is None:
         raise _not_found()
     comment, channel = row
+    get_channel(db, channel.id)  # channel of an inactive academy → 404
     if not _can_moderate(moderator, channel):
         raise AppError(403)
     comment.is_hidden, comment.hidden_by_id, comment.hidden_at = True, moderator.id, utcnow()
