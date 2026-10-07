@@ -1,8 +1,8 @@
 // UPS-017: project gallery.
 //   /galeria         → published projects (blog-style cards, tag filter); superadmins also see drafts
 //   /galeria/:slug   → detail; superadmins create, edit, upload the cover and delete
-import { ArrowLeft, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { ArrowLeft, Cube, PencilSimple, Plus, Trash, X } from "@phosphor-icons/react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams, type RouteObject } from "react-router";
 
 import { Badge } from "@/components/Badge";
@@ -36,6 +36,21 @@ function Cover({ url, title }: { url: string | null; title: string }) {
   return <img src={url} alt={`Portada de ${title}`} loading="lazy" className="aspect-[16/9] w-full rounded-2xl bg-bg object-cover" />;
 }
 
+// In the multi-column grid, cards keep one shape with or without a cover so rows stay aligned;
+// on a phone (one column) the placeholder would only push content down, so it is hidden.
+function CardCover({ project }: { project: ProjectOut }) {
+  if (project.cover_url?.startsWith("/media/")) return <Cover url={project.cover_url} title={project.title} />;
+  return (
+    <div aria-hidden className="hidden aspect-[16/9] w-full place-items-center rounded-2xl bg-primary/10 text-secondary sm:grid">
+      <Cube size={40} />
+    </div>
+  );
+}
+
+// The summary leads the detail page only when the body does not already open with it.
+const leadSummary = (project: ProjectOut) =>
+  project.summary && !project.body.trimStart().startsWith(project.summary.trim()) ? project.summary : null;
+
 // ── Listing ──────────────────────────────────────────────────
 
 function GalleryPage() {
@@ -48,6 +63,12 @@ function GalleryPage() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
+  // Filter chips come from the projects already on screen, most used first.
+  const tags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of items ?? []) for (const t of p.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+    return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
+  }, [items]);
 
   const fetchPage = useCallback(
     (after: string | null) => api<Page<ProjectOut>>("/projects", { query: { tag, drafts: drafts || undefined, cursor: after } }),
@@ -98,13 +119,34 @@ function GalleryPage() {
         )}
       </div>
 
-      {tag && (
-        <p className="flex items-center gap-2 text-sm">
-          Etiqueta <Badge tone="accent">#{tag}</Badge>
-          <button type="button" className="min-h-11 font-semibold text-link underline" onClick={() => setParams({})}>
-            Quitar filtro
+      {tag ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">Proyectos con la etiqueta</span>
+          <button
+            type="button"
+            onClick={() => setParams(drafts ? { borradores: "1" } : {})}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-accent px-4 font-semibold text-on-accent"
+          >
+            #{tag}
+            <X weight="bold" aria-hidden />
+            <span className="sr-only">Quitar filtro</span>
           </button>
-        </p>
+        </div>
+      ) : (
+        tags.length > 0 && (
+          <nav aria-label="Filtrar por etiqueta" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+            {tags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setParams(drafts ? { borradores: "1", tag: t } : { tag: t })}
+                className="min-h-11 shrink-0 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-ink transition hover:border-secondary"
+              >
+                #{t}
+              </button>
+            ))}
+          </nav>
+        )
       )}
 
       {error ? (
@@ -119,16 +161,21 @@ function GalleryPage() {
             {items.map((project) => (
               <li key={project.id}>
                 <Link to={`/galeria/${project.slug}`} className="no-underline">
-                  <Card interactive className="flex h-full flex-col gap-3 overflow-hidden p-4">
-                    <Cover url={project.cover_url} title={project.title} />
+                  <Card interactive className="flex h-full flex-col gap-3 p-4">
+                    <CardCover project={project} />
                     <div className="flex items-start justify-between gap-2">
                       <h2 className="text-xl">{project.title}</h2>
                       {project.status === "draft" && <Badge tone="alert">Borrador</Badge>}
                     </div>
                     {project.summary && <p className="text-sm text-muted">{project.summary}</p>}
-                    <p className="mt-auto text-xs text-muted">
-                      {byline(project)}
-                    </p>
+                    {project.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {project.tags.slice(0, 3).map((t) => (
+                          <Badge key={t}>#{t}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-auto pt-1 text-sm text-muted">{byline(project)}</p>
                   </Card>
                 </Link>
               </li>
@@ -209,14 +256,18 @@ function ProjectPage() {
         {project.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {project.tags.map((tag) => (
-              <Link key={tag} to={`/galeria?tag=${encodeURIComponent(tag)}`} className="no-underline">
-                <Badge tone="accent">#{tag}</Badge>
+              <Link
+                key={tag}
+                to={`/galeria?tag=${encodeURIComponent(tag)}`}
+                className="inline-flex min-h-11 items-center rounded-full border border-line bg-surface px-4 text-sm font-semibold text-ink no-underline transition hover:border-secondary"
+              >
+                #{tag}
               </Link>
             ))}
           </div>
         )}
       </header>
-      {project.summary && <p className="text-lg">{project.summary}</p>}
+      {leadSummary(project) && <p className="text-lg">{leadSummary(project)}</p>}
       <Markdown source={project.body} />
       {isSuper && (
         <div className="flex flex-wrap gap-2 border-t border-line pt-4">

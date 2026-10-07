@@ -31,11 +31,14 @@ function excerpt(markdown: string, max = 220): string {
 
 function Byline({ post }: { post: BlogPostOut }) {
   return (
-    <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
-      {post.author && <Avatar user={post.author} />}
-      {post.author?.nickname}
-      {post.published_at ? ` · ${dateFormat.format(new Date(post.published_at))}` : <Badge tone="alert">Borrador</Badge>}
-    </p>
+    <div className="flex items-center gap-2 text-sm text-muted">
+      {post.author && <Avatar user={post.author} size="sm" />}
+      <p className="min-w-0">
+        <span className="font-semibold text-ink">{post.author?.nickname}</span>
+        {post.published_at && <> · {dateFormat.format(new Date(post.published_at))}</>}
+      </p>
+      {!post.published_at && <Badge tone="alert">Borrador</Badge>}
+    </div>
   );
 }
 
@@ -80,7 +83,7 @@ function BlogPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-6">
+    <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="mb-2 text-3xl sm:text-4xl">Blog</h1>
@@ -110,12 +113,16 @@ function BlogPage() {
             {items.map((post) => (
               <li key={post.id}>
                 <Link to={`/blog/${post.slug}`} className="no-underline">
-                  <Card interactive className="grid gap-3 p-5 sm:grid-cols-[12rem_1fr]">
+                  <Card
+                    interactive
+                    // The image column exists only when there is an image; otherwise the text gets the full width.
+                    className={`grid gap-4 p-5 ${post.cover_url?.startsWith("/media/") ? "sm:grid-cols-[16rem_1fr] sm:items-center" : ""}`}
+                  >
                     {post.cover_url?.startsWith("/media/") && (
                       <img src={post.cover_url} alt="" loading="lazy" className="aspect-[16/10] w-full rounded-2xl bg-bg object-cover" />
                     )}
-                    <div className="grid content-start gap-2">
-                      <h2 className="text-2xl">{post.title}</h2>
+                    <div className="grid max-w-prose content-start gap-2">
+                      <h2 className="text-2xl text-balance">{post.title}</h2>
                       <Byline post={post} />
                       <p className="text-muted">{excerpt(post.body)}</p>
                     </div>
