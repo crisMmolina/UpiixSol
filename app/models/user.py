@@ -4,11 +4,12 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.common import CreatedAtMixin, Role, str_enum
+from app.models.common import CreatedAtMixin, Role, enum_check, str_enum
 
 
 class User(CreatedAtMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (enum_check("role", Role),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     role: Mapped[Role] = mapped_column(str_enum(Role), nullable=False, default=Role.member)

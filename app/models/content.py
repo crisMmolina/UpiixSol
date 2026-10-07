@@ -4,12 +4,15 @@ from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Integer, Str
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
-from app.models.common import CreatedAtMixin, ProjectStatus, ResourceType, str_enum, utcnow
+from app.models.common import CreatedAtMixin, ProjectStatus, ResourceType, enum_check, str_enum, utcnow
 
 
 class Resource(CreatedAtMixin, Base):
     __tablename__ = "resources"
-    __table_args__ = (CheckConstraint("url IS NOT NULL OR file_url IS NOT NULL", name="url_or_file"),)
+    __table_args__ = (
+        CheckConstraint("url IS NOT NULL OR file_url IS NOT NULL", name="url_or_file"),
+        enum_check("type", ResourceType),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     academy_id: Mapped[int] = mapped_column(
@@ -43,6 +46,7 @@ class Event(CreatedAtMixin, Base):
 
 class Project(CreatedAtMixin, Base):
     __tablename__ = "projects"
+    __table_args__ = (enum_check("status", ProjectStatus),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(120), nullable=False)

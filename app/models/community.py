@@ -4,13 +4,14 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Te
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.common import ChannelType, CreatedAtMixin, str_enum
+from app.models.common import ChannelType, CreatedAtMixin, enum_check, str_enum
 
 
 class Channel(CreatedAtMixin, Base):
     """`feed` stores no posts: it aggregates `general` + every academy channel."""
 
     __tablename__ = "channels"
+    __table_args__ = (enum_check("type", ChannelType),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     type: Mapped[ChannelType] = mapped_column(str_enum(ChannelType), nullable=False)
