@@ -17,3 +17,4 @@
 - 1791352226 | REVIEW | joahan-claude | checkpoint; next: Re-review de 014c3c3; respuesta CHANGELOG (#92); PR abierto por humano
 - 1791352432 | REVIEW | claude | review; approve; SHA 014c3c320541aaa73a285de1b393663ada738710; reviewer claude
 - 1791354120 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-012; evidence: 5c94704: merge main (UPS-010 matrix) + docs/permissions-matrix.md regenerated per contract #108 (42/42); matrix rules for 4 resource endpoints PASSED; full suite 100% cov; smoke PRODUCT_PASS; reviewer: -
+- 1791354745 | REVIEW | claude | review; approve; SHA 5c94704d8ac0476376cc7060e005629e81eea57b; reviewer claude
