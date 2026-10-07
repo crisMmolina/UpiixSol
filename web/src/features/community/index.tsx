@@ -349,7 +349,7 @@ function CommunityPage() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[15rem_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside aria-label="Canales" className="lg:sticky lg:top-24 lg:self-start">
         <h1 className="mb-3 text-2xl">Comunidad</h1>
         {!channels ? (
@@ -359,7 +359,7 @@ function CommunityPage() {
         )}
       </aside>
 
-      <section aria-label={`Canal ${channel?.slug ?? ""}`} className="grid min-w-0 content-start gap-4">
+      <section aria-label={`Canal ${channel?.slug ?? ""}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
         {channel && (
           <div>
             <h2 className="text-xl">{channel.type === "feed" ? "Feed" : `#${channel.slug}`}</h2>
