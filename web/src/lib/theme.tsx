@@ -45,16 +45,32 @@ export function meetsAA(background: string): boolean {
   return contrastRatio(readableTextOn(background), background) >= 4.5;
 }
 
+const HEX = /^#[0-9a-f]{6}$/i;
+const ASSET_PATH = /^\/(?!\/)[\w\-./%]+$/;
+
+/** Second layer over the API's validation: only #RRGGBB reaches CSS, else the campus color. */
+export function safeColor(value: string | null | undefined, fallback: string): string {
+  return value && HEX.test(value) ? value : fallback;
+}
+
+/** Only same-origin asset paths (/brand/..., /media/...) are used as images or CSS urls. */
+export function safeAssetPath(value: string | null | undefined): string | null {
+  return value && ASSET_PATH.test(value) ? value : null;
+}
+
 export function themeVariables(branding: AcademyBranding): CSSProperties {
-  const accent2 = branding.color_accent_2 ?? branding.color_secondary;
+  const primary = safeColor(branding.color_primary, CAMPUS_BRANDING.color_primary);
+  const secondary = safeColor(branding.color_secondary, CAMPUS_BRANDING.color_secondary);
+  const accent = safeColor(branding.color_accent, CAMPUS_BRANDING.color_accent);
+  const logo = safeAssetPath(branding.logo_url);
   return {
-    "--academy-primary": branding.color_primary,
-    "--academy-secondary": branding.color_secondary,
-    "--academy-accent": branding.color_accent,
-    "--academy-accent-2": accent2,
-    "--academy-on-primary": readableTextOn(branding.color_primary),
-    "--academy-on-accent": readableTextOn(branding.color_accent),
-    "--academy-logo": branding.logo_url ? `url("${branding.logo_url}")` : "none",
+    "--academy-primary": primary,
+    "--academy-secondary": secondary,
+    "--academy-accent": accent,
+    "--academy-accent-2": safeColor(branding.color_accent_2, secondary),
+    "--academy-on-primary": readableTextOn(primary),
+    "--academy-on-accent": readableTextOn(accent),
+    "--academy-logo": logo ? `url("${logo}")` : "none",
   } as CSSProperties;
 }
 
@@ -68,14 +84,17 @@ export function AcademyTheme({
   className?: string;
 }) {
   // Keep the browser chrome (mobile address bar) in the academy color too.
+  const primary = safeColor(branding.color_primary, CAMPUS_BRANDING.color_primary);
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    const previous = meta?.getAttribute("content");
-    meta?.setAttribute("content", branding.color_primary);
+    if (!meta) return;
+    const previous = meta.getAttribute("content");
+    meta.setAttribute("content", primary);
     return () => {
-      if (previous) meta?.setAttribute("content", previous);
+      if (previous) meta.setAttribute("content", previous);
+      else meta.removeAttribute("content");
     };
-  }, [branding.color_primary]);
+  }, [primary]);
 
   return (
     <div data-academy-theme={branding.slug} style={themeVariables(branding)} className={className}>
