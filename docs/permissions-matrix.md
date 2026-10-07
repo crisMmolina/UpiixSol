@@ -1,0 +1,48 @@
+# Matriz de permisos (escritura)
+
+Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
+
+Cobertura: **38/38 endpoints de escritura (100 %)** × 5 roles.
+
+✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
+
+| Método | Ruta | Anónimo | Miembro | Admin (su academia) | Admin (otra academia) | Superadmin | Nota |
+|---|---|---|---|---|---|---|---|
+| POST | `/api/auth/register` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | rate-limited per IP |
+| POST | `/api/auth/login` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | rate-limited per IP |
+| POST | `/api/auth/refresh` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | refresh cookie + X-Requested-With |
+| POST | `/api/auth/logout` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | refresh cookie + X-Requested-With |
+| POST | `/api/academies/{slug}/enroll` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
+| DELETE | `/api/academies/{slug}/enroll` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
+| PATCH | `/api/academies/{academy_id}/branding` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/academies/{academy_id}/logo` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/academies/{academy_id}/mascot` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/academies/{academy_id}/routes` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PUT | `/api/academies/{academy_id}/routes/order` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PATCH | `/api/routes/{route_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| DELETE | `/api/routes/{route_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/academies/{academy_id}/routes/{route_id}/modules` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PUT | `/api/routes/{route_id}/modules/order` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PATCH | `/api/modules/{module_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| DELETE | `/api/modules/{module_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/modules/{module_id}/lessons` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PUT | `/api/modules/{module_id}/lessons/order` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PATCH | `/api/lessons/{lesson_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| DELETE | `/api/lessons/{lesson_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/academies/{academy_id}/enrollments` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| DELETE | `/api/academies/{academy_id}/enrollments/{user_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/admin/academies` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| PATCH | `/api/admin/academies/{academy_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| PATCH | `/api/admin/users/{user_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/admin/users/{user_id}/reset-password` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| PUT | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/channels/{channel_id}/posts` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
+| POST | `/api/posts/{post_id}/comments` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
+| POST | `/api/posts/{post_id}/hide` | 🔒 | ❌ | ✅ | ❌ | ✅ | moderation: academy channel |
+| POST | `/api/comments/{comment_id}/hide` | 🔒 | ❌ | ✅ | ❌ | ✅ | moderation: academy channel |
+| POST | `/api/events` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PATCH | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| DELETE | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ | any signed-in user (enrolls on first progress) |
+| DELETE | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
