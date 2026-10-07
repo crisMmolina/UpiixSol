@@ -15,6 +15,8 @@ import { RequireRole, useAuth } from "@/lib/auth";
 import type { AcademyCardOut, ChannelOut, CommentOut, Page, PostOut, UserMe } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
 
+import { Reactions } from "./Reactions";
+
 export const order = 35;
 
 const REFRESH_MS = 30_000;
@@ -242,9 +244,13 @@ function PostCard({ post, channels, moderator, onHidden, onError }: {
         </a>
       )}
       <footer className="mt-3">
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-muted hover:bg-line/50 hover:text-ink">
-          <ChatCircle weight="bold" aria-hidden /> {count === 1 ? "1 comentario" : `${count} comentarios`}
-        </button>
+        {/* Reactions and comments share one row; comments open full width below it. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Reactions post={post} onError={onError} />
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-muted hover:bg-line/50 hover:text-ink">
+            <ChatCircle weight="bold" aria-hidden /> {count === 1 ? "1 comentario" : `${count} comentarios`}
+          </button>
+        </div>
         {open && <Comments post={post} moderator={moderator} onCount={setCount} />}
       </footer>
     </article>
