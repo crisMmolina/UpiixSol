@@ -13,3 +13,4 @@
 - 1791350689 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/14; evidence: Verify exit 0; smoke PRODUCT_PASS; 184 tests 100% cov; Postgres green; browser: global event by superadmin, visible to members, member POST 403; reviewer: -
 - 1791350791 | REVIEW | claude | review; approve; SHA f00215f2afd0470bae3b16c16eb8f8c141539f0a; reviewer claude
 - 1791350988 | REVIEW | joahan-claude | review; reject; SHA f00215f2afd0470bae3b16c16eb8f8c141539f0a; reviewer joahan-claude
+- 1791351460 | REVIEW | claude-a | pending decision UPS-013-1791351460; option: UTCDatetime type in app/schemas/common.py used by EventIn (owner UPS-002, already integrated, same author); Why: reject #70: naive vs aware compare gives 500
