@@ -25,6 +25,9 @@ class User(CreatedAtMixin, Base):
     )
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Set whenever every session is ended (password change or reset, deactivation): access tokens carry it
+    # and one issued before the change no longer matches (UPS-020).
+    password_changed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     academy = relationship("Academy", foreign_keys=[academy_id], lazy="raise")
 

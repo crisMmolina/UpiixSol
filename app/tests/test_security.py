@@ -52,7 +52,9 @@ def test_token_with_wrong_type_or_secret_is_rejected(member: User) -> None:
     secret = get_settings().jwt_secret
     now = datetime.now(UTC)
     refresh_like = jwt.encode(
-        {"sub": "1", "type": "refresh", "exp": now + timedelta(minutes=5)}, secret, algorithm=JWT_ALGORITHM
+        {"sub": "1", "type": "refresh", "pwd": 0, "exp": now + timedelta(minutes=5)},
+        secret,
+        algorithm=JWT_ALGORITHM,
     )
     forged = jwt.encode(
         {"sub": "1", "type": "access", "exp": now + timedelta(minutes=5)}, "x" * 40, algorithm=JWT_ALGORITHM
@@ -131,3 +133,22 @@ def test_deleted_user_token_is_rejected(probe: TestClient, db: Session) -> None:
     db.delete(ghost)
     db.flush()
     assert probe.get("/me", headers=headers).status_code == 401
+
+
+def test_access_token_carries_the_password_stamp(db: Session, member: User) -> None:
+    """Tokens without `pwd` (issued before UPS-020) or from before a password change are rejected."""
+    from app.models.common import utcnow
+    from app.security import password_stamp
+
+    assert decode_access_token(create_access_token(member))["pwd"] == password_stamp(member) == 0
+    now = datetime.now(UTC)
+    legacy = jwt.encode(
+        {"sub": str(member.id), "type": "access", "exp": now + timedelta(minutes=5)},
+        get_settings().jwt_secret,
+        algorithm=JWT_ALGORITHM,
+    )
+    with pytest.raises(AppError):
+        decode_access_token(legacy)
+    member.password_changed_at = utcnow()
+    db.flush()
+    assert password_stamp(member) > 0
