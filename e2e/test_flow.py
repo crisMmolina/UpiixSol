@@ -134,7 +134,7 @@ def test_step5_academy_admin_adds_lesson_and_changes_accent(site: Site) -> None:
     page.goto(site.url("/panel/academia/upiixia?tab=identidad"))
     page.get_by_label("Acento", exact=True).fill("#FFB400")
     page.get_by_role("button", name="Guardar identidad").click()
-    expect(page.get_by_role("status")).to_be_visible()
+    expect(page.get_by_text("Identidad guardada")).to_be_visible()
     site.shot("5-panel")
 
     # The new lesson shows in the player's sidebar and the academy uses the new accent.
@@ -146,3 +146,53 @@ def test_step5_academy_admin_adds_lesson_and_changes_accent(site: Site) -> None:
     sidebar.get_by_placeholder("Buscar por el título de la lección").fill(lesson_title)  # opens its module
     expect(sidebar.get_by_text(lesson_title)).to_be_visible()
     assert page.evaluate(THEMED_ACCENT).strip().upper() == "#FFB400"  # noqa: S101
+
+
+def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> None:
+    sign_in(site, SUPERADMIN, "/admin")
+    page = site.page
+    event_title = f"Noche de robótica e2e {site.name}"
+
+    page.goto(site.url("/admin?tab=academias"))
+    page.get_by_role("button", name="Nueva academia").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Nombre", exact=True).fill("UpiixRobótica")
+    dialog.get_by_label("Identificador (slug)").fill("upiixrobotica")
+    dialog.get_by_label("Descripción corta").fill("Robots, sensores y competencias.")
+    dialog.get_by_label("Acento", exact=True).fill("#ff6b00")
+    dialog.locator('input[type="file"][name="logo"]').set_input_files(
+        files=[{"name": "logo.png", "mimeType": "image/png", "buffer": _png_bytes()}]
+    )
+    dialog.get_by_role("button", name="Crear academia").click()
+    expect(dialog).to_be_hidden()
+    expect(page.get_by_text("UpiixRobótica").first).to_be_visible()
+
+    page.goto(site.url("/admin?tab=usuarios"))
+    page.get_by_role("button", name="Nuevo usuario").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Rol").select_option("academy_admin")
+    dialog.get_by_label("Academia").select_option(label="UpiixRobótica")
+    dialog.get_by_label("Nombre completo").fill("Rocío Robótica")
+    dialog.get_by_label("Correo").fill("admin.robotica@upiixsol.dev")
+    dialog.get_by_label("Contraseña temporal").fill("temporal-robot-1")
+    dialog.get_by_role("button", name="Crear usuario").click()
+    expect(dialog).to_be_hidden()
+    expect(page.get_by_text("admin.robotica@upiixsol.dev")).to_be_visible()
+
+    page.goto(site.url("/calendario?vista=lista"))
+    page.get_by_role("button", name="Nuevo evento").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Título").fill(event_title)
+    dialog.get_by_label("Academia").select_option("")  # global event
+    dialog.get_by_label("Lugar").fill("UPIIZ · Auditorio")
+    dialog.get_by_role("button", name="Publicar evento").click()
+    expect(dialog).to_be_hidden()
+    expect(page.get_by_text(event_title)).to_be_visible()
+    site.shot("6-calendar")
+
+    # The academy shows on the campus home and its channel exists in the community.
+    page.goto(site.url("/"))
+    expect(page.get_by_role("link", name="Entrar a UpiixRobótica")).to_be_visible()
+    page.goto(site.url("/comunidad"))
+    expect(page.get_by_role("complementary", name="Canales").get_by_text("upiixrobotica")).to_be_visible()
+    site.shot("6-home-community")

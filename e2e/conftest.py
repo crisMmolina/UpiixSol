@@ -22,6 +22,14 @@ from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "e2e" / "artifacts"
 SEED_PASSWORD = "admin123"  # noqa: S105 (documented demo seed password, IDEA §2.3)
+# Deepest elements sticking out of the viewport (tag.class), to point at the cause of an overflow.
+WIDEST = """
+  [...document.querySelectorAll('body *')]
+    .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
+    .filter((el) => ![...el.children].some((c) => c.getBoundingClientRect().right > window.innerWidth + 1))
+    .slice(0, 3)
+    .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].slice(0, 4).join('.')}`)
+"""
 VIEWPORTS = {"desktop": (1280, 800), "mobile": (390, 844)}
 
 
@@ -35,8 +43,13 @@ class Site:
         return f"{self.base_url}{path}"
 
     def shot(self, step: str) -> None:
+        """Screenshot of the step + the layout check: no horizontal page scroll at any viewport."""
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         self.page.screenshot(path=ARTIFACTS / f"{self.name}-{step}.png", full_page=True)
+        overflow = self.page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+        if overflow > 0:
+            culprits = self.page.evaluate(WIDEST)
+            raise AssertionError(f"{self.name}/{step}: page scrolls horizontally by {overflow}px: {culprits}")
 
 
 def _free_port() -> int:
