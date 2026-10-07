@@ -1,6 +1,9 @@
 // UPS-018: reactions under each post. Counts come with the post listing; which ones are mine come from
 // GET /api/reactions/mine, batched: every PostCard rendered in the same tick shares one request.
-import { useEffect, useState } from "react";
+// Only reactions somebody used are shown; the rest live behind "Agregar reacción" so an unreacted post
+// does not carry a row of five empty circles.
+import { Smiley } from "@phosphor-icons/react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 
 import { api, errorMessage } from "@/lib/api";
 import type { PostOut } from "@/lib/types";
@@ -53,7 +56,11 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
   // Counts from my last toggle, valid only while the listing has not refreshed this post since.
   const [latest, setLatest] = useState<{ base: PostOut["reactions"]; counts: Record<string, number> } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const counts = latest && latest.base === post.reactions ? latest.counts : post.reactions;
+  const shown = KINDS.filter(({ id }) => (counts[id] ?? 0) > 0 || mine?.includes(id));
+  const available = KINDS.filter((kind) => !shown.includes(kind));
+  const disabled = mine === null || busy !== null;
 
   useEffect(() => {
     let alive = true;
@@ -65,6 +72,7 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
 
   async function toggle(kind: string) {
     const pressed = mine?.includes(kind) ?? false;
+    setPicking(false);
     setBusy(kind);
     try {
       const result = await api<ReactionsOut>(`/posts/${post.id}/reactions/${kind}`, { method: pressed ? "DELETE" : "PUT" });
@@ -77,9 +85,16 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
     }
   }
 
+  function closeOnEscape(event: KeyboardEvent) {
+    if (event.key === "Escape" && picking) {
+      event.stopPropagation();
+      setPicking(false);
+    }
+  }
+
   return (
-    <div role="group" aria-label="Reacciones" className="flex flex-wrap gap-1.5">
-      {KINDS.map(({ id, emoji, label }) => {
+    <div role="group" aria-label="Reacciones" className="flex flex-wrap items-center gap-1.5" onKeyDown={closeOnEscape}>
+      {shown.map(({ id, emoji, label }) => {
         const total = counts[id] ?? 0;
         const pressed = mine?.includes(id) ?? false;
         return (
@@ -89,17 +104,50 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
             aria-pressed={pressed}
             aria-label={`${label}: ${total}`}
             title={label}
-            disabled={mine === null || busy !== null}
+            disabled={disabled}
             onClick={() => void toggle(id)}
-            className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2.5 text-sm font-semibold tabular-nums transition disabled:opacity-60 ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-3 text-sm font-semibold tabular-nums transition disabled:opacity-60 ${
               pressed ? "border-secondary bg-primary/15 text-ink" : "border-line bg-surface text-muted hover:border-ink hover:text-ink"
             }`}
           >
             <span aria-hidden>{emoji}</span>
-            {total > 0 && <span aria-hidden>{total}</span>}
+            <span aria-hidden>{total}</span>
           </button>
         );
       })}
+      {available.length > 0 && (
+        <button
+          type="button"
+          aria-expanded={picking}
+          aria-label="Agregar reacción"
+          title="Agregar reacción"
+          disabled={disabled}
+          onClick={() => setPicking((open) => !open)}
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-0.5 rounded-full px-2.5 text-muted transition hover:bg-line/50 hover:text-ink disabled:opacity-60 ${
+            picking ? "bg-line/50 text-ink" : ""
+          }`}
+        >
+          <Smiley size={20} weight="bold" aria-hidden />
+          <span aria-hidden className="text-sm font-bold">+</span>
+        </button>
+      )}
+      {picking && (
+        <div className="flex gap-0.5 rounded-full border border-line bg-surface p-0.5 shadow-soft">
+          {available.map(({ id, emoji, label }) => (
+            <button
+              key={id}
+              type="button"
+              aria-label={label}
+              title={label}
+              disabled={disabled}
+              onClick={() => void toggle(id)}
+              className="grid size-11 place-items-center rounded-full text-lg transition hover:bg-line/50 disabled:opacity-60"
+            >
+              <span aria-hidden>{emoji}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
