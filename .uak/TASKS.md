@@ -266,7 +266,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Freeze-Allowed:** no
 - **Acceptance:**
   - `PATCH /api/account/profile` (nickname, full_name), `POST /api/account/avatar` (media, resized), `POST /api/account/email` and `POST /api/account/password` (require the current password; password change revokes refresh tokens and clears `must_change_password`).
-  - UI at `/cuenta`: Perfil and Seguridad tabs; a non-blocking banner when `must_change_password`.
+  - UI at `/cuenta`: Perfil and Seguridad tabs; a banner when `must_change_password` (UPS-020 makes the change required).
 - **Verify:** `uv run pytest -q app/tests/test_account.py && npm --prefix web run build`
 - **Next step:** `test_change_password_requires_current`.
 
@@ -283,6 +283,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Freeze-Allowed:** no
 - **Acceptance:**
   - `docker compose up --build` brings up db (postgres 16 with a volume), api (migrations + optional seed on start) and nginx (static files, `/media` with cache, security headers, proxy to `/api`).
+  - nginx `client_max_body_size 6m`; uvicorn `--proxy-headers --forwarded-allow-ips=<nginx IP>` so the rate limits see the real client IP (security review UPS-005).
   - `deploy/backup.sh` with daily `pg_dump` and rotation; `docs/runbook.md` with deploy, restore, rollback (`alembic downgrade -1`) and rotating the seed passwords.
 - **Verify:** `docker compose config -q && bash -n deploy/backup.sh`
 - **Next step:** multi-stage `Dockerfile` (node build → python runtime).
@@ -352,3 +353,22 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Drag-and-drop for modules and lessons using the existing reorder endpoint; the arrows remain as the keyboard-accessible fallback.
 - **Verify:** `npm --prefix web run lint && npm --prefix web run build`
 - **Next step:** evaluate drag-and-drop with no new dependency (native HTML5 DnD) before asking for one.
+
+## UPS-020 · Auth hardening and required password change (security review UPS-005)
+
+- **Type:** bug
+- **Priority:** P0
+- **Estimate:** 120 min
+- **Rubric / Spec:** S001 auth criteria · `docs/specs/001-campus/plan.md` STRIDE
+- **Depends on:** UPS-005, UPS-014
+- **Uses contract:** UPS-002, UPS-004
+- **Related:** UPS-005, UPS-014, UPS-015
+- **Paths:** app/routers/auth.py, app/services/auth.py, app/tests/test_auth.py, app/config.py, .env.example, app/security.py, app/ratelimit.py, app/tests/test_security.py, web/src/features/auth/, web/src/lib/auth.tsx, web/src/lib/api.ts
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Refresh rotation claims the token atomically (`UPDATE … WHERE used_at IS NULL`); two concurrent refreshes with the same token → exactly one 200, the other is treated as reuse. A short grace window (≈10 s) answers 401 without revoking the family, so two tabs refreshing at once do not log the user out.
+  - Concurrent register with the same email/boleta → 409 (IntegrityError caught in a savepoint), never 500.
+  - Login also rate-limited per normalized email (5/min) besides per IP; `X-Requested-With: fetch` required on login and register.
+  - `must_change_password` is enforced: every authenticated endpoint except `GET /api/auth/me`, `POST /api/auth/logout|refresh` and `POST /api/account/password` → 403 `password_change_required`; the UI sends the user to `/cuenta?tab=seguridad` until they change it. Setting `REQUIRE_PASSWORD_CHANGE` (default `true`) can be set to `false` for a demo with the seeded accounts (IDEA §2.3).
+- **Verify:** `uv run pytest -q app/tests/test_auth.py app/tests/test_security.py && npm --prefix web run build`
+- **Next step:** `test_concurrent_refresh_only_one_wins`.
