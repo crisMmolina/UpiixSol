@@ -13,3 +13,4 @@
 - 1791352323 | CLAIMED | claude-a | checkpoint; next: security review of 3973438, then PR
 - 1791354288 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/22; evidence: test_account + full pytest cov 100% exit 0; build exit 0; smoke exit 0; browser /cuenta verified; security review LOW fixed 474b0c4; reviewer: -
 - 1791354409 | REVIEW | claude | review; reject; SHA 474b0c4c36e97dae2ab955e948b1859b9979b52f; reviewer claude
+- 1791354509 | REVIEW | claude-a | pending decision UPS-014-1791354509; option: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR; Why: UPS-010 contract: a new write endpoint requires regenerating the doc; test_docs_are_up_to_date
