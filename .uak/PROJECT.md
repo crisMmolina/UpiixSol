@@ -8,7 +8,7 @@ For members of the UpiixSol student club (IPN · UPIIZ) whose material is scatte
 
 ## Non-negotiable principles
 1. Secure and private by default: least privilege, permissions enforced in the backend per endpoint (role × academy scope), passwords hashed, boleta/email visible only to the user and superadmins.
-2. Nothing reaches `main` without green CI and an approving review from a reviewer that is not the author. The CODEOWNER (@crisMmolina) can audit and revert any merge.
+2. Nothing reaches `main` without green CI, an approving `uak review` from a reviewer agent that is not the author (recorded on `claims` for the exact SHA), and a merge by the CODEOWNER (@crisMmolina) on GitHub.
 3. Every decision that is costly to reverse has an ADR in `docs/adr/`.
 4. No number shown in the UI (progress, counts, dates) comes from an LLM; everything comes from database queries.
 5. **No AI authorship in the repo:** commits and PRs never carry `Co-Authored-By` trailers or "Generated with" lines for any AI agent. Commits go out under the human's git identity.
@@ -40,7 +40,7 @@ Backlog-Proposed-Epoch: 0
 Backlog-Approved: yes
 Autonomy: yes
 Auto-Merge: yes
-Review-Mode: gh
+Review-Mode: claims
 Plan-Channel: main
 Freeze-Epoch: 0
 Lease-Seconds: 14400
