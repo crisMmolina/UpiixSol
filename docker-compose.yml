@@ -1,0 +1,79 @@
+# UpiixSol Campus · production stack (UPS-015). Runbook: docs/runbook.md.
+#   cp deploy/env.example .env   # fill in the secrets, then:
+#   docker compose up -d --build
+# Only nginx publishes a port. Postgres and the API stay on the internal network.
+
+name: upiixsol
+
+x-nginx-ip: &nginx_ip 172.30.0.10  # the only proxy uvicorn trusts for X-Forwarded-For
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-upiixsol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: ${POSTGRES_DB:-upiixsol}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  api:
+    build:
+      context: .
+      target: api
+    image: upiixsol-api:${APP_VERSION:-latest}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ENV: prod
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-upiixsol}:${POSTGRES_PASSWORD:-}@db:5432/${POSTGRES_DB:-upiixsol}
+      MEDIA_DIR: /data/media
+      FORWARDED_ALLOW_IPS: *nginx_ip
+    volumes:
+      - media:/data/media
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks: [internal]
+
+  nginx:
+    build:
+      context: .
+      target: web
+    image: upiixsol-web:${APP_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
+    volumes:
+      - media:/srv/media:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      internal:
+        ipv4_address: *nginx_ip
+
+volumes:
+  pgdata:
+  media:
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
