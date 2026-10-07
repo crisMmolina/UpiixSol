@@ -183,3 +183,13 @@ def test_password_attempts_are_rate_limited_per_user(session_client: TestClient)
     }
     codes = [session_client.post("/api/account/password", json=payload).status_code for _ in range(6)]
     assert codes[:5] == [422] * 5 and codes[5] == 429
+
+
+def test_avatar_uploads_are_rate_limited_per_user(session_client: TestClient) -> None:
+    codes = [
+        session_client.post(
+            "/api/account/avatar", files={"file": ("a.png", _png(20), "image/png")}
+        ).status_code
+        for _ in range(11)
+    ]
+    assert codes[:10] == [200] * 10 and codes[10] == 429

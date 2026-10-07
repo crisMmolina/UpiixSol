@@ -5,13 +5,16 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import User
-from app.ratelimit import LOGIN_LIMIT, limiter
+from app.ratelimit import POST_LIMIT, limiter
 from app.routers.auth import _set_refresh_cookie
 from app.schemas.users import EmailChangeIn, PasswordChangeIn, ProfileUpdateIn, TokenOut, UserMe
 from app.security import current_user
 from app.services import account as service
 
 router = APIRouter(prefix="/api/account", tags=["account"])
+# Checks of the current password: per minute and per day, so a stolen access token can't brute-force it
+# by renewing itself (security review UPS-014).
+PASSWORD_LIMIT = "5/minute;30/day"  # noqa: S105 (a rate limit, not a secret)
 
 
 def _per_user(request: Request) -> str:
@@ -28,15 +31,18 @@ def update_profile(
 
 
 @router.post("/avatar", response_model=UserMe)
+@limiter.limit(POST_LIMIT, key_func=_per_user)  # each upload decodes and re-encodes an image
 async def upload_avatar(
-    file: UploadFile = File(...), user: User = Depends(current_user), db: Session = Depends(get_db)
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ) -> UserMe:
     return await service.upload_avatar(db, user, file)  # commits itself (file cleanup on failure)
 
 
-# Both require the current password: rate-limited per user so a stolen access token can't brute-force it.
 @router.post("/email", response_model=UserMe)
-@limiter.limit(LOGIN_LIMIT, key_func=_per_user)
+@limiter.limit(PASSWORD_LIMIT, key_func=_per_user)
 def change_email(
     request: Request, data: EmailChangeIn, user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> UserMe:
@@ -46,7 +52,7 @@ def change_email(
 
 
 @router.post("/password", response_model=TokenOut)
-@limiter.limit(LOGIN_LIMIT, key_func=_per_user)
+@limiter.limit(PASSWORD_LIMIT, key_func=_per_user)
 def change_password(
     request: Request,
     response: Response,
