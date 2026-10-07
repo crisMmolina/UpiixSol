@@ -34,7 +34,10 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/seed.py | UPS-002 |
 | web/DESIGN.md | UPS-002 |
 | web/src/lib/types.ts | UPS-002 |
-| web/src/lib/ | UPS-004 |
+| web/src/lib/api.ts | UPS-004 |
+| web/src/lib/auth.tsx | UPS-004 |
+| web/src/lib/theme.tsx | UPS-004 |
+| web/src/lib/providers.tsx | UPS-004 |
 | web/src/components/ | UPS-004 |
 | web/src/layouts/ | UPS-004 |
 | web/src/index.css | UPS-004 |
