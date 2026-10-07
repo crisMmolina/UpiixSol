@@ -37,7 +37,7 @@ CODEOWNERS: `*` → @crisMmolina · On-call: @crisMmolina · Runbook: `docs/runb
 ```text
 Mode: marathon
 Backlog-Proposed-Epoch: 0
-Backlog-Approved: no
+Backlog-Approved: yes
 Autonomy: yes
 Auto-Merge: yes
 Review-Mode: gh
