@@ -1,22 +1,21 @@
-// Flow step 2 (UPS-006): academy home — re-themed campus, "Continuar donde te quedaste", routes, resources,
-// latest posts of its channel and upcoming events.
-import { ArrowRight, BookOpenText, FileText, LinkSimple, PlayCircle, Plus, VideoCamera } from "@phosphor-icons/react";
+// Club home (UPS-006, redesign UPS-023): "Continúa aprendiendo" route tiles, resources, latest posts
+// of its channel and upcoming events; plus the route catalog at /a/:slug/rutas.
+import { ArrowRight, BookOpenText, FileText, LinkSimple, VideoCamera } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, type RouteObject } from "react-router";
 
-import { Button, ButtonLink } from "@/components/Button";
 import { Card, SectionTitle } from "@/components/Card";
 import { Markdown } from "@/components/Markdown";
-import { ProgressBar } from "@/components/ProgressBar";
-import { PageSkeleton } from "@/components/Skeleton";
+import { Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole } from "@/lib/auth";
 import { safeAssetPath } from "@/lib/theme";
-import type { AcademyOut, ContinueOut, EventOut, PostOut, ResourceOut, ResourceType, RouteCardOut } from "@/lib/types";
+import type { AcademyOut, ContinueOut, EventOut, Page, PostOut, ResourceOut, ResourceType, RouteCardOut } from "@/lib/types";
 import { AcademyLayout, useAcademy } from "@/layouts";
 
 import { EventItem, PostPreview } from "../home";
+import { RouteGridSkeleton, RouteTile, routeStatus } from "./RouteTile";
 
 export const order = 30;
 
@@ -30,6 +29,81 @@ interface AcademyHomeOut {
   upcoming_events: EventOut[];
 }
 
+/** In-progress routes first, then not started, then finished. */
+function sortForLearning(list: RouteCardOut[]): RouteCardOut[] {
+  const rank = { Continuar: 0, Iniciar: 1, Repasar: 2 } as const;
+  return [...list].sort((a, b) => rank[routeStatus(a)] - rank[routeStatus(b)] || a.position - b.position);
+}
+
+function HomeSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando" className="grid gap-8">
+      <div className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-8 md:grid-cols-[1fr_auto]">
+        <div className="grid gap-3">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-10 w-72 max-w-full" />
+          <Skeleton className="h-5 w-full max-w-xl" />
+        </div>
+        <Skeleton className="mx-auto size-40 rounded-card" />
+      </div>
+      <section>
+        <Skeleton className="mb-4 h-7 w-56" />
+        <RouteGridSkeleton />
+      </section>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-card border border-line bg-surface p-6 shadow-soft">
+            <Skeleton className="mb-4 h-6 w-40" />
+            <Skeleton className="mb-2 h-4 w-full" />
+            <Skeleton className="mb-2 h-4 w-5/6" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoutesCatalog() {
+  const academy = useAcademy();
+  const [routes, setRoutes] = useState<RouteCardOut[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(
+    () =>
+      api<Page<RouteCardOut>>(`/academies/${academy.slug}/routes`, { query: { limit: 50 } })
+        .then((page) => {
+          setRoutes(page.items);
+          setError(null);
+        })
+        .catch((err) => setError(errorMessage(err))),
+    [academy.slug],
+  );
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <div>
+      <h1 className="mb-2 text-3xl sm:text-4xl">Rutas de aprendizaje</h1>
+      <p className="mb-8 text-muted">Cada ruta tiene módulos y clases en video. Tu avance se guarda solo.</p>
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} />
+      ) : !routes ? (
+        <RouteGridSkeleton count={6} />
+      ) : routes.length === 0 ? (
+        <EmptyState title="Aún no hay rutas publicadas" mascotUrl={safeAssetPath(academy.mascot_url)} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {routes.map((route, index) => (
+            <RouteTile key={route.id} slug={academy.slug} route={route} index={index} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const resourceIcon: Record<ResourceType, typeof FileText> = {
   document: FileText,
   link: LinkSimple,
@@ -37,31 +111,10 @@ const resourceIcon: Record<ResourceType, typeof FileText> = {
   other: BookOpenText,
 };
 
-function ContinueCard({ slug, info }: { slug: string; info: ContinueOut }) {
-  const done = info.percent === 100;
-  return (
-    <Card stripe className="grid gap-4 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
-      <div>
-        <p className="text-sm font-semibold text-link">{done ? "¡Ruta completada!" : "Continuar donde te quedaste"}</p>
-        <h2 className="mt-1 text-2xl">
-          Clase {info.lesson_number} · {info.lesson_title}
-        </h2>
-        <div className="mt-3 max-w-md">
-          <ProgressBar percent={info.percent} label="Progreso de la ruta" />
-        </div>
-      </div>
-      <ButtonLink to={`/a/${slug}/clases/${info.lesson_id}`} size="lg" icon={<PlayCircle weight="fill" />}>
-        {done ? "Repasar" : `Continuar: Clase ${info.lesson_number} · ${info.percent} %`}
-      </ButtonLink>
-    </Card>
-  );
-}
-
 function AcademyHome() {
   const branding = useAcademy();
   const [data, setData] = useState<AcademyHomeOut | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [enrolling, setEnrolling] = useState(false);
 
   const load = useCallback(
     () =>
@@ -78,67 +131,33 @@ function AcademyHome() {
     void load();
   }, [load]);
 
-  async function enroll() {
-    setEnrolling(true);
-    try {
-      await api(`/academies/${branding.slug}/enroll`, { method: "POST" });
-      await load();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setEnrolling(false);
-    }
-  }
-
   if (error) return <ErrorState message={error} onRetry={() => void load()} />;
-  if (!data) return <PageSkeleton />;
+  if (!data) return <HomeSkeleton />;
 
   const mascot = safeAssetPath(branding.mascot_url);
   return (
     <div className="grid gap-8">
       <section className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-8 md:grid-cols-[1fr_auto]">
         <div>
-          <p className="text-sm font-semibold text-link">Bienvenida a la academia</p>
+          <p className="text-sm font-semibold text-link">Bienvenida al club</p>
           <h1 className="mt-1 text-3xl sm:text-4xl">{data.academy.name}</h1>
           {data.academy.welcome_text && <Markdown source={data.academy.welcome_text} className="mt-3 max-w-2xl text-lg" />}
-          {!data.is_enrolled && (
-            <Button className="mt-5" onClick={enroll} loading={enrolling} icon={<Plus weight="bold" />}>
-              Inscribirme a {data.academy.name}
-            </Button>
-          )}
         </div>
         {mascot && <img src={mascot} alt={`Mascota de ${data.academy.name}`} className="mx-auto w-48 rounded-card sm:w-56" />}
       </section>
 
-      {data.continue ? (
-        <ContinueCard slug={branding.slug} info={data.continue} />
-      ) : (
-        <EmptyState title="Aún no hay clases publicadas" description="Tu admin está preparando el contenido de esta academia." mascotUrl={mascot} />
-      )}
-
-      {data.routes.length > 0 && (
-        <section>
-          <SectionTitle title="Mis rutas de aprendizaje" action={<Link to={`/a/${branding.slug}/rutas`}>Ver todas</Link>} />
-          <div className="grid gap-4 md:grid-cols-2">
-            {data.routes.map((route) => (
-              <Link key={route.id} to={`/a/${branding.slug}/rutas/${route.id}`} className="no-underline">
-                <Card interactive className="grid h-full gap-3 p-5">
-                  <h3 className="text-xl">{route.title}</h3>
-                  {route.description && <p className="text-sm text-muted">{route.description}</p>}
-                  {route.progress && (
-                    <>
-                      <ProgressBar percent={route.progress.percent} label={`Progreso de ${route.title}`} />
-                      <p className="text-xs text-muted">
-                        {route.progress.completed} de {route.progress.total} clases completadas
-                      </p>
-                    </>
-                  )}
-                </Card>
-              </Link>
+      <section>
+        <SectionTitle title="Continúa aprendiendo" action={<Link to={`/a/${branding.slug}/rutas`}>Ver todas las rutas</Link>} />
+        {data.routes.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {sortForLearning(data.routes).map((route, index) => (
+              <RouteTile key={route.id} slug={branding.slug} route={route} index={index} />
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <EmptyState title="Aún no hay clases publicadas" description="Tu admin está preparando el contenido de este club." mascotUrl={mascot} />
+        )}
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-6">
@@ -189,8 +208,8 @@ function AcademyHome() {
       </div>
 
       <p className="text-center">
-        <Link to="/academias" className="inline-flex items-center gap-1 font-semibold">
-          Explorar otras academias <ArrowRight weight="bold" aria-hidden />
+        <Link to="/clubes" className="inline-flex items-center gap-1 font-semibold">
+          Explorar otros clubes <ArrowRight weight="bold" aria-hidden />
         </Link>
       </p>
     </div>
@@ -205,6 +224,9 @@ export const routes: RouteObject[] = [
         <AcademyLayout />
       </RequireRole>
     ),
-    children: [{ index: true, element: <AcademyHome /> }],
+    children: [
+      { index: true, element: <AcademyHome /> },
+      { path: "rutas", element: <RoutesCatalog /> },
+    ],
   },
 ];
