@@ -5,10 +5,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import RefreshToken, Role, User
 from app.models.common import utcnow
 from app.routers.auth import REFRESH_COOKIE
-from app.security import decode_access_token, hash_token
+from app.security import create_access_token, decode_access_token, hash_token
+from app.services import auth as auth_service
+from app.services.auth import REFRESH_GRACE
 from app.tests.conftest import make_academy, make_user
 
 
@@ -145,7 +148,10 @@ def test_refresh_rotates_and_reuse_revokes_the_family(client: TestClient, db: Se
     new_raw = rotated.cookies[REFRESH_COOKIE]
     assert new_raw != old_raw and rotated.json()["user"]["email"] == "ana.lopez@alumno.ipn.mx"
 
-    # Replaying the old token (stolen cookie) revokes every token of the family.
+    # Replaying the old token (stolen cookie) after the grace window revokes every token of the family.
+    used = db.scalar(select(RefreshToken).filter_by(token_hash=hash_token(old_raw)))
+    used.used_at = utcnow() - REFRESH_GRACE - timedelta(seconds=1)
+    db.flush()
     client.cookies.set(REFRESH_COOKIE, old_raw, path="/api/auth")
     replay = client.post("/api/auth/refresh")
     assert replay.status_code == 401
@@ -241,3 +247,134 @@ def test_default_nickname_handles_accents_and_short_names() -> None:
     assert default_nickname("Íñigo Pérez") == "inigo"
     assert default_nickname("A B") == "miembro"
     assert default_nickname("   ") == "miembro"
+
+
+# ── Hardening (UPS-020) ──────────────────────────────────────
+
+
+def test_concurrent_refresh_only_one_wins(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two refreshes read the same unused token; the other one claims it before this one does."""
+    raw = client.post("/api/auth/register", json=REGISTER).cookies[REFRESH_COOKIE]
+    real_aware = auth_service._aware
+    winners = []
+
+    def other_request_first(moment):
+        monkeypatch.setattr(auth_service, "_aware", real_aware)
+        winners.append(auth_service.rotate_refresh(db, raw))  # the concurrent refresh, between read and claim
+        return real_aware(moment)
+
+    monkeypatch.setattr(auth_service, "_aware", other_request_first)
+    loser = client.post("/api/auth/refresh")
+    assert len(winners) == 1
+    assert loser.status_code == 401 and loser.json()["error"]["code"] == "refresh_race"
+    assert "set-cookie" not in loser.headers  # the winner's new cookie must survive
+    family = list(db.scalars(select(RefreshToken)))
+    assert len(family) == 2 and all(t.revoked_at is None for t in family)  # the family is kept
+
+
+def test_two_tabs_refreshing_at_once_keep_the_session(client: TestClient, db: Session) -> None:
+    raw = client.post("/api/auth/register", json=REGISTER).cookies[REFRESH_COOKIE]
+    first = client.post("/api/auth/refresh")
+    assert first.status_code == 200
+    new_raw = first.cookies[REFRESH_COOKIE]
+    client.cookies.set(REFRESH_COOKIE, raw, path="/api/auth")  # the other tab still sends the old one
+    second = client.post("/api/auth/refresh")
+    assert second.status_code == 401 and second.json()["error"]["code"] == "refresh_race"
+    client.cookies.set(REFRESH_COOKIE, new_raw, path="/api/auth")
+    assert client.post("/api/auth/refresh").status_code == 200  # nothing was revoked
+
+
+def test_concurrent_register_is_409(client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both requests pass the existence check; the unique index rejects the second insert."""
+    make_user(db, email=REGISTER["email"].lower(), boleta="2026000099")
+    monkeypatch.setattr(db, "scalar", lambda *args, **kwargs: None)  # the check ran before the other insert
+    response = client.post("/api/auth/register", json=REGISTER)
+    monkeypatch.undo()
+    assert response.status_code == 409 and response.json()["error"]["code"] == "account_exists"
+    assert db.scalar(select(User).filter_by(email=REGISTER["email"].lower())) is not None  # session usable
+
+
+def test_password_change_invalidates_issued_access_tokens(client: TestClient, db: Session) -> None:
+    old_token = client.post("/api/auth/register", json=REGISTER).json()["access_token"]
+    old = {"Authorization": f"Bearer {old_token}"}
+    assert client.get("/api/auth/me", headers=old).status_code == 200
+    changed = client.post(
+        "/api/account/password",
+        headers=old,
+        json={"current_password": "segura-123", "new_password": "nueva-123", "confirm_password": "nueva-123"},
+    )
+    assert changed.status_code == 200
+    response = client.get("/api/auth/me", headers=old)
+    assert response.status_code == 401 and response.json()["error"]["code"] == "invalid_token"
+    new = {"Authorization": f"Bearer {changed.json()['access_token']}"}
+    assert client.get("/api/auth/me", headers=new).status_code == 200
+
+
+def test_password_reset_invalidates_issued_access_tokens(
+    as_superadmin: TestClient, client: TestClient, db: Session, seeded: dict
+) -> None:
+    member = db.get(User, seeded["member_id"])
+    token = {"Authorization": f"Bearer {create_access_token(member)}"}
+    assert client.get("/api/auth/me", headers=token).status_code == 200
+    assert as_superadmin.post(f"/api/admin/users/{member.id}/reset-password").status_code == 200
+    assert client.get("/api/auth/me", headers=token).status_code == 401
+
+
+def test_login_is_rate_limited_per_email_across_ips(client: TestClient, db: Session) -> None:
+    from app.db import get_db
+    from app.main import app
+
+    make_user(db, email="m@ipn.mx")
+    app.dependency_overrides[get_db] = lambda: db
+    statuses = []
+    for n, email in enumerate(["m@ipn.mx", "M@ipn.mx", "m@IPN.mx", "m@ipn.mx", "M@IPN.MX", "m@ipn.mx"]):
+        with TestClient(app, headers={"X-Requested-With": "fetch"}, client=(f"10.0.0.{n}", 1)) as other_ip:
+            response = other_ip.post("/api/auth/login", json={"email": email, "password": "mal"})
+            statuses.append(response.status_code)
+    assert statuses == [401] * 5 + [429]
+    assert _login(client, "otra@ipn.mx", "x").status_code == 401  # other accounts are not affected
+
+
+def test_login_and_register_require_fetch_header(client: TestClient, db: Session) -> None:
+    make_user(db, email="m@ipn.mx")
+    no_header = {"X-Requested-With": ""}
+    credentials = {"email": "m@ipn.mx", "password": "password123"}
+    login = client.post("/api/auth/login", json=credentials, headers=no_header)
+    register = client.post("/api/auth/register", json=REGISTER, headers=no_header)
+    assert (login.status_code, register.status_code) == (403, 403)
+    assert login.json()["error"]["code"] == register.json()["error"]["code"] == "csrf"
+
+
+@pytest.fixture
+def password_change_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(get_settings(), "require_password_change", True)
+
+
+@pytest.mark.usefixtures("password_change_required")
+def test_provisional_password_must_be_changed_first(client: TestClient, db: Session, seeded: dict) -> None:
+    token = _login(client, "alumno.demo@upiixsol.dev", "admin123").json()["access_token"]
+    member = {"Authorization": f"Bearer {token}"}
+    assert client.get("/api/auth/me", headers=member).json()["must_change_password"] is True
+    blocked = (("GET", "/api/channels"), ("PATCH", "/api/account/profile"), ("GET", "/api/academies/upiixia"))
+    for method, path in blocked:
+        response = client.request(method, path, headers=member, json={})
+        assert response.status_code == 403, path
+        assert response.json()["error"]["code"] == "password_change_required"
+    assert client.get("/api/academies/upiixia").status_code == 200  # anonymous pages are not affected
+    changed = client.post(
+        "/api/account/password",
+        headers=member,
+        json={"current_password": "admin123", "new_password": "propia-123", "confirm_password": "propia-123"},
+    )
+    assert changed.status_code == 200 and changed.json()["user"]["must_change_password"] is False
+    fresh = {"Authorization": f"Bearer {changed.json()['access_token']}"}
+    assert client.get("/api/channels", headers=fresh).status_code == 200
+    assert client.post("/api/auth/refresh").status_code == 200  # refresh and logout stay open
+    assert client.post("/api/auth/logout").status_code == 204
+
+
+def test_demo_mode_skips_the_required_change(as_member: TestClient) -> None:
+    assert get_settings().require_password_change is False  # conftest: REQUIRE_PASSWORD_CHANGE=false
+    assert as_member.get("/api/channels").status_code == 200
