@@ -72,9 +72,23 @@ def _wait_ready(url: str, server: subprocess.Popen, timeout: float = 30) -> None
     raise TimeoutError(f"{url} not ready after {timeout}s")
 
 
+def _dist_is_stale() -> bool:
+    """True when web/dist is missing or older than any source file (a stale build hides UI changes)."""
+    index = ROOT / "web" / "dist" / "index.html"
+    if not index.exists():
+        return True
+    built = index.stat().st_mtime
+    sources = [
+        ROOT / "web" / "index.html",
+        *(ROOT / "web" / "src").rglob("*"),
+        *(ROOT / "web" / "public").rglob("*"),
+    ]
+    return any(path.is_file() and path.stat().st_mtime > built for path in sources)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def web_build() -> None:
-    if not (ROOT / "web" / "dist" / "index.html").exists():
+    if _dist_is_stale():
         subprocess.run(["npm", "--prefix", "web", "run", "build"], cwd=ROOT, check=True)  # noqa: S607
 
 

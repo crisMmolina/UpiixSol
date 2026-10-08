@@ -63,7 +63,8 @@ def test_step2_academy_retheme_and_continue(site: Site) -> None:
     campus_accent = page.evaluate(THEMED_ACCENT)
     page.get_by_role("link", name="Entrar a UpiixIA").click()
     expect(page).to_have_url(site.url("/a/upiixia"))
-    continue_link = page.get_by_role("link", name=re.compile(r"Continuar: Clase 3 · 50 %"))
+    # v2 club home: "Continúa aprendiendo" tiles named "<estado>: <ruta>" (UPS-023).
+    continue_link = page.get_by_role("link", name="Continuar: Fundamentos de IA con Python")
     expect(continue_link).to_be_visible()
     academy_accent = page.evaluate(THEMED_ACCENT)
     # Campus orange → UpiixIA lime green, and the header shows the UpiixIA logo.
@@ -88,7 +89,7 @@ VIDEO_ENDED = """
 
 def test_step3_player_complete_lesson(site: Site) -> None:
     page = site.page
-    page.get_by_role("link", name=re.compile(r"Continuar: Clase 3")).click()
+    page.get_by_role("link", name="Continuar: Fundamentos de IA con Python").click()  # resumes at lesson 3
     expect(page).to_have_url(re.compile(r"/a/upiixia/clases/\d+"))
     expect(page.get_by_text("Se marca como completada al terminar el video")).to_be_visible()
     page.locator('iframe[src*="youtube-nocookie.com/embed/"]').wait_for(state="attached")
