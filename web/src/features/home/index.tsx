@@ -267,6 +267,10 @@ function HomePage() {
   if (loading) return <HomeSkeleton />;
   if (error || !data) return <ErrorState message={error ?? "No pudimos cargar el inicio."} onRetry={retry} />;
 
+  // Admin-edited text may still use the old wording; the campus speaks of clubs.
+  const custom = data.hero?.hero_text;
+  const heroText = custom && !/academia/i.test(custom) ? custom : "Retoma tus clases donde te quedaste y conversa con tu comunidad.";
+
   return (
     <div className="grid gap-10">
       <section className="grid items-center gap-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
@@ -276,7 +280,7 @@ function HomePage() {
           </p>
           <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
           <p className="mt-4 max-w-xl text-lg text-muted">
-            {data.hero?.hero_text || "Retoma tus clases donde te quedaste y conversa con tu comunidad."}
+            {heroText}
           </p>
         </div>
         <img src="/brand/upiixsol/mascot.png" alt="Ajolote de UpiixSol" className="mx-auto w-full max-w-xs" />
