@@ -177,3 +177,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 173 | 1791438165 | claude | task:UPS-019 | approve | UPS-019 | Approved SHA 4f87bf465ad58cd73cf26a4dfbc0b0ad30c7f85f by claude. Next: bash .uak/bin/uak heartbeat UPS-019 && bash .uak/bin/uak merge UPS-019
 - 174 | 1791438176 | claude | task:UPS-019 | approve | - | 4f87bf4 approved: lint(0 errors)+build OK, pytest green, scope academy-admin only, no new deps; browser DnD not exercised
 - 175 | 1791439020 | claude | task:UPS-012 | approve | UPS-012 | Approved SHA 6878bcb9170c46e859e6311f6d55b50a508b2742 by claude. Next: bash .uak/bin/uak heartbeat UPS-012 && bash .uak/bin/uak merge UPS-012
+- 176 | 1791439030 | claude | task:UPS-012 | approve | - | re-review OK 6878bcb: delta = merge of main + matrix regen 56/56; resources files byte-identical to 3d717a3; pytest cov 100%
