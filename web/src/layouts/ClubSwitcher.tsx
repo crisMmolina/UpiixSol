@@ -94,7 +94,7 @@ export function ClubSwitcher({ current }: { current: string | null }) {
         <CaretUpDown size={18} weight="bold" aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="animate-enter absolute left-0 z-40 mt-2 w-72 rounded-2xl border border-line bg-surface p-1.5 shadow-lift">
+        <div role="menu" className="animate-enter fixed inset-x-4 top-16 z-40 rounded-2xl sm:absolute sm:inset-x-auto sm:left-0 sm:top-auto sm:mt-2 sm:w-72 border border-line bg-surface p-1.5 shadow-lift">
           <Link role="menuitem" to="/" className={item(current === null)} onClick={() => setOpen(false)}>
             <img src={SITE.mascotUrl} alt="" className="size-8 object-contain" />
             <span className="flex-1">Campus {SITE.name}</span>
