@@ -22,9 +22,19 @@ almacén de datos (warehouse) sin cambiar a quien lo produce.
 3. Toma `user_id` de `request.state.user_id` (lo pone la dependencia de auth) y los parámetros de la ruta.
 4. Agrega una `BackgroundTask` a la respuesta: **la escritura ocurre después de enviar la respuesta**,
    en el thread pool, con su propia sesión corta (`session_factory`, por defecto `app.db.SessionLocal`).
-   Ahí resuelve el club (`academy_id`) del sujeto (lección → módulo → ruta → club, post → canal → club…).
+   Es **un solo `INSERT`** y un commit: el club (`academy_id`) del sujeto (lección → módulo → ruta → club,
+   post → canal → club…) y el usuario del login se resuelven como subconsultas escalares dentro de ese
+   mismo `INSERT`, por índices de llave primaria o únicos.
 5. Cualquier excepción, al programar o al escribir, se registra en el logger `app.analytics` y se descarta:
    la petición nunca se rompe ni se hace más lenta por la analítica.
+
+**Impacto acotado.** La escritura usa el thread pool de AnyIO (40 hilos por defecto, compartido con los
+endpoints síncronos) y una conexión del mismo pool de la base (`pool_size=10`, `max_overflow=20` en
+PostgreSQL), solo durante ese único `INSERT`. Es un evento por petición mapeada (unas 13 rutas, todas
+acciones de usuario), no por cada petición. En HTTP/1.1 con keep-alive, la siguiente petición en la misma
+conexión espera a que termine la tarea, que dura lo que un `INSERT` corto. Si el volumen crece, el paso
+siguiente es encolar los eventos en memoria y escribirlos por lotes, o publicarlos a una cola (ver
+"Mover el flujo a un warehouse").
 
 Login y registro no pasan por la dependencia de auth: el usuario se obtiene del hash de la cookie de
 refresh que la misma respuesta acaba de crear (`refresh_tokens.token_hash`), también en segundo plano.
@@ -43,12 +53,20 @@ refresh que la misma respuesta acaba de crear (`refresh_tokens.token_hash`), tam
 }
 ```
 
-- Máximo 50 eventos por lote; `properties` plano (texto, número, booleano o null), máximo 2 KB por evento y
-  sin claves personales (`email`, `boleta`, `name`, `full_name`, `nickname`, `phone`, `password`, `token`,
-  `query`). Nombre fuera de la lista → 422. Campos desconocidos → 422.
+- Máximo 50 eventos por lote; `properties` plano (texto, número finito, booleano o null), máximo 2 KB por
+  evento. `NaN`, `Infinity` o `1e400` → 422 (no son JSON válido; en PostgreSQL rompían el insert).
+- Claves rechazadas (lista negra, no garantía): `email`, `boleta`, `name`, `full_name`, `nickname`, `phone`,
+  `password`, `token` y las de texto libre `query`, `q`, `search`, `term`, `text`, `message`, `body`.
+  `path` está reservada (se llena solo desde el campo `path` validado). Nombre fuera de la lista → 422.
+  Campos desconocidos → 422.
+- `subject_type` y `subject_id` van juntos: uno sin el otro → 422.
 - `occurred_at` opcional; se recorta a ahora ± 5 min (los relojes de los clientes mienten). Sin zona = UTC.
 - `path` es la **plantilla** de la ruta del front, nunca la URL con ids. Se guarda en `properties.path`.
-- `academy_slug` se convierte a `academy_id` (slug desconocido → `NULL`).
+- `academy_slug` se convierte a `academy_id` (slug desconocido → `NULL`). **Ese club lo declara el cliente**
+  (cualquier alumno puede ver cualquier club, así que no se puede verificar): en eventos `source = 'web'`,
+  `academy_id` es un dato no confiable. Para métricas por club que importen (reportes a la mesa
+  directiva), usar eventos `source = 'server'`, cuyo club sale de la base, o derivar el club del sujeto
+  (`resource.opened` → `resources.academy_id`), como hace la consulta de recursos más abiertos.
 - Límite: 30 lotes por minuto por usuario (slowapi, mismo limitador que el resto).
 
 `web/src/lib/analytics.ts` exporta `track(name, data)`:
@@ -58,8 +76,10 @@ refresh que la misma respuesta acaba de crear (`refresh_tokens.token_hash`), tam
 - **Autenticación al ocultar la página:** `navigator.sendBeacon` no puede mandar el header
   `Authorization`, y la cookie de refresh solo viaja a `/api/auth`, así que un beacon llegaría anónimo
   (401). En su lugar se usa `fetch` con `keepalive: true` a través de `api()`, que pone el access token
-  que vive en memoria (y renueva una vez si hay 401). `keepalive` sobrevive al cierre de la página igual
-  que un beacon; su límite de 64 KB por petición cabe de sobra en un lote típico. No se abre otra vía de
+  que vive en memoria. Ese envío usa `skipRefresh`: si responde 401 el lote se descarta, porque un
+  `/auth/refresh` durante el cierre de la página podría perder la cookie rotada y luego disparar la
+  revocación por reúso (UPS-020). Los envíos normales sí renuevan una vez. `keepalive` sobrevive al cierre
+  de la página igual que un beacon; su límite de 64 KB por petición cabe de sobra en un lote típico. No se abre otra vía de
   autenticación (por ejemplo, cookie para `/api/analytics`) para no ampliar la superficie de CSRF.
 - `session_id`: un id aleatorio por pestaña en `sessionStorage` (en memoria si no hay storage).
 - No hace nada sin sesión (`setAnalyticsUser(null)` vacía la cola), nunca lanza, nunca bloquea la UI y se
@@ -102,18 +122,19 @@ la apertura de recursos se registra desde el cliente (`resource.opened`). Si má
 | `video.pause` | pausa | `lesson` | `position_s` |
 | `video.ended` | el video termina | `lesson` | `duration_s` |
 | `video.progress` | hitos 25/50/75 % | `lesson` | `percent` |
-| `search.performed` | búsqueda en el reproductor o listados | — | `scope`, `query_length`, `results` (nunca el texto) |
+| `search.performed` | búsqueda en el reproductor o listados (usar `trackSearch`) | — | `scope`, `query_length`, `results` (nunca el texto) |
 | `resource.opened` | clic en un recurso | `resource` | `type` |
 | `link.opened` | clic en un enlace de una clase | `lesson` | `position` |
 
 Puntos de llamada sugeridos (archivos de otras tareas; solo hay que importar `track`):
 
 - `web/src/features/learning/` (reproductor, UPS-038): `video.play/pause/ended/progress` desde los
-  eventos del IFrame Player de YouTube, `link.opened` en los enlaces de la clase y `search.performed`
-  en el buscador de clases.
+  eventos del IFrame Player de YouTube, `link.opened` en los enlaces de la clase y
+  `trackSearch("lessons", texto, resultados, slug)` en el buscador de clases.
 - `web/src/features/resources/`: `resource.opened` al abrir la tarjeta (`subject_id` = id del recurso,
   `academy_slug` = slug del club, `properties.type`).
-- Buscadores de comunidad, galería o blog: `search.performed` con `query_length` y `results`.
+- Buscadores de comunidad, galería o blog: `trackSearch(scope, texto, resultados)`; el helper solo envía
+  la longitud y el número de resultados, nunca el texto.
 
 Agregar un evento web nuevo = sumarlo a `WEB_EVENTS` (backend) y a `WebEventName` (front) y a esta tabla.
 
@@ -217,6 +238,7 @@ SELECT a.name AS club,
        count(DISTINCT e.user_id) AS activos_30d
 FROM activity_events e JOIN academies a ON a.id = e.academy_id
 WHERE e.occurred_at >= now() - interval '30 days' AND e.user_id IS NOT NULL
+  -- AND e.source = 'server'  -- solo clubes verificados por la base (el club de eventos web lo declara el cliente)
 GROUP BY a.name ORDER BY activos_30d DESC;
 ```
 
@@ -250,9 +272,11 @@ Quien produce los eventos (middleware y endpoint) no cambia; solo cambia a dónd
 
 ## Privacidad
 
-- `properties` nunca lleva datos personales: ni nombre, ni correo, ni boleta, ni texto libre (por eso
-  `search.performed` guarda la longitud de la búsqueda y no el texto). El backend rechaza las claves
-  personales conocidas, pero el contrato es "solo ids, slugs, plantillas de ruta y contadores".
+- `properties` nunca debe llevar datos personales: ni nombre, ni correo, ni boleta, ni texto libre. **Lo
+  que valida el backend es limitado**: una lista negra de claves (arriba), tipos planos, tamaño y la
+  clave reservada `path`. Un texto bajo otra clave (por ejemplo `filtro`) puede contener un correo y el
+  backend no lo detecta. Por eso el contrato es "solo ids, slugs, plantillas de ruta y contadores", y la
+  UI nunca envía texto escrito por el usuario: `trackSearch` manda solo `query_length` y `results`.
 - Las rutas se guardan como plantillas (`/a/:slug/clases/:lessonId`), no como URLs con ids o parámetros.
 - No se guardan IP ni user agent.
 - **Aviso de privacidad:** el texto actual del registro (`web/src/features/auth/index.tsx`, otra tarea)

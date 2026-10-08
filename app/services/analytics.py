@@ -23,9 +23,17 @@ from http.cookies import SimpleCookie
 from typing import Annotated, Any, Literal
 
 from fastapi import Request, Response
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import Select, select
+from sqlalchemy import Select, insert, select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -52,10 +60,13 @@ MAX_EVENTS = 50
 MAX_PROPERTIES_BYTES = 2048
 CLOCK_SKEW = timedelta(minutes=5)  # client timestamps are clamped to now ± this
 MAX_ID = 2**31 - 1
-# Keys that would carry personal data. Not exhaustive: the client contract is "ids and counters only".
+# A denylist of keys that usually carry personal data or free text. It cannot catch everything (a value under
+# any other key may still hold an email): the client contract is "ids, slugs and counters only".
 PII_KEYS = frozenset(
-    {"email", "boleta", "password", "token", "name", "full_name", "nickname", "phone", "query"}
+    {"email", "boleta", "password", "token", "name", "full_name", "nickname", "phone"}
+    | {"query", "q", "search", "term", "text", "message", "body"}
 )
+RESERVED_KEYS = frozenset({"path"})  # set by the server from the validated `path` field
 
 
 class AnalyticsSettings(BaseSettings):
@@ -180,49 +191,52 @@ def _refresh_cookie(response: Response) -> str | None:
 
 
 def write_server_event(pending: PendingEvent) -> None:
-    """Background task (thread pool): one short session, one insert. Errors are logged, never raised."""
+    """Background task (thread pool): one session, one INSERT statement, one commit. The user and club
+    lookups are scalar subqueries inside that INSERT, so a write is a single short round trip that holds a
+    pooled connection only for that long. Errors are logged, never raised."""
     try:
         with session_factory() as db:
-            db.add(_server_row(db, pending))
+            db.execute(insert(ActivityEvent).values(**server_values(pending)))
             db.commit()
     except Exception:
         logger.exception("analytics: could not record %s", pending.spec.name)
 
 
-def _server_row(db: Session, pending: PendingEvent) -> ActivityEvent:
+def server_values(pending: PendingEvent) -> dict[str, Any]:
+    """Column values for one server event; ids that need a lookup are scalar subqueries."""
     spec = pending.spec
-    user_id = pending.user_id
+    user_id: Any = pending.user_id
     if spec.user_from_cookie and pending.refresh_token:
-        user_id = db.scalar(
-            select(RefreshToken.user_id).where(RefreshToken.token_hash == hash_token(pending.refresh_token))
-        )
+        token_hash = hash_token(pending.refresh_token)
+        user_id = select(RefreshToken.user_id).where(RefreshToken.token_hash == token_hash).scalar_subquery()
     raw = pending.path_params.get(spec.subject_param or "")
-    subject_id = None
+    subject_id: Any = None
     if spec.subject_type == "academy" and raw:
-        subject_id = db.scalar(select(Academy.id).where(Academy.slug == raw))
+        subject_id = select(Academy.id).where(Academy.slug == raw).scalar_subquery()
     elif raw and raw.isdigit() and int(raw) <= MAX_ID:
         subject_id = int(raw)
-    return ActivityEvent(
-        occurred_at=pending.occurred_at,
-        user_id=user_id,
-        academy_id=academy_of(db, spec.subject_type, subject_id),
-        name=spec.name,
-        subject_type=spec.subject_type if subject_id is not None else None,
-        subject_id=subject_id,
-        properties={
+    return {
+        "occurred_at": pending.occurred_at,
+        "user_id": user_id,
+        "academy_id": academy_expr(spec.subject_type, subject_id),
+        "name": spec.name,
+        "subject_type": spec.subject_type if subject_id is not None else None,
+        "subject_id": subject_id,
+        "properties": {
             key: pending.path_params[key] for key in spec.property_params if key in pending.path_params
         },
-        source="server",
-    )
+        "source": "server",
+    }
 
 
-def academy_of(db: Session, subject_type: str | None, subject_id: int | None) -> int | None:
+def academy_expr(subject_type: str | None, subject_id: Any) -> Any:
+    """Club of a subject: the id itself for an academy, a scalar subquery for lessons, posts..., else None."""
     if subject_type is None or subject_id is None:
         return None
     if subject_type == "academy":
         return subject_id
     query = ACADEMY_OF.get(subject_type)
-    return db.scalar(query(subject_id)) if query else None
+    return query(subject_id).scalar_subquery() if query else None
 
 
 # ── Web events: POST /api/analytics/events ──────────────────
@@ -240,7 +254,7 @@ WEB_EVENTS = (
 WebEventName = Literal[WEB_EVENTS]  # type: ignore[valid-type]
 SubjectType = Literal["academy", "route", "lesson", "resource", "post", "channel", "project", "blog", "event"]
 PropertyKey = Annotated[str, StringConstraints(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_.]+$")]
-PropertyValue = str | int | float | bool | None
+PropertyValue = str | int | FiniteFloat | bool | None  # NaN/Infinity are not JSON: 422, never a 500
 
 
 class WebEventIn(BaseModel):
@@ -259,11 +273,20 @@ class WebEventIn(BaseModel):
     @field_validator("properties")
     @classmethod
     def _small_and_anonymous(cls, value: dict[str, Any]) -> dict[str, Any]:
-        if PII_KEYS & {key.lower() for key in value}:
-            raise ValueError("properties must not carry personal data")
+        keys = {key.lower() for key in value}
+        if PII_KEYS & keys:
+            raise ValueError("properties must not carry personal data or free text")
+        if RESERVED_KEYS & keys:
+            raise ValueError("properties.path is reserved: send the route template in `path`")
         if len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode()) > MAX_PROPERTIES_BYTES:
             raise ValueError(f"properties must be at most {MAX_PROPERTIES_BYTES} bytes")
         return value
+
+    @model_validator(mode="after")
+    def _subject_pair(self) -> "WebEventIn":
+        if (self.subject_type is None) != (self.subject_id is None):
+            raise ValueError("subject_type and subject_id go together")
+        return self
 
 
 class EventBatchIn(BaseModel):
@@ -290,6 +313,7 @@ def record_web_events(db: Session, user: User, batch: EventBatchIn) -> int:
         return 0
     now = utcnow()
     slugs = {event.academy_slug for event in batch.events if event.academy_slug}
+    # Client-declared club: only existing slugs map to an id (else NULL), but which club is the client's word.
     academies = dict(db.execute(select(Academy.slug, Academy.id).where(Academy.slug.in_(slugs))).all())
     rows = []
     for event in batch.events:
@@ -302,7 +326,7 @@ def record_web_events(db: Session, user: User, batch: EventBatchIn) -> int:
                 user_id=user.id,
                 academy_id=academies.get(event.academy_slug),
                 name=event.name,
-                subject_type=event.subject_type if event.subject_id is not None else None,
+                subject_type=event.subject_type,
                 subject_id=event.subject_id,
                 properties=properties,
                 session_id=batch.session_id,

@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import anyio
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, insert, select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.background import BackgroundTask
 from starlette.responses import JSONResponse
@@ -90,7 +90,7 @@ def test_events_are_recorded_with_user_session_and_club(
                 "academy_slug": "no-existe",
                 "properties": {"position_s": 12, "rate": 1.5},
             },
-            {"name": "search.performed", "subject_type": "lesson", "properties": {"query_length": 4}},
+            {"name": "search.performed", "properties": {"query_length": 4, "results": 2}},
         ],
     }
     response = as_member.post("/api/analytics/events", json=body)
@@ -104,7 +104,8 @@ def test_events_are_recorded_with_user_session_and_club(
     assert view.properties == {"path": "/a/:slug/clases/:lessonId"}
     assert (play.subject_type, play.subject_id, play.academy_id) == ("lesson", 7, None)
     assert play.properties == {"position_s": 12, "rate": 1.5}
-    assert (search.subject_type, search.subject_id) == (None, None)  # a type without an id is dropped
+    assert (search.subject_type, search.subject_id, search.academy_id) == (None, None, None)
+    assert search.properties == {"query_length": 4, "results": 2}
 
 
 @pytest.mark.parametrize(
@@ -118,6 +119,11 @@ def test_events_are_recorded_with_user_session_and_club(
         {"name": "page.view", "properties": {"blob": "x" * 2100}},
         {"name": "page.view", "properties": {"nested": {"a": 1}}},
         {"name": "page.view", "subject_type": "user", "subject_id": 1},
+        {"name": "page.view", "subject_type": "lesson"},  # type and id go together
+        {"name": "page.view", "subject_id": 3},
+        {"name": "page.view", "properties": {"path": "texto libre con correo a@b.c"}},  # reserved key
+        {"name": "page.view", "properties": {"q": "a@b.c"}},  # free-text search keys
+        {"name": "search.performed", "properties": {"Query": "ana"}},
         {"name": "page.view", "user_id": 1},
     ],
 )
@@ -364,17 +370,26 @@ def test_refresh_cookie_parsing() -> None:
     assert service._refresh_cookie(response) == "abc"
 
 
-def test_server_row_edge_cases(db: Session, seeded: dict) -> None:
+def _insert_server_event(db: Session, pending: service.PendingEvent) -> ActivityEvent:
+    db.execute(insert(ActivityEvent).values(**service.server_values(pending)))
+    return _events(db)[-1]
+
+
+def test_server_values_edge_cases(db: Session, seeded: dict) -> None:
     spec = service.SERVER_EVENTS[("GET", "/api/lessons/{lesson_id}")]
     for raw in ("abc", str(2**40)):
-        row = service._server_row(db, service.PendingEvent(spec, utcnow(), None, {"lesson_id": raw}))
+        row = _insert_server_event(db, service.PendingEvent(spec, utcnow(), None, {"lesson_id": raw}))
         assert (row.subject_type, row.subject_id, row.academy_id) == (None, None, None)
     login = service.SERVER_EVENTS[("POST", "/api/auth/login")]
-    row = service._server_row(db, service.PendingEvent(login, utcnow(), None, {}, refresh_token="unknown"))
-    assert row.user_id is None
+    row = _insert_server_event(db, service.PendingEvent(login, utcnow(), None, {}, refresh_token="unknown"))
+    assert (row.name, row.user_id) == ("auth.login", None)
 
 
-def test_academy_of_every_subject(db: Session, seeded: dict) -> None:
+def test_academy_expr_every_subject(db: Session, seeded: dict) -> None:
+    def club(subject_type: str | None, subject_id: int | None) -> int | None:
+        expr = service.academy_expr(subject_type, subject_id)
+        return expr if expr is None or isinstance(expr, int) else db.scalar(select(expr))
+
     academy_id = seeded["academy_id"]
     lesson = _lesson(db, academy_id)
     resource = db.scalar(select(Resource).where(Resource.academy_id == academy_id))
@@ -383,15 +398,26 @@ def test_academy_of_every_subject(db: Session, seeded: dict) -> None:
     db.add(post)
     db.flush()
     route_id = db.scalar(select(Module.route_id).where(Module.id == lesson.module_id))
-    assert service.academy_of(db, "lesson", lesson.id) == academy_id
-    assert service.academy_of(db, "route", route_id) == academy_id
-    assert service.academy_of(db, "resource", resource.id) == academy_id
-    assert service.academy_of(db, "channel", channel.id) == academy_id
-    assert service.academy_of(db, "post", post.id) == academy_id
-    assert service.academy_of(db, "academy", academy_id) == academy_id
-    assert service.academy_of(db, "project", 1) is None
-    assert service.academy_of(db, None, 1) is None
-    assert service.academy_of(db, "lesson", None) is None
+    assert club("lesson", lesson.id) == academy_id
+    assert club("route", route_id) == academy_id
+    assert club("resource", resource.id) == academy_id
+    assert club("channel", channel.id) == academy_id
+    assert club("post", post.id) == academy_id
+    assert club("academy", academy_id) == academy_id
+    assert club("lesson", 999999) is None
+    assert club("project", 1) is None
+    assert club(None, 1) is None
+    assert club("lesson", None) is None
+
+
+@pytest.mark.parametrize("number", ["1e400", "-1e400", "NaN", "Infinity", "-Infinity"])
+def test_non_finite_numbers_are_422(as_member: TestClient, db: Session, tracking: None, number: str) -> None:
+    raw = f'{{"session_id":"abcdefgh","events":[{{"name":"page.view","properties":{{"x":{number}}}}}]}}'
+    response = as_member.post(
+        "/api/analytics/events", content=raw, headers={"Content-Type": "application/json"}
+    )
+    assert response.status_code == 422
+    assert _events(db) == []
 
 
 def test_events_survive_deleting_the_user_and_club(db: Session, seeded: dict) -> None:

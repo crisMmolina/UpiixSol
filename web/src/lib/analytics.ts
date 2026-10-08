@@ -6,11 +6,13 @@
 // - Batches: flushes every ~10 s or at 20 queued events, and once more when the tab is hidden.
 // - Auth: the API only takes events from signed-in users. `navigator.sendBeacon` cannot send the
 //   Authorization header and the refresh cookie only travels to /api/auth, so the page-hide flush is a
-//   `fetch` with `keepalive: true` through api() (in-memory access token, one refresh on 401). keepalive
-//   survives the page closing, like a beacon. See docs/analytics.md.
+//   `fetch` with `keepalive: true` through api() with the in-memory access token. keepalive survives the page
+//   closing, like a beacon. It never refreshes on 401 (`skipRefresh`): a refresh during unload could lose the
+//   rotated cookie and trip the replay revoke (UPS-020); that batch is dropped. See docs/analytics.md.
 // - Does nothing while signed out (`setAnalyticsUser(null)`), never throws, never blocks the UI, and turns
 //   itself off for the rest of the page's life after a 4xx it cannot recover from (invalid batch, 429...).
-// - Properties: ids, slugs, route templates and counters only. Never names, emails, boletas or search text.
+// - Properties: ids, slugs, route templates and counters only. Never names, emails, boletas or search text:
+//   use trackSearch(), which only sends the query length and the result count.
 
 import { ApiError, api } from "./api";
 
@@ -122,6 +124,7 @@ export async function flush(keepalive = false): Promise<void> {
       method: "POST",
       json: { session_id: sessionId(), events },
       keepalive,
+      skipRefresh: keepalive,
     });
   } catch (error) {
     // The batch is dropped either way: analytics never retries or blocks the UI.
@@ -136,5 +139,17 @@ export async function flush(keepalive = false): Promise<void> {
       disabled = true;
       queue = [];
     }
+  }
+}
+
+/** A search, without its text (it can hold names or emails): only where, how long and how many results. */
+export function trackSearch(scope: string, query: string, results: number, academySlug?: string): void {
+  try {
+    track("search.performed", {
+      academy_slug: academySlug,
+      properties: { scope, query_length: query.trim().length, results },
+    });
+  } catch {
+    // analytics never breaks the app
   }
 }
