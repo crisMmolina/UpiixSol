@@ -1,102 +1,164 @@
-import { List } from "@phosphor-icons/react";
+import { DotsThreeOutline, type Icon } from "@phosphor-icons/react";
 import { useState, type ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router";
+import { Link, NavLink } from "react-router";
 
 import { Drawer } from "@/components/Overlay";
-import { Notice } from "@/components/States";
-import { useAuth } from "@/lib/auth";
 
+import { NotificationBell, Toasts } from "./Notifications";
 import { UserMenu } from "./UserMenu";
 
 export interface NavItem {
   to: string;
   label: string;
   end?: boolean;
+  icon?: Icon;
 }
 
-/** Shared chrome for campus and academy layouts: sticky header, desktop nav, mobile drawer, footer. */
+/**
+ * App chrome for campus and club layouts (reference: course campus with an icon rail).
+ * Desktop: left icon rail + slim top bar + white content panel. Phone: top bar + bottom tab bar.
+ * No footer: this is an app, not a website.
+ */
 export function Shell({
   brand,
   brandTo,
   nav,
-  topSlot,
+  railTop,
+  headerSlot,
   children,
 }: {
   brand: ReactNode;
   brandTo: string;
   nav: NavItem[];
-  topSlot?: ReactNode;
+  /** Pinned first rail entry (e.g. the way back to the campus from a club). */
+  railTop?: NavItem;
+  /** Extra controls next to the brand (e.g. the club switcher). */
+  headerSlot?: ReactNode;
   children: ReactNode;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { user } = useAuth();
-  const location = useLocation();
-
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-11 items-center rounded-full px-3.5 text-[0.95rem] font-semibold no-underline transition ${
-      isActive ? "bg-primary/15 text-ink ring-1 ring-primary/40" : "text-muted hover:bg-line/50 hover:text-ink"
-    }`;
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Phones: up to 5 tabs; with more items the last tab is "Más" and opens the rest in a drawer.
+  const all = railTop ? [railTop, ...nav] : nav;
+  const tabs = all.length > 5 ? all.slice(0, 4) : all;
+  const rest = all.length > 5 ? all.slice(4) : [];
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
-      <a href="#contenido" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-surface focus:px-4 focus:py-2">
+    <div className="min-h-dvh bg-subtle">
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-surface focus:px-4 focus:py-2"
+      >
         Saltar al contenido
       </a>
-      <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
-        {topSlot}
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-8">
-          <button
-            type="button"
-            className="grid size-11 place-items-center rounded-full hover:bg-line/50 lg:hidden"
-            aria-label="Abrir menú"
-            onClick={() => setMenuOpen(true)}
-          >
-            <List size={24} weight="bold" />
-          </button>
+
+      <aside aria-label="Navegación" className="fixed inset-y-0 left-0 z-30 hidden w-[5.5rem] flex-col items-center gap-1 overflow-y-auto py-3 lg:flex">
+        {railTop && (
+          <>
+            <RailLink item={railTop} />
+            <hr className="my-1 w-10 border-line" />
+          </>
+        )}
+        <nav aria-label="Principal" className="flex flex-col items-center gap-1">
+          {nav.map((item) => (
+            <RailLink key={item.to} item={item} />
+          ))}
+        </nav>
+      </aside>
+
+      <div className="lg:pl-[5.5rem]">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 bg-subtle/90 px-4 backdrop-blur sm:px-6">
           <Link to={brandTo} className="flex shrink-0 items-center no-underline">
             {brand}
           </Link>
-          <nav aria-label="Principal" className="ml-4 hidden flex-1 items-center gap-1 lg:flex">
-            {nav.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="ml-auto">
+          {headerSlot}
+          <div className="ml-auto flex items-center gap-1">
+            <NotificationBell />
             <UserMenu />
           </div>
-        </div>
-      </header>
+        </header>
 
-      <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} title="Menú">
-        <nav aria-label="Principal móvil" className="flex flex-col gap-1">
-          {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onClick={() => setMenuOpen(false)}>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+        <main
+          id="contenido"
+          className="min-h-[calc(100dvh-4rem)] border-line bg-bg pb-24 lg:rounded-tl-2xl lg:border-l lg:border-t lg:pb-0"
+        >
+          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">{children}</div>
+        </main>
+      </div>
+
+      <nav
+        aria-label="Principal móvil"
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      >
+        {tabs.map((item) => (
+          <TabLink key={item.to} item={item} />
+        ))}
+        {rest.length > 0 && (
+          <button type="button" onClick={() => setMoreOpen(true)} className={tabClass(false)}>
+            <DotsThreeOutline size={22} weight="bold" aria-hidden />
+            Más
+          </button>
+        )}
+      </nav>
+      <Drawer open={moreOpen} onClose={() => setMoreOpen(false)} title="Más" side="right">
+        <div className="grid gap-1">
+          {rest.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={() => setMoreOpen(false)}
+                className={({ isActive }) =>
+                  `flex min-h-12 items-center gap-3 rounded-xl px-3 font-semibold no-underline ${isActive ? "bg-subtle text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`
+                }
+              >
+                {IconComponent && <IconComponent size={22} aria-hidden />}
+                {item.label}
+              </NavLink>
+            );
+          })}
+        </div>
       </Drawer>
 
-      {user?.must_change_password && location.pathname !== "/cuenta" && (
-        <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-8">
-          <Notice action={<Link to="/cuenta" className="font-semibold">Ir a Mi cuenta →</Link>}>
-            Estás usando una contraseña provisional. Cámbiala junto con tu correo en Mi cuenta → Seguridad.
-          </Notice>
-        </div>
-      )}
-
-      <main id="contenido" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-8 sm:py-10">
-        {children}
-      </main>
-
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted sm:px-8">
-          <span>UpiixSol Campus · Tu club, tus academias, un solo campus</span>
-          <span>IPN · UPIIZ</span>
-        </div>
-      </footer>
+      <Toasts />
     </div>
+  );
+}
+
+function RailLink({ item }: { item: NavItem }) {
+  const IconComponent = item.icon;
+  return (
+    <NavLink to={item.to} end={item.end} className="group flex w-20 flex-col items-center gap-1 py-1.5 text-[0.7rem] font-medium no-underline">
+      {({ isActive }) => (
+        <>
+          <span
+            className={`grid size-10 place-items-center rounded-xl transition duration-200 ${
+              isActive ? "bg-surface text-ink shadow-soft ring-1 ring-line" : "text-muted group-hover:bg-line/60 group-hover:text-ink"
+            }`}
+          >
+            {IconComponent && <IconComponent size={22} weight={isActive ? "fill" : "regular"} aria-hidden />}
+          </span>
+          <span className={isActive ? "text-ink" : "text-muted group-hover:text-ink"}>{item.label}</span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+const tabClass = (active: boolean) =>
+  `flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[0.7rem] font-medium no-underline ${active ? "text-ink" : "text-muted"}`;
+
+function TabLink({ item }: { item: NavItem }) {
+  const IconComponent = item.icon;
+  return (
+    <NavLink to={item.to} end={item.end} className={({ isActive }) => tabClass(isActive)}>
+      {({ isActive }) => (
+        <>
+          {IconComponent && <IconComponent size={22} weight={isActive ? "fill" : "regular"} aria-hidden />}
+          <span className="max-w-full truncate px-1">{item.label}</span>
+        </>
+      )}
+    </NavLink>
   );
 }

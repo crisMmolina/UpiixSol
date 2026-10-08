@@ -11,8 +11,10 @@ export function Card({ interactive = false, stripe = false, className = "", chil
   return (
     <div
       className={
-        "relative overflow-hidden rounded-card border border-line bg-surface shadow-soft " +
-        (interactive ? "transition hover:-translate-y-0.5 hover:shadow-lift " : "") +
+        "relative overflow-hidden rounded-card border border-line bg-surface " +
+        (interactive
+          ? "transition duration-200 ease-out hover:-translate-y-0.5 hover:border-transparent hover:shadow-lift active:translate-y-0 "
+          : "") +
         className
       }
       {...props}
@@ -28,7 +30,7 @@ export function SectionTitle({ title, action, subtitle }: { title: string; actio
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
       <div>
-        <h2 className="text-2xl">{title}</h2>
+        <h2 className="text-xl sm:text-2xl">{title}</h2>
         {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
       </div>
       {action}

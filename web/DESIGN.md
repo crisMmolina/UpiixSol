@@ -1,77 +1,67 @@
-# DESIGN · UpiixSol Campus
+# DESIGN · UpiixSol Campus (v2)
 
-> Única dirección visual del proyecto (owner: UPS-002). Fuente: `IDEA.md` §0.1. Provisional hasta que UPS-004 la aterrice en `web/src/index.css`; cambios por `uak msg UPS-002 --kind request`.
+> Única dirección visual del proyecto (owner: UPS-021). Tokens en `web/src/index.css`. v2 nace del feedback del 2026-10-08 y de un campus de cursos de referencia: menos ruido visual, app (no sitio web), blanco puro.
 
-## Personalidad
-Club estudiantil, cálido y cercano: **redondeado, grueso y alegre**, como el wordmark y el ajolote. Nada corporativo ni oscuro. Mucho aire, tarjetas suaves, acentos de color con intención (no fondos completos de marca).
+**Design read:** campus de aprendizaje para estudiantes del club, lenguaje limpio de app de cursos, poco ruido y color con intención. Dials (skill `design-taste-frontend`): VARIANCE 5 · MOTION 4 · DENSITY 4.
 
-## Tema (solo claro en v1)
-| Token CSS | Valor | Uso |
+## Terminología
+- La palabra visible es **Club / Clubes**. Nunca "Academia" en textos de UI o mensajes del API. Los nombres internos (`/a/:slug`, `academy_id`, `--academy-*`) se quedan.
+
+## Tema claro (por defecto)
+| Token | Valor | Uso | Contraste |
+|---|---|---|---|
+| `--color-bg` | `#FFFFFF` | Panel de contenido (blanco puro) | |
+| `--color-subtle` | `#F5F6F7` | Riel lateral, barra superior, fondos de chips | |
+| `--color-surface` | `#FFFFFF` | Tarjetas, menús, paneles | |
+| `--color-ink` | `#16181D` | Texto principal | 17.76:1 sobre blanco |
+| `--color-muted` | `#5E6470` | Texto secundario | 5.94:1 blanco · 5.49:1 subtle |
+| `--color-line` | `#E6E8EB` | Bordes y separadores | |
+| `--color-link` | `#037A41` | Enlaces y texto verde | 5.43:1 blanco · 5.02:1 subtle |
+
+Un solo gris (frío, neutral). Nada de beige.
+
+## Tema oscuro (vista de curso)
+`[data-theme="dark"]` en el contenedor redefine los mismos tokens; los componentes no cambian.
+
+| Token | Valor | Contraste |
 |---|---|---|
-| `--color-bg` | `#FBF8EF` | Fondo de página (crema cálido, igual al fondo de la mascota UpiixSol) |
-| `--color-surface` | `#FFFFFF` | Tarjetas, paneles, sidebar del reproductor |
-| `--color-text` | `#1F2A24` | Texto principal (13.98:1 sobre crema) |
-| `--color-muted` | `#5B6B62` | Texto secundario, metadatos (5.31:1 sobre crema) |
-| `--color-border` | `#E7E2D3` | Bordes de tarjetas y separadores |
-| `--color-video` | `#111714` | Solo el recuadro del video (el reproductor sigue en claro) |
+| bg / surface / subtle | `#121417` / `#1B1E22` / `#16191C` | |
+| ink | `#E8EAED` | 13.88:1 sobre surface |
+| muted | `#9BA3AD` | 6.56:1 sobre surface |
+| line | `#2B3036` | |
+| link | `#3DD68C` | 8.92:1 sobre surface (`#037A41` no pasa en oscuro) |
 
-## Marca por academia (variables cargadas de la BD)
-El campus raíz usa la paleta UpiixSol. Al entrar a `/a/{slug}`, `AcademyTheme` (UPS-004) sobrescribe estas variables con los colores de la academia (`GET /api/academies/{slug}` → `AcademyBranding`).
+## Color de cada club
+`--academy-primary/secondary/accent/accent-2` vienen de la BD (`AcademyTheme`). Texto sobre el primario = `--academy-on-primary` calculado (oscuro sobre `#00BF63`, 7.3:1). El color de marca se usa con intención: botón primario, barras de progreso, portadas de rutas y el ícono activo; no como fondo de páginas.
 
-| Variable | UpiixSol (raíz) | UpiixIA | Uso |
-|---|---|---|---|
-| `--academy-primary` | `#00BF63` | `#00BF63` | Botón primario (fondo), barras de progreso, checks |
-| `--academy-secondary` | `#04944F` | `#04944F` | Hover del primario, encabezados grandes, bordes activos |
-| `--academy-accent` | `#F28034` | `#7ED957` | Badges, resaltados, ilustración |
-| `--academy-accent-2` | `#B4422F` | — (cae a `--academy-secondary`) | Activo/hover del naranja, avisos, badges de alerta |
-| `--academy-logo` | `/brand/upiixsol/wordmark.png` | `/brand/upiixia/wordmark.png` | Header |
+## Estructura de la app
+- **Escritorio:** riel de íconos a la izquierda (`5.5rem`, ícono en cuadro de 40 px con la etiqueta debajo), barra superior delgada (logo, selector de club, campana, menú de usuario) sobre `subtle`, y el contenido en un panel blanco con esquina superior izquierda redondeada.
+- **Teléfono:** barra superior + barra inferior de pestañas (máx. 5; la quinta es "Más" si hay más secciones).
+- **Club:** el riel cambia a las secciones del club (Inicio, Rutas, Recursos, Comunidad, Eventos) con **Campus** fijo arriba para volver; el selector de club (⇅ junto al logo) salta entre clubes y el campus.
+- **Sin footer.** Es una app.
 
-`#FFDE59` **no** es color de marca (error en la imagen de paleta; IDEA §0.1).
-
-## Contraste (WCAG AA, calculado el 2026-10-06)
-| Combinación | Ratio | Veredicto | Regla |
-|---|---|---|---|
-| Blanco sobre `#00BF63` | 2.43 | ❌ | **Nunca** texto blanco sobre el verde primario |
-| `#1F2A24` sobre `#00BF63` | 6.10 | ✅ | Texto de botón primario = oscuro, negritas |
-| Blanco sobre `#04944F` | 3.92 | ⚠️ solo texto ≥ 18.66 px bold | Botones grandes / chips en negritas |
-| `#1F2A24` sobre `#F28034` | 5.59 | ✅ | Texto sobre naranja = oscuro |
-| Blanco sobre `#F28034` | 2.65 | ❌ | Prohibido |
-| Blanco sobre `#B4422F` | 5.58 | ✅ | Badges/avisos terracota con texto blanco |
-| `#1F2A24` sobre `#7ED957` | 8.45 | ✅ | Acento UpiixIA con texto oscuro |
-| `#04944F` sobre crema | 3.69 | ⚠️ solo texto grande | Títulos grandes en verde |
-| `#037A41` sobre crema / blanco | 5.12 / 5.43 | ✅ | **Enlaces y texto verde normal** (`--color-link`) |
-| `#00BF63` / `#F28034` sobre crema | 2.29 / 2.50 | ❌ como texto | Solo iconos decorativos, barras, bordes |
-
-Como los colores de cada academia vienen de la BD, `AcademyTheme` debe calcular el color de texto sobre `--academy-primary` (oscuro `#1F2A24` o blanco, el que dé ≥ 4.5:1) y exponerlo como `--academy-on-primary`. El panel de identidad (UPS-008/009) avisa si un color elegido no logra AA.
+## Notificaciones
+`useNotifications().notify({...})`. Tarjetas que entran arriba a la derecha y se van solas (6 s); la campana muestra el número sin leer y abre un panel lateral derecho con todas. La contraseña provisional vive aquí (una vez por sesión como tarjeta, siempre en la campana).
 
 ## Tipografía
-- Títulos: **Fredoka** 600/700 (`@fontsource/fredoka`), redondeada como el wordmark. `h1` 2.25rem móvil / 3rem escritorio; `h2` 1.75rem; `h3` 1.25rem.
-- Cuerpo y UI: **Inter Variable** (`@fontsource-variable/inter`) 400/500/600, 16 px base, `line-height` 1.6 en texto largo.
-- Números (porcentajes, contadores): Inter con `font-variant-numeric: tabular-nums`.
+- Títulos: **Fredoka** 600 (marca, redondeada). Cuerpo y UI: **Inter Variable** 400/500/600. Números con `tabular-nums`.
+- Tamaños contenidos: `h1` 1.875rem móvil / 2.25rem escritorio; jerarquía con peso y color, no con tamaño.
 
-## Forma, espacio y profundidad
-- Radios: tarjetas `1.25rem`, botones `9999px` (píldora), inputs `0.75rem`, video `1rem`.
-- Sombra única suave: `0 1px 2px rgb(31 42 36 / 6%), 0 8px 24px rgb(31 42 36 / 6%)`; hover de tarjeta sube 2 px.
-- Espaciado en múltiplos de 4 px; contenedor máx. `72rem`, gutter `1rem` móvil / `2rem` escritorio.
-- Iconos: `@phosphor-icons/react`, peso `bold` en navegación, `regular` en texto, 20–24 px.
+## Forma y profundidad
+- Radios: tarjetas `1rem`, campos `0.75rem`, botones píldora, video `1rem`.
+- Tarjetas con borde fino y **sin sombra**; la sombra aparece solo al pasar el cursor en tarjetas clicables (sube 2 px).
+- Botones: primario con color del club; secundario blanco con borde gris; fantasma sin borde. Presión `scale(0.98)`.
 
-## Componentes clave
-- **Botón primario**: fondo `--academy-primary`, texto `--academy-on-primary` en negritas, hover `--academy-secondary`. Secundario: borde 2 px `--academy-secondary`, texto `--color-link`.
-- **Tarjeta de academia**: superficie blanca, franja superior de 6 px con `--academy-primary`, logo de la academia, descripción corta, chip "Inscrito".
-- **Barra de progreso**: pista `#E7E2D3`, relleno `--academy-primary`, porcentaje en texto oscuro al lado (no dentro de la barra).
-- **Reproductor** (layout de `docs/ref/player-reference.png`, sin copiar su marca): sidebar blanco a la izquierda (título de ruta, barra + %, buscador, módulos plegables con `x/y` y check), área principal con video 16:9 en `--color-video`, botones Anterior / Siguiente / Marcar como completada, "Descripción" y "Recursos de la clase". En móvil el sidebar es un drawer.
-- **Comunidad**: columna de canales (Feed, General, uno por academia con un punto de su color), posts en tarjetas, autor = avatar + nickname.
-- **Estados**: cada vista de datos tiene skeleton (carga), vacío (con la mascota de la academia y una acción) y error (mensaje + reintentar).
+## Movimiento (sutil)
+- Entrada de listas escalonada (`.enter` + `--i`, 40 ms por elemento, 260 ms).
+- Tarjetas de aviso deslizan desde la derecha; menús aparecen con un fade corto.
+- Skeleton con brillo suave. Todo se apaga con `prefers-reduced-motion`.
 
-## Mascotas y logos
-- Usar los archivos de `web/public/brand/` tal cual (`IDEA.md` §0.1: no redibujar ni recrear en SVG).
-- Las mascotas traen fondo propio (crema la de UpiixSol, verde muy claro la de UpiixIA): colocarlas sobre tarjetas o bloques del mismo tono, nunca sobre fondos que choquen.
-- Wordmarks: altura 32 px en header móvil, 40 px escritorio; siempre con `alt` ("UpiixSol" / nombre de la academia).
+## Estados
+Cada vista de datos tiene skeleton con la forma final (`SkeletonText`, `CardSkeleton`, `ListSkeleton`, `GridSkeleton`, `SkeletonAvatar`), vacío con la mascota del club y error con reintentar.
 
-## Movimiento
-`motion/react` con transiciones cortas (150–250 ms, `ease-out`): cambio de tema de academia (cross-fade de colores 200 ms), aparición de tarjetas, check de "completada". Todo se desactiva con `prefers-reduced-motion: reduce`.
+## Logos y mascotas
+PNG con fondo transparente en `web/public/brand/` (fondo retirado y recortado el 2026-10-08), revisados sobre blanco y sobre oscuro. No redibujar ni recrear en SVG.
 
 ## Accesibilidad y responsive
-- Foco visible: anillo 3 px `--academy-secondary` con `outline-offset: 2px`.
-- Objetivos táctiles ≥ 44 px. Diseñar primero a 390 px; probar también a 1280 px.
-- `lang="es-MX"`, textos de UI en español (México), fechas con `Intl.DateTimeFormat("es-MX")`.
+Foco visible (3 px `--academy-secondary`), objetivos táctiles ≥ 44 px, primero 390 px y luego 1280 px, `lang="es-MX"`. Sin guiones largos en textos de UI.

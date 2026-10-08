@@ -1,4 +1,4 @@
-/* Design tokens from web/DESIGN.md (owner UPS-004). Light theme only in v1. */
+/* Design tokens from web/DESIGN.md (owner UPS-021). Light theme on white; [data-theme="dark"] for the course view. */
 @import "tailwindcss";
 @import "@fontsource/fredoka/500.css";
 @import "@fontsource/fredoka/600.css";
@@ -9,14 +9,16 @@
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fredoka", "Inter Variable", ui-sans-serif, sans-serif;
 
-  --color-bg: #fbf8ef;
-  --color-surface: #ffffff;
-  --color-ink: #1f2a24;
-  --color-muted: #5b6b62;
-  --color-line: #e7e2d3;
-  --color-video: #111714;
-  --color-link: #037a41;
-  --color-danger: #b4422f;
+  /* Values come from the theme variables below, so [data-theme="dark"] swaps them in place. */
+  --color-bg: var(--theme-bg);
+  --color-surface: var(--theme-surface);
+  --color-subtle: var(--theme-subtle);
+  --color-ink: var(--theme-ink);
+  --color-muted: var(--theme-muted);
+  --color-line: var(--theme-line);
+  --color-video: #0b0c0e;
+  --color-link: var(--theme-link);
+  --color-danger: var(--theme-danger);
 
   /* Academy theme: defaults = UpiixSol palette; AcademyTheme overrides the --academy-* vars. */
   --color-primary: var(--academy-primary);
@@ -26,10 +28,43 @@
   --color-on-primary: var(--academy-on-primary);
   --color-on-accent: var(--academy-on-accent);
 
-  --radius-card: 1.25rem;
+  --radius-card: 1rem;
   --radius-field: 0.75rem;
-  --shadow-soft: 0 1px 2px rgb(31 42 36 / 6%), 0 8px 24px rgb(31 42 36 / 6%);
-  --shadow-lift: 0 2px 4px rgb(31 42 36 / 8%), 0 12px 32px rgb(31 42 36 / 10%);
+  --shadow-soft: 0 1px 2px rgb(22 24 29 / 5%), 0 4px 16px rgb(22 24 29 / 4%);
+  --shadow-lift: 0 2px 6px rgb(22 24 29 / 6%), 0 16px 36px rgb(22 24 29 / 9%);
+
+  --animate-enter: enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-toast-in: toast-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
 }
 
 :root {
@@ -38,8 +73,33 @@
   --academy-accent: #f28034;
   --academy-accent-2: #b4422f;
   --academy-on-primary: #1f2a24;
-  --academy-on-accent: #1f2a24;
+  --academy-on-accent: #16181d;
+
+  /* Light theme: pure white page, one cool-neutral gray family (AA values in web/DESIGN.md). */
+  --theme-bg: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-subtle: #f5f6f7;
+  --theme-ink: #16181d;
+  --theme-muted: #5e6470;
+  --theme-line: #e6e8eb;
+  --theme-link: #037a41;
+  --theme-danger: #b4422f;
   color-scheme: light;
+}
+
+/* Dark scope (course view). Same token names, so components need no changes. */
+[data-theme="dark"] {
+  --theme-bg: #121417;
+  --theme-surface: #1b1e22;
+  --theme-subtle: #16191c;
+  --theme-ink: #e8eaed;
+  --theme-muted: #9ba3ad;
+  --theme-line: #2b3036;
+  --theme-link: #3dd68c;
+  --theme-danger: #f0846f;
+  color-scheme: dark;
+  background-color: var(--theme-bg);
+  color: var(--theme-ink);
 }
 
 @layer base {
@@ -71,6 +131,10 @@
     border-radius: 0.25rem;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   ::selection {
     background: color-mix(in srgb, var(--academy-primary) 30%, transparent);
   }
@@ -95,6 +159,18 @@
 }
 
 @layer components {
+  /* Staggered entrance: add .enter and set style={{ "--i": index }} for the delay. */
+  .enter {
+    animation: var(--animate-enter);
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+  /* Skeleton shimmer (static under reduced motion). */
+  .skeleton {
+    background: linear-gradient(90deg, var(--theme-line) 0%, var(--theme-subtle) 50%, var(--theme-line) 100%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
   /* Rendered markdown (lesson descriptions, posts, blog). Content is sanitized before render. */
   .prose-campus {
     @apply text-ink;
