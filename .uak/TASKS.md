@@ -524,3 +524,21 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Panels get skeletons and the v2 look.
 - **Verify:** `uv run pytest -q && npm --prefix web run build`
 - **Next step:** grep and replace messages.
+
+## UPS-029 · Redesign v2: acceptance flow (e2e) updated to the new screens
+
+- **Type:** test
+- **Priority:** P0
+- **Estimate:** 120 min
+- **Rubric / Spec:** S001 flow steps 1–6 · `docs/acceptance.md`
+- **Depends on:** UPS-021, UPS-022, UPS-023, UPS-024, UPS-026, UPS-028
+- **Uses contract:** UPS-016
+- **Related:** UPS-016, UPS-025, UPS-027
+- **Paths:** e2e/, docs/acceptance.md
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The 6 steps pass on desktop and mobile against the v2 screens, with selectors by role and accessible name (no CSS classes): "Club/Clubes" labels, the club home "Continúa aprendiendo" tile instead of "Continuar: Clase 3 · 50 %", the shell nav and notifications instead of the provisional-password banner.
+  - Step 3 completes the lesson the v2 way: the test dispatches the YouTube player "ended" state as a `message` event from the `https://www.youtube-nocookie.com` origin and the iframe as source (no network to YouTube), then checks progress 75 % after a reload. A second message from another origin changes nothing.
+  - `docs/acceptance.md` screenshots and step descriptions match the v2 flow.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** run e2e on main after the wave merges and fix step by step.
