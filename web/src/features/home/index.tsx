@@ -1,18 +1,19 @@
-// Flow step 2 (UPS-006): UpiixSol campus home + academies list.
-import { ArrowRight, CalendarBlank, ChatsCircle, CheckCircle, Sparkle } from "@phosphor-icons/react";
+// Flow step 2 (UPS-006): UpiixSol campus home + clubs list.
+import { ArrowRight, CalendarBlank, CheckCircle, PlayCircle, Sparkle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
-import { Link, type RouteObject } from "react-router";
+import { Link, Navigate, type RouteObject } from "react-router";
 
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { Button, ButtonLink } from "@/components/Button";
 import { Card, SectionTitle } from "@/components/Card";
-import { CardSkeleton, PageSkeleton } from "@/components/Skeleton";
+import { ProgressBar } from "@/components/ProgressBar";
+import { Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
 import { AcademyTheme, safeAssetPath } from "@/lib/theme";
-import type { AcademyCardOut, EventOut, HomeContentOut, Page, PostOut } from "@/lib/types";
+import type { AcademyCardOut, ContinueOut, EventOut, HomeContentOut, Page, PostOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
 
 export const order = 20;
@@ -74,20 +75,29 @@ export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
   return (
     <AcademyTheme branding={academy}>
       <Link to={`/a/${academy.slug}`} className="block h-full no-underline" aria-label={`Entrar a ${academy.name}`}>
-        <Card stripe interactive className="flex h-full flex-col gap-3 p-5">
-          <div className="flex items-start justify-between gap-2">
-            {logo ? <img src={logo} alt="" className="h-9 w-auto" loading="lazy" /> : <span className="font-display text-2xl font-bold text-ink">{academy.name}</span>}
-            {academy.is_enrolled && (
-              <Badge tone="primary" icon={<CheckCircle weight="bold" />}>
-                Inscrito
-              </Badge>
+        <Card interactive className="flex h-full flex-col">
+          <div className="flex h-24 items-center justify-center bg-primary/10 px-5">
+            {logo ? (
+              <img src={logo} alt="" className="max-h-14 w-auto" loading="lazy" />
+            ) : (
+              <span className="font-display text-2xl font-bold text-ink">{academy.name}</span>
             )}
           </div>
-          <h3 className="text-xl">{academy.name}</h3>
-          <p className="flex-1 text-sm text-muted">{academy.short_description}</p>
-          <span className="inline-flex items-center gap-1 font-semibold text-link">
-            Entrar <ArrowRight weight="bold" aria-hidden />
-          </span>
+          <div aria-hidden className="h-1 bg-primary" />
+          <div className="flex flex-1 flex-col gap-2 p-5">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-xl">{academy.name}</h3>
+              {academy.is_enrolled && (
+                <Badge tone="primary" icon={<CheckCircle weight="bold" />}>
+                  Miembro
+                </Badge>
+              )}
+            </div>
+            <p className="flex-1 text-sm text-muted">{academy.short_description}</p>
+            <span className="inline-flex items-center gap-1 font-semibold text-link">
+              Entrar <ArrowRight weight="bold" aria-hidden />
+            </span>
+          </div>
         </Card>
       </Link>
     </AcademyTheme>
@@ -126,11 +136,135 @@ export function PostPreview({ post }: { post: PostOut }) {
   );
 }
 
+interface ClubHomeLite {
+  academy: AcademyCardOut;
+  continue: ContinueOut | null;
+}
+
+/** Same silhouette as ContinueCard so the block does not jump when it resolves. */
+function ContinueSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Cargando tu avance">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="rounded-card border border-line bg-surface p-5 shadow-soft">
+          <Skeleton className="mb-3 h-8 w-24" />
+          <Skeleton className="mb-2 h-5 w-4/5" />
+          <Skeleton className="mb-4 h-3 w-full" />
+          <Skeleton className="h-10 w-32 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ContinueTile({ club }: { club: ClubHomeLite }) {
+  const info = club.continue as ContinueOut;
+  const logo = safeAssetPath(club.academy.logo_url);
+  const done = info.percent === 100;
+  return (
+    <AcademyTheme branding={club.academy}>
+      <Card interactive className="flex h-full flex-col gap-3 p-5">
+        {logo ? <img src={logo} alt={club.academy.name} className="h-8 w-auto self-start" loading="lazy" /> : <p className="font-display font-bold text-ink">{club.academy.name}</p>}
+        <p className="text-lg font-semibold text-ink">
+          Clase {info.lesson_number} · {info.lesson_title}
+        </p>
+        <ProgressBar percent={info.percent} label={`Progreso en ${club.academy.name}`} />
+        <ButtonLink to={`/a/${club.academy.slug}/clases/${info.lesson_id}`} className="mt-auto self-start" icon={<PlayCircle weight="fill" />}>
+          {done ? "Repasar" : "Continuar"}
+        </ButtonLink>
+      </Card>
+    </AcademyTheme>
+  );
+}
+
+function ContinueLearning({ clubs }: { clubs: AcademyCardOut[] }) {
+  const [items, setItems] = useState<ClubHomeLite[] | null>(null);
+  const enrolled = clubs.filter((c) => c.is_enrolled).slice(0, 6);
+  const key = enrolled.map((c) => c.slug).join(",");
+
+  useEffect(() => {
+    let active = true;
+    const list = key ? key.split(",") : [];
+    Promise.all(list.map((slug) => api<ClubHomeLite>(`/academies/${slug}/home`).catch(() => null))).then((all) => {
+      if (active) setItems(all.filter((c): c is ClubHomeLite => !!c && !!c.continue));
+    });
+    return () => {
+      active = false;
+    };
+  }, [key]);
+
+  return (
+    <section aria-labelledby="continuar">
+      <h2 id="continuar" className="mb-4 text-2xl">
+        Continúa aprendiendo
+      </h2>
+      {items === null && enrolled.length > 0 ? (
+        <ContinueSkeleton />
+      ) : items && items.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((club) => (
+            <ContinueTile key={club.academy.id} club={club} />
+          ))}
+        </div>
+      ) : (
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <p className="text-muted">Cuando empieces una clase, aquí retomas justo donde te quedaste.</p>
+          <ButtonLink to="/clubes" variant="secondary">
+            Ver clubes
+          </ButtonLink>
+        </Card>
+      )}
+    </section>
+  );
+}
+
+function ListSkeleton({ rows }: { rows: number }) {
+  return (
+    <div className="grid gap-4" aria-hidden>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex gap-3">
+          <Skeleton className="size-12 shrink-0 rounded-2xl" />
+          <div className="flex-1">
+            <Skeleton className="mb-2 h-4 w-3/5" />
+            <Skeleton className="h-3 w-2/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HomeSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando inicio" className="grid gap-10">
+      <div className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
+        <div>
+          <Skeleton className="mb-3 h-4 w-32" />
+          <Skeleton className="mb-3 h-12 w-4/5" />
+          <Skeleton className="h-5 w-3/5" />
+        </div>
+        <Skeleton className="mx-auto hidden h-40 w-full max-w-xs lg:block" />
+      </div>
+      <ContinueSkeleton />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-card border border-line bg-surface p-6 shadow-soft">
+          <Skeleton className="mb-5 h-7 w-44" />
+          <ListSkeleton rows={3} />
+        </div>
+        <div className="rounded-card border border-line bg-surface p-6 shadow-soft">
+          <Skeleton className="mb-5 h-7 w-44" />
+          <ListSkeleton rows={3} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomePage() {
   const { user } = useAuth();
   const { data, error, loading, retry } = useData<HomeOut>("/home");
 
-  if (loading) return <PageSkeleton />;
+  if (loading) return <HomeSkeleton />;
   if (error || !data) return <ErrorState message={error ?? "No pudimos cargar el inicio."} onRetry={retry} />;
 
   return (
@@ -140,32 +274,15 @@ function HomePage() {
           <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
             <Sparkle weight="fill" aria-hidden /> ¡Hola, {user?.nickname}!
           </p>
-          <h1 className="text-3xl sm:text-5xl">{data.hero?.hero_title ?? "Bienvenido a UpiixSol Campus"}</h1>
-          {data.hero?.hero_text && <p className="mt-4 max-w-xl text-lg text-muted">{data.hero.hero_text}</p>}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <ButtonLink to="/academias" size="lg">
-              Explorar academias
-            </ButtonLink>
-            <ButtonLink to="/comunidad" size="lg" variant="secondary" icon={<ChatsCircle weight="bold" />}>
-              Comunidad
-            </ButtonLink>
-          </div>
+          <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
+          <p className="mt-4 max-w-xl text-lg text-muted">
+            {data.hero?.hero_text || "Retoma tus clases donde te quedaste y conversa con tu comunidad."}
+          </p>
         </div>
-        <img src="/brand/upiixsol/mascot.png" alt="Ajolote de UpiixSol" className="mx-auto w-full max-w-sm rounded-card" />
+        <img src="/brand/upiixsol/mascot.png" alt="Ajolote de UpiixSol" className="mx-auto w-full max-w-xs" />
       </section>
 
-      <section aria-labelledby="academias">
-        <SectionTitle title="Academias" subtitle="Elige una y entra: todo el campus toma su identidad." action={<Link to="/academias">Ver todas</Link>} />
-        {data.academies.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.academies.map((academy) => (
-              <AcademyCard key={academy.id} academy={academy} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="Aún no hay academias" description="La mesa directiva está preparando las primeras." />
-        )}
-      </section>
+      <ContinueLearning clubs={data.academies} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-6">
@@ -181,7 +298,7 @@ function HomePage() {
           )}
         </Card>
         <Card className="p-6">
-          <SectionTitle title="Actividad de la comunidad" action={<Link to="/comunidad">Ir a la comunidad</Link>} />
+          <SectionTitle title="Últimas publicaciones" action={<Link to="/comunidad">Ir a la comunidad</Link>} />
           {data.recent_activity.length ? (
             <ul className="grid gap-4">
               {data.recent_activity.map((post) => (
@@ -193,6 +310,19 @@ function HomePage() {
           )}
         </Card>
       </div>
+
+      <section aria-labelledby="clubes">
+        <SectionTitle title="Clubes" subtitle="Elige uno y entra: el campus toma su identidad." action={<Link to="/clubes">Ver todos</Link>} />
+        {data.academies.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.academies.map((academy) => (
+              <AcademyCard key={academy.id} academy={academy} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Aún no hay clubes" description="La mesa directiva está preparando los primeros." />
+        )}
+      </section>
 
       {data.featured_projects.length > 0 && (
         <section aria-labelledby="proyectos">
@@ -213,7 +343,21 @@ function HomePage() {
   );
 }
 
-function AcademiesPage() {
+function ClubCardSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando club" className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+      <Skeleton className="h-24 w-full rounded-none" />
+      <div className="p-5">
+        <Skeleton className="mb-3 h-6 w-2/3" />
+        <Skeleton className="mb-2 h-4 w-full" />
+        <Skeleton className="mb-4 h-4 w-4/5" />
+        <Skeleton className="h-5 w-16" />
+      </div>
+    </div>
+  );
+}
+
+function ClubsPage() {
   const [items, setItems] = useState<AcademyCardOut[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "more" | "error">("loading");
@@ -237,13 +381,13 @@ function AcademiesPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-3xl sm:text-4xl">Academias</h1>
-      <p className="mb-8 text-muted">Todas las academias activas del club. Entra a cualquiera; inscríbete para seguir tu progreso.</p>
+      <h1 className="mb-2 text-3xl sm:text-4xl">Clubes</h1>
+      <p className="mb-8 text-muted">Todos los clubes activos del campus. Entra a cualquiera y sigue tu progreso.</p>
       {state === "loading" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
+          <ClubCardSkeleton />
+          <ClubCardSkeleton />
+          <ClubCardSkeleton />
         </div>
       ) : state === "error" ? (
         <ErrorState
@@ -254,7 +398,7 @@ function AcademiesPage() {
           }}
         />
       ) : items.length === 0 ? (
-        <EmptyState title="Aún no hay academias" />
+        <EmptyState title="Aún no hay clubes" description="La mesa directiva está preparando los primeros." />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -291,7 +435,8 @@ export const routes: RouteObject[] = [
     ),
     children: [
       { path: "/", element: <HomePage /> },
-      { path: "/academias", element: <AcademiesPage /> },
+      { path: "/clubes", element: <ClubsPage /> },
+      { path: "/academias", element: <Navigate to="/clubes" replace /> },
     ],
   },
 ];
