@@ -1,11 +1,15 @@
+import os
+import threading
 from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, delete, event, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
+from app.errors import AppError
 from app.models import RefreshToken, Role, User
 from app.models.common import utcnow
 from app.routers.auth import REFRESH_COOKIE
@@ -270,8 +274,9 @@ def test_concurrent_refresh_only_one_wins(
     assert len(winners) == 1
     assert loser.status_code == 401 and loser.json()["error"]["code"] == "refresh_race"
     assert "set-cookie" not in loser.headers  # the winner's new cookie must survive
-    family = list(db.scalars(select(RefreshToken)))
-    assert len(family) == 2 and all(t.revoked_at is None for t in family)  # the family is kept
+    used, current = sorted(db.scalars(select(RefreshToken)), key=lambda t: t.id)
+    assert used.revoked_at is not None  # the used token retires…
+    assert current.revoked_at is None  # …and the family stays
 
 
 def test_two_tabs_refreshing_at_once_keep_the_session(client: TestClient, db: Session) -> None:
@@ -392,3 +397,113 @@ def test_new_token_after_password_change_works_in_a_fresh_session(client: TestCl
     new = {"Authorization": f"Bearer {changed.json()['access_token']}"}
     assert client.get("/api/auth/me", headers=new).status_code == 200
     assert client.get("/api/auth/me", headers=old).status_code == 401
+
+
+# ── Session lifetime and replays (UPS-020, security review) ──
+
+
+def test_a_second_late_reuse_of_a_token_revokes_the_family(client: TestClient, db: Session) -> None:
+    """One concurrent tab is tolerated; a second request with the same used token is a stolen cookie."""
+    old_raw = client.post("/api/auth/register", json=REGISTER).cookies[REFRESH_COOKIE]
+    new_raw = client.post("/api/auth/refresh").cookies[REFRESH_COOKIE]
+    client.cookies.set(REFRESH_COOKIE, old_raw, path="/api/auth")
+    assert client.post("/api/auth/refresh").json()["error"]["code"] == "refresh_race"
+    client.cookies.set(REFRESH_COOKIE, old_raw, path="/api/auth")
+    again = client.post("/api/auth/refresh")
+    assert again.status_code == 401 and again.json()["error"]["code"] == "invalid_refresh"
+    assert all(t.revoked_at is not None for t in db.scalars(select(RefreshToken)))
+    client.cookies.set(REFRESH_COOKIE, new_raw, path="/api/auth")
+    assert client.post("/api/auth/refresh").status_code == 401  # the thief's rotation died with the family
+
+
+def test_rotation_keeps_the_family_expiry_from_the_login(client: TestClient, db: Session) -> None:
+    """A family lives jwt_refresh_days from the login: rotating it never pushes that date forward."""
+    client.post("/api/auth/register", json=REGISTER)
+    login_expiry = db.scalar(select(RefreshToken.expires_at))
+    for _ in range(3):
+        assert client.post("/api/auth/refresh").status_code == 200
+    tokens = list(db.scalars(select(RefreshToken)))
+    assert len(tokens) == 4 and {t.expires_at for t in tokens} == {login_expiry}
+
+    current = max(tokens, key=lambda t: t.id)
+    current.expires_at = utcnow() - timedelta(seconds=1)  # the 7 days since the login are over
+    db.flush()
+    assert client.post("/api/auth/refresh").json()["error"]["code"] == "invalid_refresh"
+    assert _login(client).status_code == 200  # a new login starts a new family with the full lifetime
+    newest = db.scalar(select(RefreshToken).order_by(RefreshToken.id.desc()).limit(1))
+    assert newest.expires_at > utcnow() + timedelta(days=get_settings().jwt_refresh_days - 1)
+
+
+def test_refresh_and_password_change_lock_the_user_row(client: TestClient, db: Session) -> None:
+    """Both take SELECT … FOR UPDATE on the user before touching tokens (rendered on Postgres only)."""
+    locks: list[str] = []
+
+    @event.listens_for(db, "do_orm_execute")
+    def _capture(state) -> None:
+        sql = str(state.statement.compile(dialect=postgresql.dialect()))
+        if "FOR UPDATE" in sql and "FROM users" in sql:
+            locks.append(sql)
+
+    client.post("/api/auth/register", json=REGISTER)
+    assert client.post("/api/auth/refresh").status_code == 200
+    assert len(locks) == 1
+    user = db.scalar(select(User))
+    auth_service.revoke_all_for_user(db, user.id)
+    assert len(locks) == 2
+
+
+PG_URL = os.environ.get("DATABASE_URL", "")
+
+
+@pytest.mark.skipif(not PG_URL.startswith("postgresql"), reason="row locks need Postgres (backend-postgres)")
+@pytest.mark.parametrize("refresh_first", [True, False], ids=["refresh-first", "change-first"])
+def test_refresh_racing_a_password_change_leaves_no_live_token(refresh_first: bool) -> None:
+    """Two real connections: whichever commits first, the password change ends every session."""
+    engine = create_engine(PG_URL)
+    sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    with sessions() as setup:
+        user = make_user(setup, email=f"race-{refresh_first}@upiixsol.dev".lower())
+        _, raw = auth_service.issue_session(setup, user)
+        setup.commit()
+        user_id = user.id
+    refresher, changer = sessions(), sessions()
+    outcome: dict[str, str] = {}
+
+    def refresh() -> None:
+        try:
+            auth_service.rotate_refresh(refresher, raw)
+            refresher.commit()
+            outcome["refresh"] = "ok"
+        except AppError as error:
+            refresher.rollback()
+            outcome["refresh"] = error.code
+
+    def change() -> None:
+        auth_service.revoke_all_for_user(changer, user_id)
+        changer.commit()
+
+    second, holder = (change, refresher) if refresh_first else (refresh, changer)
+    try:
+        if refresh_first:
+            auth_service.rotate_refresh(refresher, raw)  # holds the lock, new token not committed yet
+        else:
+            auth_service.revoke_all_for_user(changer, user_id)
+        waiter = threading.Thread(target=second)
+        waiter.start()
+        waiter.join(0.5)
+        assert waiter.is_alive()  # blocked on the user's row lock
+        holder.commit()
+        waiter.join(10)
+        assert not waiter.is_alive()
+        if not refresh_first:
+            assert outcome["refresh"] == "invalid_refresh"
+        with sessions() as check:
+            live = select(RefreshToken).filter_by(user_id=user_id, revoked_at=None)
+            assert check.scalars(live).all() == []
+    finally:
+        refresher.close()
+        changer.close()
+        with sessions() as cleanup:
+            cleanup.execute(delete(User).where(User.id == user_id))
+            cleanup.commit()
+        engine.dispose()

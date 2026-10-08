@@ -2,8 +2,14 @@
 
 Refresh tokens: random, stored as sha256, rotated on every use. Reusing an already-used token
 means it was stolen, so the whole family is revoked (the user must log in again). The use is claimed
-atomically, and a reuse within REFRESH_GRACE of the first one is two tabs refreshing at once: it gets a
-401 `refresh_race` that keeps the family (UPS-020).
+atomically, and one reuse within REFRESH_GRACE of the first one is two tabs refreshing at once: it gets a
+401 `refresh_race` that keeps the family. A second reuse is theft again (UPS-020).
+
+A family lives jwt_refresh_days from the login, however often it rotates: a stolen cookie that keeps
+winning the rotation still dies on that date (UPS-020).
+
+Refresh and "end every session" lock the user's row (Postgres): a rotation that commits while a password
+change revokes the family can no longer leave a fresh token behind (UPS-020).
 """
 
 import secrets
@@ -85,17 +91,27 @@ def authenticate(db: Session, data: LoginIn) -> User:
     return user
 
 
-def _store_refresh(db: Session, user: User, family_id: str) -> str:
+def _lock_user(db: Session, user_id: int) -> User | None:
+    """SELECT … FOR UPDATE on the user (no-op on SQLite, which already serializes writers). An already
+    loaded User keeps its unflushed changes (a password change sets the new hash before revoking)."""
+    return db.scalar(select(User).where(User.id == user_id).with_for_update())
+
+
+def _store_refresh(db: Session, user: User, family_id: str, expires_at: datetime) -> str:
     raw, hashed = new_refresh_token()
-    expires = utcnow() + timedelta(days=get_settings().jwt_refresh_days)
-    db.add(RefreshToken(user_id=user.id, token_hash=hashed, family_id=family_id, expires_at=expires))
+    db.add(RefreshToken(user_id=user.id, token_hash=hashed, family_id=family_id, expires_at=expires_at))
     db.flush()
     return raw
 
 
-def issue_session(db: Session, user: User, family_id: str | None = None) -> tuple[TokenOut, str]:
-    """Access token (body) + new refresh token (cookie)."""
-    raw = _store_refresh(db, user, family_id or secrets.token_hex(16))
+def issue_session(
+    db: Session, user: User, family_id: str | None = None, expires_at: datetime | None = None
+) -> tuple[TokenOut, str]:
+    """Access token (body) + new refresh token (cookie). A new family (login) gets the full lifetime; a
+    rotation passes the family's own expiry, so it never moves forward."""
+    if expires_at is None:
+        expires_at = utcnow() + timedelta(days=get_settings().jwt_refresh_days)
+    raw = _store_refresh(db, user, family_id or secrets.token_hex(16), expires_at)
     token = TokenOut(
         access_token=create_access_token(user),
         expires_in=get_settings().jwt_access_minutes * 60,
@@ -120,6 +136,8 @@ def rotate_refresh(db: Session, raw: str | None) -> tuple[TokenOut, str]:
     )
     if stored is None or _aware(stored.expires_at) <= utcnow():
         raise AppError(401, code="invalid_refresh")
+    # Taken before the claim and held until commit; revoke_all_for_user takes the same lock first.
+    user = _lock_user(db, stored.user_id)
     # Only one request can move used_at from NULL: two refreshes with the same token never both win.
     claimed = db.execute(
         update(RefreshToken)
@@ -133,17 +151,27 @@ def rotate_refresh(db: Session, raw: str | None) -> tuple[TokenOut, str]:
     if claimed != 1:
         db.refresh(stored)  # what the request that won wrote
         just_used = stored.used_at is not None and utcnow() - _aware(stored.used_at) <= REFRESH_GRACE
-        if just_used and stored.revoked_at is None:
+        # The first late reuse retires the used token (revoked_at); only that one request gets the race.
+        retired = (
+            just_used
+            and db.execute(
+                update(RefreshToken)
+                .where(RefreshToken.id == stored.id, RefreshToken.revoked_at.is_(None))
+                .values(revoked_at=utcnow())
+            ).rowcount
+            == 1
+        )
+        if retired:
+            db.commit()
             raise AppError(401, code="refresh_race")  # another tab of the same browser just rotated it
-        revoke_family(db, stored.family_id)  # replay of a used token → assume theft
+        revoke_family(db, stored.family_id)  # replay of a used or retired token → assume theft
         db.commit()
         raise AppError(401, code="invalid_refresh")
-    user = db.get(User, stored.user_id)
     if user is None or not user.is_active:
         revoke_family(db, stored.family_id)
         db.commit()
         raise AppError(401, code="invalid_refresh")
-    return issue_session(db, user, stored.family_id)
+    return issue_session(db, user, stored.family_id, _aware(stored.expires_at))
 
 
 def logout(db: Session, raw: str | None) -> None:
@@ -157,6 +185,9 @@ def logout(db: Session, raw: str | None) -> None:
 def revoke_all_for_user(db: Session, user_id: int) -> None:
     """Ends every session: refresh tokens are revoked and access tokens already issued stop matching the
     new password_changed_at (password change UPS-014, reset and deactivation UPS-009, UPS-020)."""
+    # First, so a refresh of this user either finished before (its new token is revoked below) or waits
+    # and then finds its token revoked.
+    user = _lock_user(db, user_id)
     now = utcnow()
     db.execute(
         update(RefreshToken)
@@ -165,6 +196,5 @@ def revoke_all_for_user(db: Session, user_id: int) -> None:
     )
     # Through the ORM, not a bulk UPDATE: the caller may already hold this User and issue a token from it
     # right away (password change), so the loaded object must carry the new stamp too.
-    user = db.get(User, user_id)  # callers always pass an existing account
-    user.password_changed_at = now
+    user.password_changed_at = now  # callers always pass an existing account
     db.flush()

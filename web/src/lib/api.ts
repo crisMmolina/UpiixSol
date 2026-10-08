@@ -47,6 +47,13 @@ const passwordListeners = new Set<() => void>();
 // Another tab rotated the shared refresh cookie a moment ago: wait for its new cookie and try once more.
 const RACE_RETRY_MS = 400;
 
+/** Tabs share the refresh cookie and the server revokes the session when a used token comes back twice
+ * (UPS-020), so tabs take turns: each refresh runs under one Web Lock and sends the latest cookie.
+ * Browsers without the API fall back to the server's one-time `refresh_race` grace. */
+function withRefreshLock<T>(run: () => Promise<T>): Promise<T> {
+  return typeof navigator !== "undefined" && navigator.locks ? navigator.locks.request("upx-refresh", run) : run();
+}
+
 /** Explicit session change (login, register, logout). */
 export function setAccessToken(token: string | null): void {
   sessionEpoch += 1;
@@ -93,12 +100,14 @@ export function refreshSession(): Promise<TokenOut | null> {
     let session: TokenOut | null = null;
     const attempt = () => fetch("/api/auth/refresh", { method: "POST", credentials: "include", headers: CSRF_HEADER });
     try {
-      let response = await attempt();
-      if (!response.ok && (await toError(response)).code === "refresh_race") {
-        await new Promise((resolve) => setTimeout(resolve, RACE_RETRY_MS));
-        response = await attempt();
-      }
-      session = response.ok ? ((await response.json()) as TokenOut) : null;
+      session = await withRefreshLock(async () => {
+        let response = await attempt();
+        if (!response.ok && (await toError(response)).code === "refresh_race") {
+          await new Promise((resolve) => setTimeout(resolve, RACE_RETRY_MS));
+          response = await attempt();
+        }
+        return response.ok ? ((await response.json()) as TokenOut) : null;
+      });
     } catch {
       session = null; // network error: treat as no session
     } finally {
