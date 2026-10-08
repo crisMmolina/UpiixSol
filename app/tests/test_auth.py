@@ -378,3 +378,17 @@ def test_provisional_password_must_be_changed_first(client: TestClient, db: Sess
 def test_demo_mode_skips_the_required_change(as_member: TestClient) -> None:
     assert get_settings().require_password_change is False  # conftest: REQUIRE_PASSWORD_CHANGE=false
     assert as_member.get("/api/channels").status_code == 200
+
+
+def test_new_token_after_password_change_works_in_a_fresh_session(client: TestClient, db: Session) -> None:
+    """Each request normally gets its own session: the token issued by the change must carry the new stamp."""
+    user = make_user(db, email="m@ipn.mx")
+    db.commit()
+    old = {"Authorization": f"Bearer {create_access_token(user)}"}
+    change = {"current_password": "password123", "new_password": "nueva-123", "confirm_password": "nueva-123"}
+    changed = client.post("/api/account/password", headers=old, json=change)
+    assert changed.status_code == 200
+    db.expire_all()  # what a new request would see: the row as stored
+    new = {"Authorization": f"Bearer {changed.json()['access_token']}"}
+    assert client.get("/api/auth/me", headers=new).status_code == 200
+    assert client.get("/api/auth/me", headers=old).status_code == 401

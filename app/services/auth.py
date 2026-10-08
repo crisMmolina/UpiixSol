@@ -163,5 +163,8 @@ def revoke_all_for_user(db: Session, user_id: int) -> None:
         .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
         .values(revoked_at=now)
     )
-    db.execute(update(User).where(User.id == user_id).values(password_changed_at=now))
+    # Through the ORM, not a bulk UPDATE: the caller may already hold this User and issue a token from it
+    # right away (password change), so the loaded object must carry the new stamp too.
+    user = db.get(User, user_id)  # callers always pass an existing account
+    user.password_changed_at = now
     db.flush()
