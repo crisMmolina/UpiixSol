@@ -172,14 +172,14 @@ function LoginPage() {
       <main className="mx-auto grid min-h-dvh max-w-5xl items-center gap-8 px-4 py-10 sm:px-8 lg:grid-cols-2">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <img src="/brand/upiixsol/wordmark.png" alt="UpiixSol" className="h-12 w-auto sm:h-14" />
-          <h1 className="mt-6 text-3xl sm:text-4xl">Tu club, tus academias, un solo campus</h1>
+          <h1 className="mt-6 text-3xl sm:text-4xl">Tus clubs en un solo campus</h1>
           <p className="mt-3 max-w-md text-muted">
             Retoma tus clases donde te quedaste y conversa con tu comunidad.
           </p>
           <img
             src="/brand/upiixsol/mascot.png"
             alt="Ajolote de UpiixSol"
-            className="mt-6 hidden w-full max-w-sm rounded-card sm:block"
+            className="mt-6 hidden w-full max-w-xs sm:block"
           />
         </section>
 
