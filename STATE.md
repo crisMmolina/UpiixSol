@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1791440502
+Updated: 1791440527
 AVAILABLE: UPS-020 
 CLAIMED: -
 BLOCKED: -
@@ -16,11 +16,11 @@ UPS-018 | REVIEW | joahan-claude | until 1791471792
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1791357617 | UPS-017 | Tags normalizados sin acentos (filtro JSON texto); parámetro blog_id para no chocar con post_id en la matriz | Why: Revisión de seguridad: tags acentuado
 - 1791382058 | UPS-012 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
 - 1791382066 | UPS-017 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
 - 1791382074 | UPS-019 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
 - 1791385392 | UPS-018 | front-end only; API unchanged | Why: Joahan asked to apply the UX/UI skills
+- 1791440527 | deadline lease/UPS-015/1791439899 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
