@@ -24,3 +24,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1791441054 | deadline lease/UPS-014/1791440918 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1791441077 | UPS-023 | enrollment becomes implicit: clicking a route tile fires idempotent POST /enroll | Why: no other feature depends on enrollment; keeps membership data
 - 1791441095 | UPS-022 | continue block fans out to /academies/{slug}/home for enrolled clubs; clubs grid kept on home since e2e needs Entrar a UpiixIA | Why: no global continue endpoint; e2e outside paths
+- 1791441495 | UPS-024 | stacked on feat/ups-021 (dark tokens); PR after #34 merges | Why: UPS-021 contract not on main yet
