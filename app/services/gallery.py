@@ -63,7 +63,7 @@ def get(db: Session, project_id: int) -> Project:
 
 def _apply(db: Session, project: Project, data: ProjectIn) -> None:
     if data.academy_id is not None and db.get(Academy, data.academy_id) is None:
-        raise AppError(422, "Esa academia no existe.", code="invalid_academy")
+        raise AppError(422, "Ese club no existe.", code="invalid_academy")
     project.title = data.title
     project.slug = data.slug
     project.summary = data.summary

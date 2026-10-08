@@ -79,7 +79,7 @@ def get_academy(db: Session, slug: str, user: User | None) -> Academy:
     academy = db.scalar(select(Academy).where(Academy.slug == slug))
     can_see_inactive = user is not None and user.role == Role.superadmin
     if academy is None or (not academy.is_active and not can_see_inactive):
-        raise AppError(404, "No encontramos esa academia.")
+        raise AppError(404, "No encontramos ese club.")
     return academy
 
 
