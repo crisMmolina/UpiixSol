@@ -544,21 +544,21 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Verify:** `npm --prefix web run build && uv run pytest -q e2e`
 - **Next step:** run e2e on main after the wave merges and fix step by step.
 
-## UPS-030 · Free internet hosting: one container on Render, Postgres on Neon, media on Supabase Storage
+## UPS-030 · Free internet hosting: one container on Render, Postgres and uploads on Neon
 
 - **Type:** ops
 - **Priority:** P1
 - **Estimate:** 180 min
-- **Rubric / Spec:** decision 2026-10-08 (human): public deploy at zero cost with Render free + Neon free + Supabase free
+- **Rubric / Spec:** decision 2026-10-08 (human): public deploy at zero cost with Render free + Neon free. Supabase was dropped: a free project pauses after 7 days without database activity, which would break every image.
 - **Depends on:** UPS-015
 - **Uses contract:** UPS-015
 - **Related:** UPS-020
-- **Paths:** app/hosting.py, app/services/media.py, app/main.py, app/tests/test_hosting.py, Dockerfile, deploy/entrypoint.sh, render.yaml, docs/deploy-render.md, .uak/OWNERS.md
+- **Paths:** app/services/media.py, app/models/media.py, app/migrations/versions/0004_media_objects.py, app/main.py, app/tests/test_media_storage.py, Dockerfile, deploy/entrypoint.sh, render.yaml, docs/deploy-render.md, .uak/OWNERS.md
 - **Freeze-Allowed:** no
 - **Acceptance:**
-  - `MEDIA_STORAGE=supabase` stores uploads in a public Supabase Storage bucket through its REST API (httpx, no new dependency); stored URLs stay `/media/<kind>/<name>` and `GET /media/...` redirects to the bucket's public URL. `MEDIA_STORAGE=local` (default) keeps today's behavior.
-  - A `single` Docker target serves the built SPA and the API from one container on `$PORT`; the compose stack (nginx + api) is unchanged.
-  - `render.yaml` describes the free web service; `docs/deploy-render.md` walks through Neon, Supabase and Render with only free plans, the first seed and its limits (sleep after 15 min, rate limit by IP behind the proxy).
-  - Backend suite green with 100 % coverage; `docker build --target single` runs and answers `/api/health` and the SPA.
-- **Verify:** `uv run pytest -q app/tests/test_hosting.py && docker build --target single -t upiixsol-single .`
-- **Next step:** implement storage switch, single target, blueprint and guide.
+  - `MEDIA_STORAGE=database` stores uploads in a `media_objects` table (migration 0004, reversible) instead of the disk, because the free Render disk is wiped on every restart. Stored URLs stay `/media/<kind>/<name>`; `GET /media/...` serves them with the media CSP and a long immutable cache. `MEDIA_STORAGE=disk` (default) keeps today's behavior.
+  - The last Dockerfile stage (`single`) serves the built SPA and the API from one container on `$PORT`; the compose targets (`api`, `web`) are unchanged.
+  - `render.yaml` describes the free web service; `docs/deploy-render.md` walks through Neon and Render with free plans only, the first seed, and the limits (sleep after 15 min, Neon size, rate limit by IP behind the proxy).
+  - Backend suite green with 100 % coverage; `docker build -t upiixsol-single .` builds and the container answers `/api/health` and the SPA.
+- **Verify:** `uv run pytest -q app/tests/test_media_storage.py && docker build -t upiixsol-single .`
+- **Next step:** implement the storage switch, the single stage, the blueprint and the guide.

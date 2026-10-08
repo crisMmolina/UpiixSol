@@ -32,6 +32,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/models/user.py | UPS-020 |
 | app/migrations/versions/0001_initial.py | UPS-002 |
 | app/migrations/versions/0002_password_changed_at.py | UPS-020 |
+| app/migrations/versions/0004_media_objects.py | UPS-030 |
 | app/security.py | UPS-020 |
 | app/pagination.py | UPS-002 |
 | app/sanitize.py | UPS-002 |
