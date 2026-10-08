@@ -224,25 +224,25 @@ def seed(db: Session) -> dict:
                 "body": item["summary"],
                 "academy_id": academy.id if "vision" in item["tags"] else None,
                 "status": ProjectStatus.published,
-                "published_at": now,
+                "published_at": now - timedelta(days=item["days_ago"]),
             },
         )
         projects.append(project)
     if not home.featured_project_ids:
         home.featured_project_ids = [p.id for p in projects[:2]]
 
-    blog = demo["blog"]
-    _get_or_create(
-        db,
-        BlogPost,
-        {"slug": blog["slug"]},
-        {
-            "title": blog["title"],
-            "body": blog["body"],
-            "author_id": users["superadmin1@upiixsol.dev"].id,
-            "published_at": now,
-        },
-    )
+    for item in demo["blog"]:
+        _get_or_create(
+            db,
+            BlogPost,
+            {"slug": item["slug"]},
+            {
+                "title": item["title"],
+                "body": item["body"],
+                "author_id": users[item["author"]].id,
+                "published_at": now - timedelta(days=item["days_ago"]),
+            },
+        )
     db.flush()
     return {
         "academy_id": academy.id,

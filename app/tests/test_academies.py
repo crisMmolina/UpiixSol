@@ -21,7 +21,7 @@ def test_home_requires_login(client: TestClient) -> None:
 
 def test_home_returns_hero_academies_events_projects_and_activity(as_member: TestClient) -> None:
     body = as_member.get("/api/home").json()
-    assert body["hero"]["hero_title"] == "Tu club, tus academias, un solo campus"
+    assert body["hero"]["hero_title"] == "Tus clubs en un solo campus"
     assert [a["slug"] for a in body["academies"]] == ["upiixia"]
     assert body["academies"][0]["is_enrolled"] is True
     assert len(body["upcoming_events"]) == 2

@@ -1,7 +1,7 @@
 // UPS-017: project gallery.
 //   /galeria         → published projects (blog-style cards, tag filter); superadmins also see drafts
 //   /galeria/:slug   → detail; superadmins create, edit, upload the cover and delete
-import { ArrowLeft, Cube, PencilSimple, Plus, Trash, X } from "@phosphor-icons/react";
+import { ArrowLeft, Cube, MagnifyingGlass, PencilSimple, Plus, Trash, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams, type RouteObject } from "react-router";
 
@@ -11,7 +11,7 @@ import { Card } from "@/components/Card";
 import { SelectField, TextArea, TextField, fieldErrors } from "@/components/Field";
 import { Markdown } from "@/components/Markdown";
 import { Modal } from "@/components/Overlay";
-import { PageSkeleton } from "@/components/Skeleton";
+import { PageSkeleton, Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { CampusLayout } from "@/layouts";
 import { api, ApiError, errorMessage } from "@/lib/api";
@@ -51,6 +51,25 @@ function CardCover({ project }: { project: ProjectOut }) {
 const leadSummary = (project: ProjectOut) =>
   project.summary && !project.body.trimStart().startsWith(project.summary.trim()) ? project.summary : null;
 
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function GallerySkeleton() {
+  return (
+    <ul role="status" aria-label="Cargando" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <li key={i}>
+          <Card className="grid gap-3 p-4">
+            <Skeleton className="aspect-[16/9] w-full" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-1/2" />
+          </Card>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // ── Listing ──────────────────────────────────────────────────
 
 function GalleryPage() {
@@ -62,6 +81,7 @@ function GalleryPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
   // Filter chips come from the projects already on screen, most used first.
   const tags = useMemo(() => {
@@ -69,6 +89,13 @@ function GalleryPage() {
     for (const p of items ?? []) for (const t of p.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
     return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
   }, [items]);
+
+  // The API has no text search: it runs in the browser over the projects already loaded.
+  const visible = useMemo(() => {
+    const term = normalize(query.trim());
+    if (!term) return items;
+    return (items ?? []).filter((p) => normalize(`${p.title} ${p.summary} ${p.authors} ${p.tags.join(" ")}`).includes(term));
+  }, [items, query]);
 
   const fetchPage = useCallback(
     (after: string | null) => api<Page<ProjectOut>>("/projects", { query: { tag, drafts: drafts || undefined, cursor: after } }),
@@ -105,7 +132,7 @@ function GalleryPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="mb-2 text-3xl sm:text-4xl">Galería de proyectos</h1>
-          <p className="text-muted">Lo que construyen las academias del club.</p>
+          <p className="text-muted">Lo que construyen los clubs.</p>
         </div>
         {isSuper && (
           <div className="flex flex-wrap gap-2">
@@ -118,6 +145,20 @@ function GalleryPage() {
           </div>
         )}
       </div>
+
+      {items && items.length > 0 && (
+        <label className="relative block max-w-xl">
+          <span className="sr-only">Buscar proyectos</span>
+          <MagnifyingGlass aria-hidden className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={20} />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar proyectos"
+            className="min-h-11 w-full rounded-full border border-line bg-surface pl-11 pr-4 text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2"
+          />
+        </label>
+      )}
 
       {tag ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -151,14 +192,28 @@ function GalleryPage() {
 
       {error ? (
         <ErrorState message={error} />
-      ) : items === null ? (
-        <PageSkeleton />
-      ) : items.length === 0 ? (
-        <EmptyState title="Aún no hay proyectos publicados" description="Pronto verás aquí lo que construye el club." />
+      ) : visible === null ? (
+        <GallerySkeleton />
+      ) : items && items.length === 0 ? (
+        tag ? (
+          <EmptyState
+            title={`Ningún proyecto con #${tag}`}
+            description="Prueba con otra etiqueta o quita el filtro."
+            action={<Button variant="secondary" onClick={() => setParams(drafts ? { borradores: "1" } : {})}>Quitar filtro</Button>}
+          />
+        ) : (
+          <EmptyState title="Aún no hay proyectos publicados" description="Pronto verás aquí lo que construye el club." />
+        )
+      ) : visible.length === 0 ? (
+        <EmptyState
+          title="No encontramos proyectos"
+          description="Prueba con otras palabras."
+          action={<Button variant="secondary" onClick={() => setQuery("")}>Limpiar búsqueda</Button>}
+        />
       ) : (
         <>
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((project) => (
+            {visible.map((project) => (
               <li key={project.id}>
                 <Link to={`/galeria/${project.slug}`} className="no-underline">
                   <Card interactive className="flex h-full flex-col gap-3 p-4">

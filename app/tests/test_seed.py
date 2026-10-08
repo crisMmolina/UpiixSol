@@ -52,8 +52,8 @@ def test_seed_demo_case_matches_idea_section_3(db: Session) -> None:
     assert _count(db, Resource) == 3
     assert _count(db, Event) == 2
     assert _count(db, Post) == 5
-    assert _count(db, Project) == 3
-    assert _count(db, BlogPost) == 1
+    assert _count(db, Project) == 6
+    assert _count(db, BlogPost) == 6
     assert {c.slug for c in db.scalars(select(Channel))} == {"feed", "general", "upiixia"}
     assert db.get(Enrollment, (ids["member_id"], ids["academy_id"])) is not None
     assert db.get(HomeContent, 1).featured_project_ids
@@ -61,6 +61,14 @@ def test_seed_demo_case_matches_idea_section_3(db: Session) -> None:
     info = academy_continue(db, ids["member_id"], ids["academy_id"])
     assert info is not None
     assert (info.lesson_number, info.percent) == (3, 50)
+
+
+def test_demo_rows_are_marked_and_copy_says_club(db: Session) -> None:
+    seed(db)
+    assert all("demo" in p.tags for p in db.scalars(select(Project)))
+    assert all(b.body.rstrip().endswith("_Contenido de demostración._") for b in db.scalars(select(BlogPost)))
+    assert len({b.author_id for b in db.scalars(select(BlogPost))}) > 1
+    assert db.get(HomeContent, 1).hero_title == "Tus clubs en un solo campus"
 
 
 def test_seed_is_idempotent(db: Session) -> None:
