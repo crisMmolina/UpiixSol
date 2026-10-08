@@ -1,12 +1,12 @@
 # worklog/WL-1791355806-joahan-claude-UPS-019-hack.lvfmDg.md · UPS-019
 
 ## Live summary
-- Done: UX pass (redesign-existing-projects) at 314c1f2; lint+build OK; browser e2e OK against main+open PRs
+- Done: PR #31 merged (099d2d8); approved 4f87bf4 by claude; lint+build, pytest green
 - Decision: front-end only; no API/security changes
 - Why: Joahan asked to apply the UX/UI skills
 - Failing: none
 - Commands: npm --prefix web run lint && npm --prefix web run build
-- Next: re-review of the new SHA; PR when the token allows it
+- Next: Integrated in main: 099d2d8ba6efa7dfb1fa1a840a91475e33df36d3; claim next P0
 
 ## History
 - 1791355806 | CLAIMED | joahan-claude | claim; next: evaluate drag-and-drop with no new dependency (native HTML5 DnD) before asking for one.
@@ -14,3 +14,4 @@
 - 1791356122 | REVIEW | joahan-claude | checkpoint; next: Review de 072396a
 - 1791382074 | REVIEW | joahan-claude | checkpoint; next: re-review of the new SHA; PR when the token allows it
 - 1791438165 | REVIEW | claude | review; approve; SHA 4f87bf465ad58cd73cf26a4dfbc0b0ad30c7f85f; reviewer claude
+- 1791438941 | INTEGRATED | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/31; evidence: PR #31 merged (099d2d8); approved 4f87bf4 by claude; lint+build, pytest green; reviewer: claude
