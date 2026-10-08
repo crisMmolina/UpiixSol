@@ -499,7 +499,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Depends on:** none
 - **Uses contract:** UPS-021
 - **Related:** UPS-017
-- **Paths:** web/src/features/blog/, web/src/features/gallery/, app/fixtures/demo.json, app/seed.py, app/tests/test_seed.py, app/tests/test_academies.py, app/tests/test_admin.py
+- **Paths:** web/src/features/blog/, web/src/features/gallery/, app/fixtures/demo.json, app/seed.py, app/tests/test_seed.py, app/tests/test_academies.py, app/tests/test_admin.py, app/tests/test_blog.py, app/tests/test_gallery.py
 - **Freeze-Allowed:** no
 - **Acceptance:**
   - Blog like the reference: title + subtitle, search, "Artículos en tendencia" row, category chips, featured article + card grid; read time from body length; no invented views/likes.
