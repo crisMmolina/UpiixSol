@@ -1,5 +1,6 @@
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { CSSProperties } from "react";
 
 import { DURATION, EASE_OUT } from "./motionTokens";
 
@@ -17,8 +18,8 @@ const toneClass: Record<MessageTone, string> = {
  *
  * - `message` (error/success/info by `tone`) is announced through an aria-live region and fades in/out.
  * - `hint` shows (muted, not announced) while there is no message: e.g. why a button is disabled.
- * - `lines` is the space kept (1 by default). Keep messages short enough to fit it; a longer one still
- *   shows, it just grows the slot.
+ * - `lines` is the space kept (1 by default), or `{ base, sm }` to keep more on phones (below 640 px)
+ *   where text wraps sooner. Size it for the longest message at 390 px; a longer one grows the slot.
  */
 export function FormMessage({
   id,
@@ -34,7 +35,7 @@ export function FormMessage({
   message?: string | null;
   tone?: MessageTone;
   hint?: string | null;
-  lines?: number;
+  lines?: number | { base: number; sm: number };
   size?: "xs" | "sm";
   /** Field messages are read through aria-describedby instead. */
   live?: boolean;
@@ -43,12 +44,17 @@ export function FormMessage({
   const reduce = useReducedMotion();
   const fade = reduce ? { duration: 0 } : { duration: DURATION.fast, ease: EASE_OUT };
   const lineHeight = size === "xs" ? 1 : 1.25; // rem: leading-4 / leading-5
+  const { base, sm } = typeof lines === "number" ? { base: lines, sm: lines } : lines;
+  const reserved = {
+    "--fm-min": `${base * lineHeight}rem`,
+    "--fm-min-sm": `${sm * lineHeight}rem`,
+  } as CSSProperties;
   const text = size === "xs" ? "text-xs leading-4" : "text-sm leading-5";
   const Icon = tone === "error" ? WarningCircle : tone === "success" ? CheckCircle : null;
   const showHint = Boolean(hint) && !message;
 
   return (
-    <div id={id} className={`grid ${text} ${className}`} style={{ minHeight: `${lines * lineHeight}rem` }}>
+    <div id={id} className={`grid min-h-(--fm-min) sm:min-h-(--fm-min-sm) ${text} ${className}`} style={reserved}>
       <p role={live ? "status" : undefined} className="grid [grid-area:1/1]">
         <AnimatePresence initial={false}>
           {message && (

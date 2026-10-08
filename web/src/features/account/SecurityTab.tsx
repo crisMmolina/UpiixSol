@@ -122,7 +122,7 @@ function EmailForm({ user, status, setStatus }: { user: UserMe; status: Status; 
     event.preventDefault();
     if (blocked) return;
     const newEmail = draft.new_email.trim();
-    if (!EMAIL.test(newEmail)) return request.reject({ new_email: "Escribe un correo válido, como nombre@dominio.com." });
+    if (!EMAIL.test(newEmail)) return request.reject({ new_email: "Escribe un correo válido." });
     void request.run(async () => {
       await api<UserMe>("/account/email", { method: "POST", json: { ...draft, new_email: newEmail } });
       await reload();

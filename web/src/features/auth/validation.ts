@@ -8,7 +8,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function checkEmail(value: string, errors: Errors): void {
   if (!value) errors.email = "Escribe tu correo.";
-  else if (!EMAIL.test(value)) errors.email = "Escribe un correo válido, como nombre@dominio.com.";
+  else if (!EMAIL.test(value)) errors.email = "Escribe un correo válido.";
 }
 
 export function validateLogin(email: string, password: string): Errors {
@@ -48,12 +48,16 @@ export function waitTime(details: unknown): string {
   return match[1] === "1" ? one : `${match[1]} ${many}`;
 }
 
-/** Form-level text for a failed login/register; kept short so it fits its reserved line. */
+/** Form-level text for a failed login/register. Short on purpose: it must fit the reserved lines
+ *  (2 on phones, 1 from 640 px) of its FormMessage. */
 export function formError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 429) return `Demasiados intentos. Espera ${waitTime(error.details)}.`;
-    if (error.code === "account_exists") return "Ya existe una cuenta con ese correo o esa boleta.";
+    if (error.code === "account_exists") return "Ese correo o esa boleta ya tienen cuenta.";
     if (error.status === 422) return "Revisa los campos marcados.";
+    if (error.code === "invalid_credentials") return errorMessage(error);
+    if (error.code === "http_error" || error.status >= 500) return "No pudimos conectar. Intenta de nuevo.";
+    return errorMessage(error);
   }
-  return errorMessage(error);
+  return "No pudimos conectar. Intenta de nuevo.";
 }

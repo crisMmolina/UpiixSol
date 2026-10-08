@@ -81,7 +81,7 @@ export function LoginForm({ onDone, play }: FormProps) {
           <Button type="submit" size="lg" loading={busy} icon={<SignIn weight="bold" />}>
             Entrar
           </Button>
-          <FormMessage message={error} className="justify-items-center text-center" />
+          <FormMessage message={error} lines={{ base: 2, sm: 1 }} className="justify-items-center text-center" />
         </StaggerItem>
         <StaggerItem>
           <p className="text-center text-xs text-muted">¿Olvidaste tu contraseña? Pide a la mesa directiva del club que la restablezca.</p>
@@ -163,7 +163,7 @@ export function RegisterForm({ onDone, play }: FormProps) {
           <Button type="submit" size="lg" loading={busy} icon={<UserPlus weight="bold" />}>
             Crear cuenta
           </Button>
-          <FormMessage message={error} className="justify-items-center text-center" />
+          <FormMessage message={error} lines={{ base: 2, sm: 1 }} className="justify-items-center text-center" />
         </StaggerItem>
       </Stagger>
     </form>

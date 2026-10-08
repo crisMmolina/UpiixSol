@@ -72,7 +72,7 @@ function friendlyMessage(type: string | undefined, msg: string): string {
     case undefined: // the API's own field errors are already in Spanish
       return msg;
     case "value_error":
-      if (/valid email/i.test(msg)) return "Escribe un correo válido, como nombre@dominio.com.";
+      if (/valid email/i.test(msg)) return "Escribe un correo válido.";
       return msg.startsWith("Value error, ") ? msg.slice("Value error, ".length) : "Revisa este campo.";
     case "missing":
       return "Este campo es obligatorio.";
@@ -85,9 +85,11 @@ function friendlyMessage(type: string | undefined, msg: string): string {
     case "string_pattern_mismatch":
       return "El formato no es válido.";
     case "greater_than":
+      return number ? `Debe ser mayor que ${number}.` : "El valor es muy pequeño.";
     case "greater_than_equal":
       return number ? `Debe ser al menos ${number}.` : "El valor es muy pequeño.";
     case "less_than":
+      return number ? `Debe ser menor que ${number}.` : "El valor es muy grande.";
     case "less_than_equal":
       return number ? `Debe ser como máximo ${number}.` : "El valor es muy grande.";
     case "int_parsing":
@@ -101,7 +103,7 @@ function friendlyMessage(type: string | undefined, msg: string): string {
     case "url_parsing":
     case "url_scheme":
     case "url_type":
-      return "Escribe un enlace válido que empiece con https://.";
+      return "Escribe un enlace que empiece con https://.";
     case "date_parsing":
     case "date_from_datetime_parsing":
     case "datetime_parsing":

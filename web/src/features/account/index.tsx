@@ -39,11 +39,16 @@ function AccountPage() {
       {user.must_change_password && (
         <Notice
           action={
+            // Same footprint on both tabs (on Seguridad an invisible twin), so the tab bar never jumps.
             tab === "perfil" ? (
               <button type="button" className="font-semibold underline" onClick={() => selectTab("seguridad")}>
                 Ir a Seguridad →
               </button>
-            ) : undefined
+            ) : (
+              <span aria-hidden className="invisible font-semibold">
+                Ir a Seguridad →
+              </span>
+            )
           }
         >
           Estás usando una contraseña provisional. Cámbiala por una que solo tú conozcas.
