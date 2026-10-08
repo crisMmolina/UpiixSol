@@ -4,6 +4,9 @@
 
 Raster images are re-encoded to WebP. SVG is only accepted for logos/mascots and must pass an
 element/attribute allowlist (parsed as XML); `/media` is also served with a `sandbox` CSP (app/main.py).
+
+Storage (UPS-030): files go to MEDIA_DIR, or to the `media_objects` table with MEDIA_STORAGE=database on
+hosts whose disk is wiped on every restart (Render free). The URL is the same either way.
 """
 
 import io
@@ -11,14 +14,20 @@ import re
 import uuid
 import xml.etree.ElementTree as ET  # noqa: S405 (DTDs/entities are rejected before parsing)
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
 from fastapi import UploadFile
 from PIL import Image, UnidentifiedImageError
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.db import SessionLocal
 from app.errors import AppError
+from app.models import MediaObject
 
 Kind = Literal["logo", "mascot", "avatar", "post", "cover", "resource"]
 MB = 1024 * 1024
@@ -41,6 +50,8 @@ RULES: dict[str, Rule] = {
     "resource": Rule(5 * MB, 1600),
 }
 RASTER_FORMATS = {"PNG", "JPEG", "WEBP"}
+CONTENT_TYPES = {"webp": "image/webp", "svg": "image/svg+xml"}
+MEDIA_KEY = re.compile(r"[a-z]+/[0-9a-f]{32}\.(?:webp|svg)")  # what _store writes: <kind>/<uuid>.<ext>
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
 SVG_ELEMENTS = {
@@ -119,12 +130,34 @@ def _too_large(rule: Rule) -> AppError:
     return AppError(413, f"La imagen supera {rule.max_bytes // MB} MB.")
 
 
+class StorageSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
+
+    media_storage: Literal["disk", "database"] = "disk"
+
+
+@lru_cache
+def media_storage() -> str:
+    return StorageSettings().media_storage
+
+
 def _store(data: bytes, kind: str, extension: str) -> str:
-    folder = Path(get_settings().media_dir) / kind
-    folder.mkdir(parents=True, exist_ok=True)
     name = f"{uuid.uuid4().hex}.{extension}"
-    (folder / name).write_bytes(data)
+    if media_storage() == "database":
+        # Its own short transaction, like the file write: the bytes exist before any row points to them.
+        with SessionLocal() as db:
+            db.add(MediaObject(key=f"{kind}/{name}", content_type=CONTENT_TYPES[extension], data=data))
+            db.commit()
+    else:
+        folder = Path(get_settings().media_dir) / kind
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / name).write_bytes(data)
     return f"/media/{kind}/{name}"
+
+
+def load_media(db: Session, key: str) -> MediaObject | None:
+    """A stored upload (MEDIA_STORAGE=database); None for unknown or malformed keys."""
+    return db.get(MediaObject, key) if MEDIA_KEY.fullmatch(key) else None
 
 
 def _looks_like_svg(data: bytes) -> bool:
@@ -203,6 +236,13 @@ async def save_upload(file: UploadFile, kind: Kind) -> str:
 def delete_media(url: str | None) -> None:
     """Best-effort removal of a file previously returned by save_*; ignores foreign URLs."""
     if not url or not url.startswith("/media/"):
+        return
+    if media_storage() == "database":
+        key = url.removeprefix("/media/")
+        if MEDIA_KEY.fullmatch(key):
+            with SessionLocal() as db:
+                db.execute(delete(MediaObject).where(MediaObject.key == key))
+                db.commit()
         return
     base = Path(get_settings().media_dir).resolve()
     target = (base / url.removeprefix("/media/")).resolve()

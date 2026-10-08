@@ -9,19 +9,21 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app import routers
 from app.body_limit import BodySizeLimitMiddleware
 from app.config import get_settings
-from app.db import engine
+from app.db import engine, get_db
 from app.errors import AppError, error_response, internal_error, log_unhandled, register_error_handlers
 from app.ratelimit import limiter
+from app.services.media import load_media, media_storage
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB_DIST = ROOT / "web" / "dist"
@@ -37,6 +39,9 @@ SECURITY_HEADERS = {
 }
 # Uploaded files (including SVG) can never run scripts.
 MEDIA_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox"
+# Upload names are random and never reused (same policy as deploy/nginx.conf).
+MEDIA_CACHE = "public, max-age=2592000, immutable"
+ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
 REQUEST_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
 
 
@@ -108,9 +113,20 @@ def create_app() -> FastAPI:
 
     include_routers(app)
 
-    media_dir = Path(settings.media_dir)
-    media_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/media", StaticFiles(directory=media_dir), name="media")
+    if media_storage() == "database":  # UPS-030: uploads live in media_objects, not on the disk
+
+        @app.get("/media/{key:path}", include_in_schema=False)
+        def media(key: str, db: Session = Depends(get_db)) -> Response:
+            stored = load_media(db, key)
+            if stored is None:
+                return error_response(404, "not_found", "No encontrado.")
+            headers = {"Cache-Control": MEDIA_CACHE}
+            return Response(stored.data, media_type=stored.content_type, headers=headers)
+
+    else:
+        media_dir = Path(settings.media_dir)
+        media_dir.mkdir(parents=True, exist_ok=True)
+        app.mount("/media", StaticFiles(directory=media_dir), name="media")
 
     if WEB_DIST.is_dir():  # pragma: no cover - exercised by smoke/e2e with a real build
         mount_spa(app, WEB_DIST)
@@ -136,7 +152,9 @@ def mount_spa(app: FastAPI, dist: Path) -> None:
             return error_response(404, "not_found", "No encontrado.")
         candidate = (dist / path).resolve()
         if path and candidate.is_file() and dist in candidate.parents:
-            return FileResponse(candidate)
+            # Vite fingerprints everything under assets/ (deploy/nginx.conf caches them the same way).
+            fingerprinted = path.startswith("assets/")
+            return FileResponse(candidate, headers=ASSET_CACHE if fingerprinted else None)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 

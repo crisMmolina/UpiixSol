@@ -1,7 +1,8 @@
-# UpiixSol Campus · multi-stage build (UPS-015). Targets:
-#   api → FastAPI + uvicorn (runs migrations on start, see deploy/entrypoint.sh)
-#   web → nginx serving the built SPA and proxying /api (see deploy/nginx.conf)
-# Build both with `docker compose build`; runbook: docs/runbook.md.
+# UpiixSol Campus · multi-stage build (UPS-015, UPS-030). Targets:
+#   api    → FastAPI + uvicorn (runs migrations on start, see deploy/entrypoint.sh)
+#   web    → nginx serving the built SPA and proxying /api (see deploy/nginx.conf)
+#   single → api that also serves the built SPA, one container on $PORT (default target; Render free)
+# Build api + web with `docker compose build` (runbook: docs/runbook.md); single: docs/deploy-render.md.
 
 # ── Frontend build ──────────────────────────────────────────
 FROM node:24-alpine AS web-build
@@ -40,3 +41,8 @@ FROM nginx:1.30-alpine AS web
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY deploy/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=web-build /web/dist /usr/share/nginx/html
+
+# ── single container (API + SPA, UPS-030) ───────────────────
+# app/main.py serves web/dist when it exists. Last stage, so a plain `docker build .` (Render) builds it.
+FROM api AS single
+COPY --from=web-build /web/dist /srv/web/dist

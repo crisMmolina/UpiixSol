@@ -8,6 +8,7 @@ from app.models.common import ChannelType, ProjectStatus, ResourceType, Role
 from app.models.community import Channel, Comment, Post, Reaction
 from app.models.content import BlogPost, Event, HomeContent, Project, Resource
 from app.models.learning import LearningRoute, Lesson, LessonLink, LessonProgress, Module
+from app.models.media import MediaObject
 from app.models.user import RefreshToken, User
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     "Lesson",
     "LessonLink",
     "LessonProgress",
+    "MediaObject",
     "Module",
     "Post",
     "Project",
