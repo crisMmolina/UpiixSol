@@ -225,11 +225,13 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     # The new club admin signs in with the temporary password: the v2 shell warns through the
     # notifications bell (UPS-021), not with a banner over every page.
     sign_in(site, NEW_ADMIN, "/", password=NEW_ADMIN_TEMP_PASSWORD)
-    expect(page.get_by_text("Estás usando una contraseña provisional")).to_have_count(0)
+    expect(page).to_have_url(site.url("/"))
     unread = re.compile(r"^Notificaciones \(1 sin leer\)")
     page.get_by_role("banner").get_by_role("button", name=unread).click()
     panel = page.get_by_role("dialog", name="Notificaciones")
     expect(panel.get_by_text("Cambia tu contraseña provisional")).to_be_visible()
+    # Checked once the session has rendered the shell; /cuenta keeps its own notice, so stay on "/".
+    expect(page.get_by_text("Estás usando una contraseña provisional")).to_have_count(0)
     panel.get_by_role("link", name="Ir a Seguridad").click()
     expect(page).to_have_url(re.compile(r"/cuenta\?tab=seguridad"))
     site.shot("6-provisional-password")
