@@ -6,30 +6,32 @@ import { DURATION, EASE_OUT } from "./motionTokens";
 /**
  * Animates its own height whenever the content's height changes (tab switch, a message appearing).
  * Measures with ResizeObserver; with reduced motion the height switches instantly.
- * The content gets a 4 px bleed so focus rings are not clipped while it animates. Do not put floating
- * menus inside: the container clips (overflow hidden).
+ * Appearing from or disappearing to nothing (a closed <dialog>, display:none) is instant: only real
+ * resizes animate. The content gets a 4 px bleed so focus rings are not clipped. Do not put floating
+ * menus inside: the container clips (overflow: clip, which also keeps focus() from scrolling it).
  */
 export function AnimatedHeight({ children, className = "" }: { children: ReactNode; className?: string }) {
   const inner = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | "auto">("auto");
+  const [size, setSize] = useState<{ height: number | "auto"; instant: boolean }>({ height: "auto", instant: true });
   const reduce = useReducedMotion();
 
   useLayoutEffect(() => {
     const element = inner.current;
     if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) =>
-      setHeight(entry.borderBoxSize?.[0]?.blockSize ?? element.getBoundingClientRect().height),
-    );
+    const observer = new ResizeObserver(([entry]) => {
+      const height = entry.borderBoxSize?.[0]?.blockSize ?? element.getBoundingClientRect().height;
+      setSize((previous) => ({ height, instant: previous.height === "auto" || previous.height === 0 || height === 0 }));
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
   return (
     <motion.div
-      className={`-m-1 overflow-hidden ${className}`}
+      className={`-m-1 overflow-clip ${className}`}
       initial={false}
-      animate={{ height }}
-      transition={reduce ? { duration: 0 } : { duration: DURATION.height, ease: EASE_OUT }}
+      animate={{ height: size.height }}
+      transition={reduce || size.instant ? { duration: 0 } : { duration: DURATION.height, ease: EASE_OUT }}
     >
       <div ref={inner} className="p-1">
         {children}
