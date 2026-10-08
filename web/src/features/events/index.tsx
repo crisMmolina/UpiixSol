@@ -1,7 +1,7 @@
 // UPS-013: events and calendar (month view + list, academy filter). Completes flow step 6 (global event).
 //   /calendario           → campus calendar (all academies + global)
 //   /a/:slug/eventos      → the academy's events (+ global ones)
-import { CalendarBlank, CaretLeft, CaretRight, LinkSimple, ListBullets, MapPin, Plus, SquaresFour, Trash } from "@phosphor-icons/react";
+import { CalendarBlank, CaretLeft, CaretRight, LinkSimple, ListBullets, MapPin, Plus, SquaresFour, Trash, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams, type RouteObject } from "react-router";
 
@@ -43,6 +43,21 @@ function sameDay(a: Date, b: Date): boolean {
 function toLocalInput(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+const fullDate = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+function toKey(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Parses `YYYY-MM-DD` as a local date; null when malformed. */
+function fromKey(key: string | null): Date | null {
+  const m = key ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(key) : null;
+  if (!m) return null;
+  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return toKey(date) === key ? date : null;
 }
 
 function canManage(user: UserMe | null, event?: EventOut): boolean {
@@ -118,7 +133,7 @@ function EventForm({ user, academies, fixedAcademyId, onSaved, onClose }: {
     <form onSubmit={submit} className="grid gap-4" noValidate>
       <TextField label="Título" name="title" required maxLength={120} error={errors.title} />
       {user.role === "superadmin" && fixedAcademyId === undefined && (
-        <SelectField label="Academia" name="academy_id" defaultValue="">
+        <SelectField label="Club" name="academy_id" defaultValue="">
           <option value="">Evento global (todo el club)</option>
           {academies.map((a) => (
             <option key={a.id} value={a.id}>
@@ -190,7 +205,8 @@ function EventRow({ event, manageable, onDelete }: { event: EventOut; manageable
 function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixedAcademyId?: number }) {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const selected = fromKey(params.get("dia"));
+  const [month, setMonth] = useState(() => startOfMonth(fromKey(params.get("dia")) ?? new Date()));
   const [events, setEvents] = useState<EventOut[] | null>(null);
   const [academies, setAcademies] = useState<AcademyCardOut[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +215,7 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
   const view = params.get("vista") === "lista" ? "list" : "month";
   const filter = academySlug ?? params.get("academia") ?? "";
 
+  const dayList = selected && events ? events.filter((e) => sameDay(new Date(e.starts_at), selected)) : [];
   const grid = useMemo(() => monthGrid(month), [month]);
   const load = useCallback(async () => {
     try {
@@ -257,9 +274,9 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {!academySlug && (
             <label className="flex items-center gap-2 text-sm font-semibold">
-              <span className="sr-only">Filtrar por academia</span>
+              <span className="sr-only">Filtrar por club</span>
               <select value={filter} onChange={(e) => setParam("academia", e.target.value)} className="min-h-11 rounded-full border border-line bg-surface px-3">
-                <option value="">Todas las academias</option>
+                <option value="">Todos los clubes</option>
                 {academies.map((a) => (
                   <option key={a.id} value={a.slug}>
                     {a.name}
@@ -287,7 +304,11 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
       {error && (events === null ? <ErrorState message={error} onRetry={() => void load()} /> : <Notice tone="alert">{error}</Notice>)}
 
       {events === null ? (
-        <Skeleton className="h-96" />
+        <div role="status" aria-label="Cargando eventos" className="grid gap-3">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
       ) : view === "list" ? (
         events.length === 0 ? (
           <EmptyState title="No hay eventos próximos" />
@@ -312,12 +333,23 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
               {grid.map((day) => {
                 const dayEvents = events.filter((e) => sameDay(new Date(e.starts_at), day));
                 const inMonth = day.getMonth() === month.getMonth();
+                const isSelected = selected !== null && sameDay(day, selected);
+                const count = dayEvents.length;
+                const label = `${fullDate.format(day)}${count ? `, ${count} ${count === 1 ? "evento" : "eventos"}` : ", sin eventos"}`;
                 return (
-                  <div key={day.toISOString()} className={`min-h-20 border-b border-r border-line p-1 sm:min-h-28 sm:p-1.5 ${inMonth ? "" : "bg-bg/60 text-muted"}`}>
-                    <span className={`inline-grid size-7 place-items-center rounded-full text-xs font-semibold ${sameDay(day, today) ? "bg-primary text-on-primary" : ""}`}>
+                  <div key={day.toISOString()} className={`relative min-h-20 border-b border-r border-line p-1 sm:min-h-28 sm:p-1.5 ${isSelected ? "bg-primary/10" : inMonth ? "" : "bg-bg/60 text-muted"}`}>
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      aria-label={label}
+                      onClick={() => setParam("dia", isSelected ? "" : toKey(day))}
+                      className={`absolute inset-0 min-h-11 min-w-11 hover:bg-line/40 focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${isSelected ? "ring-2 ring-inset ring-primary" : ""}`}
+                    />
+                    <span className={`pointer-events-none relative inline-grid size-7 place-items-center rounded-full text-xs font-semibold ${sameDay(day, today) ? "bg-primary text-on-primary" : ""}`}>
                       {day.getDate()}
                     </span>
-                    <ul className="mt-0.5 grid gap-0.5">
+                    {count > 0 && <span aria-hidden className="pointer-events-none absolute right-1.5 top-2 size-2 rounded-full bg-accent" />}
+                    <ul className="pointer-events-none relative mt-0.5 grid gap-0.5">
                       {dayEvents.map((event) => (
                         <li key={event.id} title={`${event.title} · ${timeOnly.format(new Date(event.starts_at))}`} className={`truncate rounded-md px-1 py-0.5 text-[0.7rem] font-semibold ${event.academy_slug ? "bg-primary/15 text-ink" : "bg-accent/25 text-ink"}`}>
                           <span className="hidden sm:inline">{timeOnly.format(new Date(event.starts_at))} </span>
@@ -330,17 +362,39 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
               })}
             </div>
           </Card>
-          {events.length > 0 && (
-            <section aria-label="Eventos del mes">
-              <h3 className="mb-2 inline-flex items-center gap-1.5 text-lg">
-                <CalendarBlank weight="bold" aria-hidden /> Este mes
-              </h3>
-              <ul className="grid gap-3">
-                {events.map((event) => (
-                  <EventRow key={event.id} event={event} manageable={canManage(user, event)} onDelete={() => void remove(event)} />
-                ))}
-              </ul>
+          {selected ? (
+            <section aria-label="Eventos del día seleccionado">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <h3 className="inline-flex items-center gap-1.5 text-lg first-letter:uppercase">
+                  <CalendarBlank weight="bold" aria-hidden /> {fullDate.format(selected)}
+                </h3>
+                <button type="button" onClick={() => setParam("dia", "")} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:bg-line/50">
+                  <X weight="bold" aria-hidden /> Quitar filtro
+                </button>
+              </div>
+              {dayList.length === 0 ? (
+                <EmptyState title="Sin eventos este día" />
+              ) : (
+                <ul className="grid gap-3">
+                  {dayList.map((event) => (
+                    <EventRow key={event.id} event={event} manageable={canManage(user, event)} onDelete={() => void remove(event)} />
+                  ))}
+                </ul>
+              )}
             </section>
+          ) : (
+            events.length > 0 && (
+              <section aria-label="Eventos del mes">
+                <h3 className="mb-2 inline-flex items-center gap-1.5 text-lg">
+                  <CalendarBlank weight="bold" aria-hidden /> Este mes
+                </h3>
+                <ul className="grid gap-3">
+                  {events.map((event) => (
+                    <EventRow key={event.id} event={event} manageable={canManage(user, event)} onDelete={() => void remove(event)} />
+                  ))}
+                </ul>
+              </section>
+            )
           )}
         </>
       )}
@@ -359,7 +413,7 @@ function CampusCalendarPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-3xl sm:text-4xl">Calendario</h1>
-        <p className="text-muted">Talleres, sesiones y eventos de todo el club.</p>
+        <p className="text-muted">Talleres, sesiones, hackatones y eventos en todos los clubes</p>
       </div>
       <Calendar />
     </div>
