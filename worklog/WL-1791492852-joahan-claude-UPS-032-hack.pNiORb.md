@@ -12,3 +12,4 @@
 - 1791492852 | CLAIMED | joahan-claude | claim; next: switch the theme block to `@theme inline`, add the Wordmark, then the brand config.
 - 1791493809 | CLAIMED | joahan-claude | checkpoint; next: review
 - 1791493843 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-032; evidence: c97b0e5: lint ok, build ok, e2e 14 passed (new test_branding); reviewer: -
+- 1791494749 | REVIEW | joahan-rev | review; reject; SHA c97b0e52930988990db59b4240ce5fdec6e77e63; reviewer joahan-rev
