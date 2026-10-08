@@ -580,3 +580,135 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - The deploy guide and runbook explain how to recover a lost first password.
 - **Verify:** `uv run pytest -q app/tests/test_seed.py`
 - **Next step:** implement in seed(), test, document.
+
+## UPS-032 · Club colors really apply, three-color wordmark without a logo, configurable site brand
+
+- **Type:** fix
+- **Priority:** P0
+- **Estimate:** 180 min
+- **Rubric / Spec:** human request 2026-10-08 · audit docs/audit/2026-10-08/clubs.md (1–5), admin.md (3)
+- **Depends on:** UPS-021
+- **Uses contract:** UPS-004
+- **Related:** UPS-033, UPS-036
+- **Paths:** web/src/index.css, web/src/lib/theme.tsx, web/src/lib/brand.tsx, web/src/layouts/, web/src/features/home/, web/src/features/academy/, web/index.html, web/public/brand/, e2e/test_branding.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - A club's primary/secondary/accent colors are used by buttons, bars, links and cards inside `/a/{slug}` and on its cards (`@theme inline`, so `--color-*` resolve where `AcademyTheme` sets `--academy-*`); the identity live preview reacts to unsaved colors.
+  - Without a logo, a club name is drawn as a wordmark: the letters before the first "x" in the primary color, that "x" in the secondary, the rest in the accent (a name without "x" uses the primary for all). Same component in the header, cards and switcher; the card no longer repeats the name; switcher initials differ between clubs and the button is ≥ 44 px.
+  - Toasts (layouts/Notifications.tsx) never cover page actions (admin.md 3).
+  - The campus name and logo come from one place (`web/src/lib/brand.tsx`, overridable with `VITE_SITE_NAME`, `VITE_SITE_LOGO`); without a logo the campus uses the same wordmark rule. `index.html` title follows it.
+  - Browser test: a club created without a logo shows its three colors in the header wordmark and its primary on a button.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** switch the theme block to `@theme inline`, add the Wordmark, then the brand config.
+
+## UPS-033 · Stable layout and motion: reserved error space, animated height, modal transitions, auth and account fixes
+
+- **Type:** ux
+- **Priority:** P0
+- **Estimate:** 240 min
+- **Rubric / Spec:** human request 2026-10-08 · audit docs/audit/2026-10-08/auth.md (all), admin.md (1, 4), learning.md (3), content.md (6)
+- **Depends on:** UPS-021
+- **Uses contract:** UPS-004
+- **Related:** UPS-034, UPS-035, UPS-036, UPS-038
+- **Paths:** web/src/components/, web/src/features/auth/, web/src/features/account/, web/src/lib/auth.tsx, web/DESIGN.md
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Shared primitives in `web/src/components/` (Motion): a form message slot that reserves its line (no shift when an error appears), an animated-height container, and enter/exit transitions for `Modal`/`Drawer`; all respect reduced motion. `web/DESIGN.md` documents when to use them.
+  - `/login`: the card keeps its top position; switching Entrar ↔ Crear cuenta animates the height and fades the new fields in; errors never resize the card. Client validation for every required field; the rate-limit message says how long to wait.
+  - `/cuenta`: field errors in Spanish (no raw validator text), status messages replace each other instead of piling up, disabled buttons explain why, the Seguridad tab does not grow per error.
+  - Role guard: visiting a page the role cannot see redirects and the URL changes too. Opening a drawer does not auto-focus a text field on phones.
+  - Browser test measures the login card box before/after an error and a tab switch (top unchanged, no jump).
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** build the primitives, then apply them to auth and account.
+
+## UPS-034 · Calendar, blog and gallery: correct day/month sync, loading states, drafts filter
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** audit docs/audit/2026-10-08/content.md (1–5, 7–10)
+- **Depends on:** UPS-033
+- **Uses contract:** UPS-033
+- **Related:** UPS-026, UPS-027
+- **Paths:** web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, app/services/blog.py, app/services/gallery.py, app/routers/blog.py, app/routers/gallery.py, app/tests/test_blog.py, app/tests/test_gallery.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Changing month, view or the drafts toggle never shows old data under the new heading (skeleton or animated swap); the selected day shows its events after a month change; `?dia=` keeps the visible month in sync; the day detail scrolls into view; the month grid keeps a fixed cell height.
+  - "Ver borradores" shows only drafts (API filter tested); "Artículos en tendencia" is renamed or really measures something.
+  - Field-level errors in the event modal; titles readable on phones.
+- **Verify:** `uv run pytest -q app/tests/test_blog.py app/tests/test_gallery.py && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** fix the calendar state, then the loading swaps, then drafts.
+
+## UPS-035 · Community: hidden images, long words, counters, channel switch, own deletes
+
+- **Type:** fix
+- **Priority:** P0
+- **Estimate:** 210 min
+- **Rubric / Spec:** audit docs/audit/2026-10-08/community.md (all) · UPS-025 security notes
+- **Depends on:** UPS-033
+- **Uses contract:** UPS-033
+- **Related:** UPS-025
+- **Paths:** web/src/features/community/, app/services/community.py, app/routers/community.py, app/services/media.py, app/tests/test_community.py, app/tests/test_media.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Hiding a post makes its image unavailable to everyone but moderators (no public `/media` URL for a hidden post); test proves it.
+  - Long words wrap (no horizontal scroll at 390 px); the comment counter matches the server after hide/publish/poll; switching channel keeps the layout (no collapse to skeleton, scroll handled); a post made while switching never lands in the wrong channel.
+  - Composer errors use the reserved slot; hiding animates; reactions row keeps its width; comments paginate ("Ver más"); image picker shows focus and a preview.
+  - Authors can delete their own posts and comments (API + UI, tested in the permissions matrix); a malformed image is a 422, never a 500.
+  - Decide and document whether non-members may post in a club channel (default: members of the club and admins only).
+- **Verify:** `uv run pytest -q app/tests/test_community.py app/tests/test_media.py && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** security fixes first (hidden image, 500), then layout, then delete.
+
+## UPS-036 · Admin panels: club permission page, modal errors, user defaults
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** audit docs/audit/2026-10-08/admin.md (2, 4–7, 9)
+- **Depends on:** UPS-033, UPS-032
+- **Uses contract:** UPS-033
+- **Related:** UPS-009, UPS-010
+- **Paths:** web/src/features/superadmin/, web/src/features/academy-admin/, app/services/admin.py, app/tests/test_admin.py, docs/permissions-matrix.md, app/tests/test_permissions_matrix.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - An admin opening another club's panel gets a clear "no administras este club" page with a way back (no retry button on a 403).
+  - Modal errors use the reserved slot (no jump); club cards use the UPS-032 wordmark; the superadmin row explains why it cannot deactivate itself.
+  - New users get a unique default nickname; the permissions matrix also covers the club content/enrollment reads.
+- **Verify:** `uv run pytest -q app/tests/test_admin.py app/tests/test_permissions_matrix.py && npm --prefix web run build`
+- **Next step:** 403 page, then modal errors, then nickname and matrix.
+
+## UPS-037 · Usage analytics: activity events in the database, ready for a dashboard
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** human request 2026-10-08: record what students do and use, in the DB for now, scalable to a dashboard later
+- **Depends on:** UPS-002
+- **Uses contract:** -
+- **Related:** UPS-032
+- **Paths:** app/models/analytics.py, app/models/__init__.py, app/migrations/versions/0005_activity_events.py, app/services/analytics.py, app/routers/analytics.py, app/main.py, app/tests/test_analytics.py, web/src/lib/analytics.ts, web/src/App.tsx, docs/analytics.md
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Append-only `activity_events` table (bigint id, occurred_at, user_id, academy_id, event name from an allowlist, subject type/id, small JSON properties, session id, client), indexed for time-range queries by event, user and club; no PII in properties.
+  - Server records key actions without slowing requests (login, lesson progress/completion, post/comment/reaction, resource open, enrollment); `POST /api/analytics/events` accepts small batches of client events (page view, video play/pause/end, search) for signed-in users, validated and rate-limited.
+  - The web tracker batches and flushes (`sendBeacon` on page hide), never blocks the UI, and does nothing when the API rejects it.
+  - `docs/analytics.md`: event catalogue, example dashboard queries (active users per day, completion funnel per route, top resources), retention and how to move the stream to a warehouse later; privacy notice impact noted.
+  - Tests for the endpoint (allowlist, size limits, auth), the server hooks and the migration (up/down on SQLite and Postgres).
+- **Verify:** `uv run pytest -q app/tests/test_analytics.py && npm --prefix web run build`
+- **Next step:** model + migration, then server hooks, then the client tracker and docs.
+
+## UPS-038 · Learning player: smooth lesson change, search, drawer focus
+
+- **Type:** ux
+- **Priority:** P2
+- **Estimate:** 90 min
+- **Rubric / Spec:** audit docs/audit/2026-10-08/learning.md (all)
+- **Depends on:** UPS-033
+- **Uses contract:** UPS-033
+- **Related:** UPS-024
+- **Paths:** web/src/features/learning/
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Next/previous lesson keeps the layout (no full-page skeleton flash); the sidebar search keeps its text across lessons; "Sin coincidencias" appears once for the whole search; the video area shows a placeholder until the iframe loads.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** keep the shell mounted between lessons, then the search state.
