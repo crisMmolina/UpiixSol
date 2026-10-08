@@ -11,3 +11,4 @@
 ## History
 - 1791484134 | CLAIMED | joahan-claude | claim; next: implement the storage switch, the single stage, the blueprint and the guide.
 - 1791484142 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/48; evidence: pytest 100 %, e2e 12 passed, single image simulated Render+Neon (media survives restart); reviewer: -
+- 1791484150 | REVIEW | joahan-rev | review; approve; SHA c95309dab9ec6ac739a4224de483e5e2bd977b04; reviewer joahan-rev
