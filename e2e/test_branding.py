@@ -30,7 +30,7 @@ def rgb(hex_color: str) -> str:
     return f"rgb({r}, {g}, {b})"
 
 
-def create_club_as_superadmin(page: Page, base_url: str) -> None:
+def create_club_as_superadmin(page: Page, base_url: str, club: dict[str, str] = CLUB) -> None:
     """Logs in through the API (the refresh cookie lands in the browser context) and creates the club."""
     login = page.request.post(
         f"{base_url}/api/auth/login",
@@ -40,7 +40,7 @@ def create_club_as_superadmin(page: Page, base_url: str) -> None:
     assert login.ok, login.text()  # noqa: S101
     token = login.json()["access_token"]
     created = page.request.post(
-        f"{base_url}/api/admin/academies", headers={"Authorization": f"Bearer {token}"}, data=CLUB
+        f"{base_url}/api/admin/academies", headers={"Authorization": f"Bearer {token}"}, data=club
     )
     assert created.status == 201, created.text()  # noqa: S101
 
@@ -85,3 +85,40 @@ def test_club_without_logo_uses_its_three_colors(site: Site) -> None:
     stripe = card.locator("div.h-1.bg-primary")
     assert stripe.evaluate("(el) => getComputedStyle(el).backgroundColor") == rgb(CLUB["color_primary"])  # noqa: S101
     site.shot("branding-clubs")
+
+
+LONG_CLUBS = [
+    {**CLUB, "slug": "upiixastronomia", "name": "UpiixAstronomía y Ciencias Planetarias del Norte"},
+    {**CLUB, "slug": "club-robotica", "name": "Club de Robótica Competitiva", "color_primary": "#FDE047"},
+]
+
+
+def assert_fits_phone(site: Site, step: str) -> None:
+    """No sideways scroll at 390 px and the bell (top-bar actions) fully on screen."""
+    page = site.page
+    assert page.evaluate("document.documentElement.scrollWidth") <= 390, step  # noqa: S101
+    bell = page.get_by_role("banner").get_by_role("button", name=re.compile(r"^Notificaciones"))
+    box = bell.bounding_box()
+    assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390, (step, box)  # noqa: S101
+
+
+def test_long_club_names_fit_a_phone(site: Site) -> None:
+    page = site.page
+    for club in LONG_CLUBS:
+        create_club_as_superadmin(page, site.base_url, club)
+    page.set_viewport_size({"width": 390, "height": 844})
+    try:
+        page.goto(site.url("/clubes"))
+        expect(page.get_by_role("link", name=f"Entrar a {LONG_CLUBS[0]['name']}")).to_be_visible()
+        assert_fits_phone(site, "/clubes")
+        page.goto(site.url("/"))
+        expect(page.get_by_role("link", name=f"Entrar a {LONG_CLUBS[0]['name']}")).to_be_visible()
+        assert_fits_phone(site, "/")
+        for club in LONG_CLUBS:
+            page.goto(site.url(f"/a/{club['slug']}"))
+            expect(page.get_by_role("banner").get_by_role("img", name=club["name"], exact=True)).to_be_visible()
+            assert_fits_phone(site, club["slug"])
+        site.shot("branding-long-name")
+    finally:
+        width, height = (1280, 800) if site.name == "desktop" else (390, 844)
+        page.set_viewport_size({"width": width, "height": height})
