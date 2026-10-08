@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     media_dir: str = "media"
     ratelimit_enabled: bool = True
     seed_default_password: str = DOCUMENTED_SEED_PASSWORD
+    # Accounts with must_change_password can only change it until they do (UPS-020). `false` only for a demo
+    # with the seeded accounts (IDEA §2.3).
+    require_password_change: bool = True
 
     @model_validator(mode="before")
     @classmethod

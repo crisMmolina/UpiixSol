@@ -157,6 +157,8 @@ MATRIX: list[Rule] = [
     Rule("POST", "/api/posts/{post_id}/comments", ANY, _json(lambda _w: {"body": "Comentario"})),
     Rule("POST", "/api/posts/{post_id}/hide", OWN, note="moderation: academy channel"),
     Rule("POST", "/api/comments/{comment_id}/hide", OWN, note="moderation: academy channel"),
+    Rule("PUT", "/api/posts/{post_id}/reactions/{kind}", ANY, note="idempotent, 60/min per user (UPS-018)"),
+    Rule("DELETE", "/api/posts/{post_id}/reactions/{kind}", ANY, note="idempotent (UPS-018)"),
     # ── Events ───────────────────────────────────────────────
     Rule("POST", "/api/events", OWN, _json(_event)),
     Rule("PATCH", "/api/events/{event_id}", OWN, _json(_event)),
@@ -309,6 +311,7 @@ def _path(rule: Rule, w: World, db: Session) -> str:
         "event_id": w.event_id,
         "channel_id": w.channel_id,
         "user_id": w.member_id,
+        "kind": "like",
     }
     if "{resource_id}" in rule.path:
         values["resource_id"] = _resource_id(db, w)

@@ -7,12 +7,22 @@ Usage in a router:
     def login(request: Request, ...): ...
 """
 
+from limits import parse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.config import get_settings
+from app.errors import AppError
 
 LOGIN_LIMIT = "5/minute"
 POST_LIMIT = "10/minute"
 
 limiter = Limiter(key_func=get_remote_address, enabled=get_settings().ratelimit_enabled)
+_LOGIN_PER_EMAIL = parse(LOGIN_LIMIT)
+
+
+def hit_login_email(email: str) -> None:
+    """Login attempts per account, besides per IP: guessing one password from many IPs is also limited
+    (UPS-020). The key is the normalized email, so case and spaces do not open new buckets."""
+    if limiter.enabled and not limiter.limiter.hit(_LOGIN_PER_EMAIL, "login-email", email.strip().lower()):
+        raise AppError(429, code="rate_limited")
