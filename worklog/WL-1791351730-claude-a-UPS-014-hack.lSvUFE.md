@@ -1,12 +1,12 @@
 # worklog/WL-1791351730-claude-a-UPS-014-hack.lSvUFE.md · UPS-014
 
 ## Live summary
-- Done: full pytest cov 100% after merge main incl. test_permissions_matrix; reject fixed: doc regenerated 192c279
+- Done: human merge after uak review approve (192c279, re-approved 961187c)
 - Decision: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR
 - Why: UPS-010 contract: a new write endpoint requires regenerating the doc; test_docs_are_up_to_date
 - Failing: none
 - Commands: uv run pytest -q app/tests/test_account.py && npm --prefix web run build
-- Next: Apply option: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR
+- Next: Integrated in main: bc31eaa88d873f2ee76e884889f916084b28ffc3; claim next P0
 
 ## History
 - 1791351730 | CLAIMED | claude-a | claim; next: `test_change_password_requires_current`.
@@ -19,3 +19,4 @@
 - 1791354954 | REVIEW | joahan-claude | review; approve; SHA 192c27909ca012d960d4ecc32199d953cbf80d58; reviewer joahan-claude
 - 1791355506 | REVIEW | scheduler | deadline decision UPS-014-1791354509; option: Regenerate docs/permissions-matrix.md (owner UPS-010, integrated, same author) in the UPS-014 PR; Why: UPS-010 contract: a new write endpoint requires regenerating the doc; test_docs_are_up_to_date
 - 1791442258 | REVIEW | claude | review; approve; SHA 961187cffac3be17b12871017c0493fe1b33392a; reviewer claude
+- 1791442297 | INTEGRATED | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/22; evidence: human merge after uak review approve (192c279, re-approved 961187c); reviewer: claude
