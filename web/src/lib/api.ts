@@ -7,6 +7,7 @@
 // The access token lives only in memory. On a 401 the client calls /api/auth/refresh once
 // (refresh token in an HttpOnly cookie) and retries the request. Every request carries
 // `X-Requested-With: fetch`: the API requires it on cookie-authenticated endpoints (CSRF guard).
+// A 403 `password_change_required` tells AuthProvider to send the user to Mi cuenta → Seguridad.
 
 import type { ApiError as ApiErrorBody, TokenOut } from "./types";
 
@@ -42,6 +43,9 @@ let refreshing: Promise<TokenOut | null> | null = null;
 // so a slow startup refresh can never undo a login (or bring back a session after logout).
 let sessionEpoch = 0;
 const listeners = new Set<(session: TokenOut | null) => void>();
+const passwordListeners = new Set<() => void>();
+// Another tab rotated the shared refresh cookie a moment ago: wait for its new cookie and try once more.
+const RACE_RETRY_MS = 400;
 
 /** Explicit session change (login, register, logout). */
 export function setAccessToken(token: string | null): void {
@@ -53,6 +57,12 @@ export function setAccessToken(token: string | null): void {
 export function onSessionChange(listener: (session: TokenOut | null) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** The API refused a request until the provisional password is changed (UPS-020). */
+export function onPasswordChangeRequired(listener: () => void): () => void {
+  passwordListeners.add(listener);
+  return () => passwordListeners.delete(listener);
 }
 
 function buildUrl(path: string, query?: Query): string {
@@ -81,12 +91,13 @@ export function refreshSession(): Promise<TokenOut | null> {
   refreshing ??= (async () => {
     const epoch = sessionEpoch;
     let session: TokenOut | null = null;
+    const attempt = () => fetch("/api/auth/refresh", { method: "POST", credentials: "include", headers: CSRF_HEADER });
     try {
-      const response = await fetch("/api/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-        headers: CSRF_HEADER,
-      });
+      let response = await attempt();
+      if (!response.ok && (await toError(response)).code === "refresh_race") {
+        await new Promise((resolve) => setTimeout(resolve, RACE_RETRY_MS));
+        response = await attempt();
+      }
       session = response.ok ? ((await response.json()) as TokenOut) : null;
     } catch {
       session = null; // network error: treat as no session
@@ -121,7 +132,11 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     const session = await refreshSession();
     if (session) response = await send();
   }
-  if (!response.ok) throw await toError(response);
+  if (!response.ok) {
+    const error = await toError(response);
+    if (error.code === "password_change_required") passwordListeners.forEach((listener) => listener());
+    throw error;
+  }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }

@@ -15,6 +15,8 @@ import { RequireRole, useAuth } from "@/lib/auth";
 import type { AcademyCardOut, ChannelOut, CommentOut, Page, PostOut, UserMe } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
 
+import { Reactions } from "./Reactions";
+
 export const order = 35;
 
 const REFRESH_MS = 30_000;
@@ -242,9 +244,13 @@ function PostCard({ post, channels, moderator, onHidden, onError }: {
         </a>
       )}
       <footer className="mt-3">
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-muted hover:bg-line/50 hover:text-ink">
-          <ChatCircle weight="bold" aria-hidden /> {count === 1 ? "1 comentario" : `${count} comentarios`}
-        </button>
+        {/* Reactions and comments share one row; comments open full width below it. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Reactions post={post} onError={onError} />
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-muted hover:bg-line/50 hover:text-ink">
+            <ChatCircle weight="bold" aria-hidden /> {count === 1 ? "1 comentario" : `${count} comentarios`}
+          </button>
+        </div>
         {open && <Comments post={post} moderator={moderator} onCount={setCount} />}
       </footer>
     </article>
@@ -349,7 +355,7 @@ function CommunityPage() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[15rem_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside aria-label="Canales" className="lg:sticky lg:top-24 lg:self-start">
         <h1 className="mb-3 text-2xl">Comunidad</h1>
         {!channels ? (
@@ -359,7 +365,7 @@ function CommunityPage() {
         )}
       </aside>
 
-      <section aria-label={`Canal ${channel?.slug ?? ""}`} className="grid min-w-0 content-start gap-4">
+      <section aria-label={`Canal ${channel?.slug ?? ""}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
         {channel && (
           <div>
             <h2 className="text-xl">{channel.type === "feed" ? "Feed" : `#${channel.slug}`}</h2>

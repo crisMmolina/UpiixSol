@@ -9,6 +9,8 @@ import tempfile
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="upiixsol-media-"))
+# Seeded accounts have must_change_password; test_auth.py turns the requirement on to test it (UPS-020).
+os.environ.setdefault("REQUIRE_PASSWORD_CHANGE", "false")
 
 from collections.abc import Iterator  # noqa: E402
 
@@ -58,7 +60,8 @@ def _reset_rate_limits() -> Iterator[None]:
 @pytest.fixture
 def client(db: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app) as test_client:
+    # Like the web client, every request says it comes from fetch (login and register require it).
+    with TestClient(app, headers={"X-Requested-With": "fetch"}) as test_client:
         yield test_client
     app.dependency_overrides.pop(get_db, None)
 
