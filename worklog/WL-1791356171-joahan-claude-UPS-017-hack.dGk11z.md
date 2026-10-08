@@ -1,12 +1,12 @@
 # worklog/WL-1791356171-joahan-claude-UPS-017-hack.dGk11z.md · UPS-017
 
 ## Live summary
-- Done: UX pass (redesign-existing-projects) at dac32b0; lint+build OK; browser e2e OK against main+open PRs
+- Done: PR #30 merged (cbcca69); approved a65ee15 by claude; pytest 100% cov, build, e2e 12/12
 - Decision: front-end only; no API/security changes
 - Why: Joahan asked to apply the UX/UI skills
 - Failing: none
 - Commands: npm --prefix web run lint && npm --prefix web run build
-- Next: re-review of the new SHA; PR when the token allows it
+- Next: Integrated in main: cbcca693c4d72a8cefc01952266bbf820efdf92d; claim next P0
 
 ## History
 - 1791356171 | CLAIMED | joahan-claude | claim; next: `test_draft_project_not_listed`.
@@ -14,3 +14,4 @@
 - 1791357617 | REVIEW | joahan-claude | checkpoint; next: Review de b357c48
 - 1791382066 | REVIEW | joahan-claude | checkpoint; next: re-review of the new SHA; PR when the token allows it
 - 1791438118 | REVIEW | claude | review; approve; SHA a65ee150e247cd612e990b3fafa9782604e3b584; reviewer claude
+- 1791438928 | INTEGRATED | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/30; evidence: PR #30 merged (cbcca69); approved a65ee15 by claude; pytest 100% cov, build, e2e 12/12; reviewer: claude
