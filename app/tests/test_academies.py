@@ -180,14 +180,13 @@ def test_posts_carry_comment_and_reaction_counts(as_member: TestClient, db: Sess
             Comment(post_id=post.id, author_id=ids["member_id"], body="¡Bien!"),
             Comment(post_id=post.id, author_id=ids["member_id"], body="oculto", is_hidden=True),
             Reaction(post_id=post.id, user_id=ids["member_id"], kind="like"),
-            Reaction(post_id=post.id, user_id=ids["admin_ia_id"], kind="like"),
-            Reaction(post_id=post.id, user_id=ids["admin_ia_id"], kind="fire"),
+            Reaction(post_id=post.id, user_id=ids["admin_ia_id"], kind="fire"),  # one per account (UPS-025)
         ]
     )
     db.flush()
     latest = as_member.get("/api/academies/upiixia/home").json()["latest_posts"][0]
     assert latest["id"] == post.id
-    assert latest["comment_count"] == 1 and latest["reactions"] == {"like": 2, "fire": 1}
+    assert latest["comment_count"] == 1 and latest["reactions"] == {"like": 1, "fire": 1}
 
 
 def test_home_without_home_content_or_unpublished_featured(client: TestClient, db: Session) -> None:

@@ -63,7 +63,8 @@ def test_post_validation(as_member: TestClient, db: Session) -> None:
     channel = _channel(db, "general")
     path = f"/api/channels/{channel.id}/posts"
     assert as_member.post(path, data={"body": ""}).status_code == 422
-    assert as_member.post(path, data={"body": "x" * 5001}).status_code == 422
+    assert as_member.post(path, data={"body": "x" * 513}).status_code == 422  # 512-char limit
+    assert as_member.post(path, data={"body": "x" * 512}).status_code == 201
     assert as_member.post(path, data={"body": "hola", "link_url": "javascript:alert(1)"}).status_code == 422
     bad_image = as_member.post(path, data={"body": "hola"}, files={"image": ("x.png", b"nope", "image/png")})
     assert bad_image.status_code == 422
@@ -132,12 +133,13 @@ def test_hide_audit(as_admin_ia: TestClient, as_member: TestClient, db: Session,
     assert response.status_code == 200
     db.refresh(post)
     assert post.is_hidden and post.hidden_by_id == seeded["admin_ia_id"] and post.hidden_at is not None
-    ids = [
-        p["id"]
-        for p in as_member.get(f"/api/channels/{_channel(db, 'feed').id}/posts?limit=50").json()["items"]
-    ]
-    assert post.id not in ids
+    items = as_member.get(f"/api/channels/{_channel(db, 'feed').id}/posts?limit=50").json()["items"]
+    hidden = next(p for p in items if p["id"] == post.id)  # stays in place as "Mensaje oculto"
+    assert hidden["is_hidden"] is True
+    assert hidden["body"] == "" and hidden["image_url"] is None and hidden["link_url"] is None
+    assert hidden["reactions"] == {} and hidden["comment_count"] == 0
     assert as_member.get(f"/api/posts/{post.id}/comments").status_code == 404
+    assert as_member.post(f"/api/posts/{post.id}/comments", json={"body": "x"}).status_code == 404
 
 
 def test_moderation_scope(
@@ -163,7 +165,8 @@ def test_hide_comment(as_admin_ia: TestClient, as_member: TestClient, db: Sessio
     assert as_admin_ia.post(f"/api/comments/{comment.id}/hide").status_code == 200
     db.refresh(comment)
     assert comment.is_hidden and comment.hidden_by_id == seeded["admin_ia_id"]
-    assert as_member.get(f"/api/posts/{post.id}/comments").json()["items"] == []
+    listed = as_member.get(f"/api/posts/{post.id}/comments").json()["items"]
+    assert [(c["id"], c["is_hidden"], c["body"]) for c in listed] == [(comment.id, True, "")]
     assert as_admin_ia.post("/api/comments/9999/hide").status_code == 404
 
 

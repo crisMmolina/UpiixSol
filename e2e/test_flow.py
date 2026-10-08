@@ -169,7 +169,7 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     event_title = f"Noche de robótica e2e {site.name}"
 
     page.goto(site.url("/admin?tab=academias"))
-    page.get_by_role("button", name="Nueva academia").click()
+    page.get_by_role("button", name="Nuevo club").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Nombre", exact=True).fill("UpiixRobótica")
     dialog.get_by_label("Identificador (slug)").fill("upiixrobotica")
@@ -178,7 +178,7 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     dialog.locator('input[type="file"][name="logo"]').set_input_files(
         files=[{"name": "logo.png", "mimeType": "image/png", "buffer": _png_bytes()}]
     )
-    dialog.get_by_role("button", name="Crear academia").click()
+    dialog.get_by_role("button", name="Crear club").click()
     expect(dialog).to_be_hidden()
     expect(page.get_by_text("UpiixRobótica").first).to_be_visible()
 
@@ -186,7 +186,7 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     page.get_by_role("button", name="Nuevo usuario").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Rol").select_option("academy_admin")
-    dialog.get_by_label("Academia").select_option(label="UpiixRobótica")
+    dialog.get_by_label("Club").select_option(label="UpiixRobótica")
     dialog.get_by_label("Nombre completo").fill("Rocío Robótica")
     dialog.get_by_label("Correo").fill("admin.robotica@upiixsol.dev")
     dialog.get_by_label("Contraseña temporal").fill("temporal-robot-1")

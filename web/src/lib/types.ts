@@ -396,6 +396,7 @@ export interface CommentOut {
   id: number;
   post_id: number;
   author: PublicUser;
-  body: string;
+  body: string; // "" when hidden (redacted by the API)
   created_at: DateTime;
+  is_hidden: boolean;
 }

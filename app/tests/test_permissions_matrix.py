@@ -365,8 +365,8 @@ def test_matrix(rule: Rule, clients: dict[str, TestClient], world: World, db: Se
 
 # ── docs/permissions-matrix.md ──────────────────────────────
 
-LABELS = {"anon": "Anónimo", "member": "Miembro", "admin_own": "Admin (su academia)",
-          "admin_other": "Admin (otra academia)", "superadmin": "Superadmin"}  # fmt: skip
+LABELS = {"anon": "Anónimo", "member": "Miembro", "admin_own": "Admin (su club)",
+          "admin_other": "Admin (otro club)", "superadmin": "Superadmin"}  # fmt: skip
 
 
 def render_markdown() -> str:

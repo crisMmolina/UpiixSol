@@ -1,4 +1,4 @@
-"""Post reactions (IDEA §8.1 P2): one per user and kind, idempotent PUT/DELETE.
+"""Post reactions (IDEA §8.1 P2): one per account and post (UPS-025); PUT replaces the previous kind.
 
 Counts per post already come in the post listings (`services.academies.posts_out`); this module adds
 the writes and which kinds the current user chose, so the UI can show the toggled state.
@@ -54,8 +54,10 @@ def _summary(db: Session, post_id: int, user: User) -> ReactionsOut:
 def add(db: Session, post_id: int, user: User, kind: ReactionKind) -> ReactionsOut:
     post = _visible_post(db, post_id)
     try:
-        # Insert-or-nothing: a repeated (or concurrent) identical PUT hits the primary key and is a no-op.
+        # Replace: drop this user's reaction on the post and insert the new kind. A concurrent PUT from the
+        # same user hits the (post_id, user_id) primary key; the one that committed first wins.
         with db.begin_nested():
+            db.execute(delete(Reaction).where(Reaction.post_id == post.id, Reaction.user_id == user.id))
             db.add(Reaction(post_id=post.id, user_id=user.id, kind=kind.value))
             db.flush()
     except IntegrityError:

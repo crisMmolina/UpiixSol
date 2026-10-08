@@ -60,7 +60,7 @@ def create_academy(db: Session, data: AcademyCreateIn) -> AcademyOut:
 def update_academy(db: Session, academy_id: int, data: AcademyUpdateIn) -> AcademyOut:
     academy = db.get(Academy, academy_id)
     if academy is None:
-        raise AppError(404, "No encontramos esa academia.")
+        raise AppError(404, "No encontramos ese club.")
     values = data.model_dump(exclude_unset=True)
     if values.get("welcome_text") is not None:
         values["welcome_text"] = clean_markdown(values["welcome_text"])
@@ -107,7 +107,7 @@ def users_stmt(role: Role | None, academy_id: int | None, q: str | None) -> Sele
 def _check_academy(db: Session, academy_id: int | None) -> None:
     academy = db.get(Academy, academy_id) if academy_id is not None else None
     if academy is None or not academy.is_active:
-        raise _invalid("Elige una academia activa para el admin.")
+        raise _invalid("Elige un club activo para el admin.")
 
 
 def _user_exists(db: Session, email: str, boleta: str | None) -> bool:
@@ -156,7 +156,7 @@ def update_user(db: Session, actor: User, user_id: int, data: AdminUserUpdateIn)
         raise _invalid("No puedes desactivar tu propia cuenta.")
     if "academy_id" in values:
         if user.role != Role.academy_admin:
-            raise _invalid("Solo los admins de academia tienen una academia asignada.")
+            raise _invalid("Solo los admins de club tienen un club asignado.")
         _check_academy(db, values["academy_id"])
     for field, value in values.items():
         if value is not None:
