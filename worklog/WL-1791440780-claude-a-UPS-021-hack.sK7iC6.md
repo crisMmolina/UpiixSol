@@ -1,12 +1,12 @@
 # worklog/WL-1791440780-claude-a-UPS-021-hack.sK7iC6.md · UPS-021
 
 ## Live summary
-- Done: fix dark scope tokens 0eaf8d0; build ok; e2e 12 passed on ups-024 using it
+- Done: human merge after uak review approve (0eaf8d0)
 - Decision: Own branch and worktree
 - Why: Parallel work without touching the main checkout
 - Failing: No validation run yet
 - Commands: `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/34; run .uak/bin/smoke
+- Next: Integrated in main: 2e179ea656da8355ede6399e800b9d582c88d63e; claim next P0
 
 ## History
 - 1791440780 | CLAIMED | claude-a | claim; next: transparent logos + tokens on white.
@@ -15,3 +15,4 @@
 - 1791441503 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/34; evidence: fix dark scope tokens 0eaf8d0; build ok; e2e 12 passed on ups-024 using it; reviewer: -
 - 1791441538 | REVIEW | claude | review; approve; SHA 0eaf8d0012c6ddd887c1628e5037ce95bc97b751; reviewer claude
 - 1791441635 | REVIEW | joahan-claude | review; approve; SHA 0eaf8d0012c6ddd887c1628e5037ce95bc97b751; reviewer joahan-claude
+- 1791442122 | INTEGRATED | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/36; evidence: human merge after uak review approve (0eaf8d0); reviewer: joahan-claude
