@@ -60,8 +60,8 @@ Cobertura: **57/57 endpoints de escritura (100 %)** × 5 roles.
 | PATCH | `/api/resources/{resource_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | DELETE | `/api/resources/{resource_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | POST | `/api/resources/{resource_id}/file` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
-| POST | `/api/analytics/events` | 🔒 | ✅ | ✅ | ✅ | ✅ | usage analytics, 30/min per user (UPS-037) |
 | PATCH | `/api/account/profile` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/account/avatar` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/account/email` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
 | POST | `/api/account/password` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
+| POST | `/api/analytics/events` | 🔒 | ✅ | ✅ | ✅ | ✅ | usage analytics, 30/min per user (UPS-037) |
