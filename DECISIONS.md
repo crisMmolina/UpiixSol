@@ -20,3 +20,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1791382074 | UPS-019 | front-end only; no API/security changes | Why: Joahan asked to apply the UX/UI skills
 - 1791385392 | UPS-018 | front-end only; API unchanged | Why: Joahan asked to apply the UX/UI skills
 - 1791440527 | deadline lease/UPS-015/1791439899 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
+- 1791441047 | UPS-026 | day cell = absolute button over cell | Why: keyboard/44px

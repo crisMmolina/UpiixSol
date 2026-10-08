@@ -1,10 +1,10 @@
 # joahan-3
 Agent: joahan-3
 Started: 1791440738
-Events: 1
-Events-Since-Checkpoint: 1
-Checkpoints: 0
+Events: 2
+Events-Since-Checkpoint: 0
+Checkpoints: 1
 Sessions: 1
-Last-Checkpoint: 0
+Last-Checkpoint: 1791441047
 Last-Session: joahan-3-1791440738
-Updated: 1791440738
+Updated: 1791441047
