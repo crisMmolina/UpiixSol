@@ -1,12 +1,12 @@
 # worklog/WL-1791354597-joahan-claude-UPS-018-hack.7qEcjh.md · UPS-018
 
 ## Live summary
-- Done: UX pass at 89c7564: chips only for used reactions + picker; lint+build OK; browser e2e mobile+desktop OK against main+PRs
+- Done: PR #25 merged (06468f6); approved 89c7564 by claude
 - Decision: front-end only; API unchanged
 - Why: Joahan asked to apply the UX/UI skills
 - Failing: none
 - Commands: npm --prefix web run lint && npm --prefix web run build
-- Next: re-review of the new SHA; PR when the token allows it
+- Next: Integrated in main: 06468f62db06d48b9acc97ac6de6061d67d90cfd; claim next P0
 
 ## History
 - 1791354597 | CLAIMED | joahan-claude | claim; next: `test_reaction_idempotent`.
@@ -15,3 +15,4 @@
 - 1791357586 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-018; evidence: 4ecfdb1: test_reactions + matrix 58 passed, 100% cov; smoke PRODUCT_PASS; security-reviewer RISK LOW (per-user rate limit verified, scoped DELETE, no N+1); LOW overflow fixed; reviewer: -
 - 1791385392 | REVIEW | joahan-claude | checkpoint; next: re-review of the new SHA; PR when the token allows it
 - 1791443353 | REVIEW | claude | review; approve; SHA 89c7564a7728957095c967580b964e768a30b26b; reviewer claude
+- 1791444050 | INTEGRATED | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/25; evidence: PR #25 merged (06468f6); approved 89c7564 by claude; reviewer: claude
