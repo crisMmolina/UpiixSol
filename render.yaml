@@ -12,7 +12,7 @@ services:
     envVars:
       - key: ENV
         value: prod
-      - key: DATABASE_URL # Neon connection string (pooled); the entrypoint adds the psycopg driver
+      - key: DATABASE_URL # Neon direct connection string; the entrypoint adds the psycopg driver
         sync: false
       - key: JWT_SECRET
         generateValue: true

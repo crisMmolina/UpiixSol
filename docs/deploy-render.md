@@ -46,7 +46,7 @@ Reemplaza `<servicio>` por la URL que te dio Render, p. ej. `upiixsol.onrender.c
 | **Render se duerme** | Tras 15 min sin visitas el servicio se apaga, y la siguiente visita tarda cerca de un minuto en abrir. Render Starter (USD 7/mes) quita esto. |
 | **Horas de Render** | 750 h al mes por workspace: alcanzan para un servicio encendido todo el mes, no para dos. |
 | **Recursos de Render** | 512 MB de RAM y 0.1 CPU. Sirve para una demo o un club pequeño; Render no recomienda el plan free para producción. |
-| **Tamaño de Neon** | 0.5 GB por proyecto; algunos reportes de 2026 dicen 1 GB, revisa tu panel. Las imágenes cuentan: ya llegan redimensionadas y en WebP, de decenas a pocos cientos de KB cada una. |
+| **Tamaño de Neon** | Espacio limitado por proyecto (del orden de 0.5 GB; revisa el límite actual en tu panel). Las imágenes cuentan: ya llegan redimensionadas y en WebP, de decenas a pocos cientos de KB cada una. |
 | **Neon en reposo** | El cómputo se suspende tras 5 min sin consultas, y la primera consulta después tarda un poco más. |
 | **Cuotas de Neon** | El plan free también limita las horas de cómputo y la transferencia al mes. Servir imágenes desde la base cuenta para las dos; revisa el consumo en el panel de Neon. |
 | **Límite por IP** | Detrás del proxy de Render alguien puede falsear su IP para el límite por IP (`FORWARDED_ALLOW_IPS="*"`). El límite por correo del login sigue funcionando. |
