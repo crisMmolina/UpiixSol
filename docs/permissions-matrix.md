@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **48/48 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **56/56 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -48,6 +48,14 @@ Cobertura: **48/48 endpoints de escritura (100 %)** × 5 roles.
 | DELETE | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | POST | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ | any signed-in user (enrolls on first progress) |
 | DELETE | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
+| POST | `/api/projects` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| PUT | `/api/projects/{project_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| DELETE | `/api/projects/{project_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/projects/{project_id}/cover` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/blog` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| PUT | `/api/blog/{blog_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| DELETE | `/api/blog/{blog_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/blog/{blog_id}/cover` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | POST | `/api/academies/{academy_id}/resources` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | PATCH | `/api/resources/{resource_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | DELETE | `/api/resources/{resource_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |

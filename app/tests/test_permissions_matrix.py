@@ -171,6 +171,17 @@ MATRIX: list[Rule] = [
         note="any signed-in user (enrolls on first progress)",
     ),
     Rule("DELETE", "/api/lessons/{lesson_id}/complete", ANY),
+    # ── Gallery and blog (UPS-017) ───────────────────────────
+    Rule("POST", "/api/projects", SUPER, _json(lambda _w: {"title": "Proyecto", "slug": "proyecto-matriz"})),
+    Rule(
+        "PUT", "/api/projects/{project_id}", SUPER, _json(lambda _w: {"title": "Editado", "slug": "editado"})
+    ),
+    Rule("DELETE", "/api/projects/{project_id}", SUPER),
+    Rule("POST", "/api/projects/{project_id}/cover", SUPER, _file()),
+    Rule("POST", "/api/blog", SUPER, _json(lambda _w: {"title": "Entrada", "slug": "entrada-matriz"})),
+    Rule("PUT", "/api/blog/{blog_id}", SUPER, _json(lambda _w: {"title": "Editada", "slug": "editada-b"})),
+    Rule("DELETE", "/api/blog/{blog_id}", SUPER),
+    Rule("POST", "/api/blog/{blog_id}/cover", SUPER, _file()),
     # ── Resources (UPS-012) ──────────────────────────────────
     Rule(
         "POST",
@@ -269,6 +280,16 @@ def world(db: Session, seeded: dict) -> World:
     )
 
 
+def _fresh(db: Session, model: str) -> int:
+    """A new project or blog post per rule, so a DELETE by one role never hides it from the next."""
+    from app import models
+
+    row = getattr(models, model)(title="Matriz", slug=f"matriz-{model.lower()}-{utcnow().timestamp()}")
+    db.add(row)
+    db.flush()
+    return row.id
+
+
 def _resource_id(db: Session, w: World) -> int:
     from app.models import Resource
 
@@ -294,6 +315,10 @@ def _path(rule: Rule, w: World, db: Session) -> str:
     }
     if "{resource_id}" in rule.path:
         values["resource_id"] = _resource_id(db, w)
+    if "{project_id}" in rule.path:
+        values["project_id"] = _fresh(db, "Project")
+    if "{blog_id}" in rule.path:
+        values["blog_id"] = _fresh(db, "BlogPost")
     return rule.path.format(**values)
 
 
