@@ -1,15 +1,14 @@
 // Flow step 1 (UPS-005): single login for every role + member self-registration.
-import { SignIn, UserPlus } from "@phosphor-icons/react";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Navigate, useNavigate, useSearchParams, type RouteObject } from "react-router";
 
-import { Button } from "@/components/Button";
-import { TextField, fieldErrors } from "@/components/Field";
+import { AnimatedHeight } from "@/components/Motion";
 import { PageSkeleton } from "@/components/Skeleton";
-import { ApiError, errorMessage } from "@/lib/api";
 import { homeFor, useAuth } from "@/lib/auth";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 import type { UserMe } from "@/lib/types";
+
+import { LoginForm, RegisterForm } from "./forms";
 
 export const order = 10;
 
@@ -27,129 +26,13 @@ function useDestination() {
   return (user: UserMe) => next ?? homeFor(user);
 }
 
-function LoginForm({ onDone }: { onDone: (user: UserMe) => void }) {
-  const { login } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setBusy(true);
-    setError(null);
-    try {
-      onDone(await login({ email: String(form.get("email")), password: String(form.get("password")) }));
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <TextField label="Correo" name="email" type="email" autoComplete="email" required inputMode="email" />
-      <TextField label="Contraseña" name="password" type="password" autoComplete="current-password" required />
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <Button type="submit" size="lg" loading={busy} icon={<SignIn weight="bold" />}>
-        Entrar
-      </Button>
-      <p className="text-center text-xs text-muted">
-        ¿Olvidaste tu contraseña? Pide a la mesa directiva del club que la restablezca.
-      </p>
-    </form>
-  );
-}
-
-function RegisterForm({ onDone }: { onDone: (user: UserMe) => void }) {
-  const { register } = useAuth();
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const local: Record<string, string> = {};
-    const boleta = String(form.get("boleta")).trim();
-    if (!/^\d{10}$/.test(boleta)) local.boleta = "La boleta debe tener 10 dígitos.";
-    if (String(form.get("password")).length < 8) local.password = "Usa al menos 8 caracteres.";
-    if (!form.get("accept_privacy")) local.accept_privacy = "Debes aceptar el aviso de privacidad.";
-    setErrors(local);
-    setError(null);
-    if (Object.keys(local).length) return;
-
-    setBusy(true);
-    try {
-      onDone(
-        await register({
-          full_name: String(form.get("full_name")).trim(),
-          boleta,
-          email: String(form.get("email")).trim(),
-          password: String(form.get("password")),
-          accept_privacy: true,
-        }),
-      );
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 422) setErrors(fieldErrors(err.details));
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <TextField label="Nombre completo" name="full_name" autoComplete="name" required minLength={3} error={errors.full_name} />
-      <TextField
-        label="Número de boleta"
-        name="boleta"
-        inputMode="numeric"
-        maxLength={10}
-        required
-        hint="10 dígitos, como aparece en tu credencial del IPN."
-        error={errors.boleta}
-      />
-      <TextField label="Correo" name="email" type="email" autoComplete="email" required error={errors.email} />
-      <TextField
-        label="Contraseña"
-        name="password"
-        type="password"
-        autoComplete="new-password"
-        required
-        minLength={8}
-        hint="Mínimo 8 caracteres."
-        error={errors.password}
-      />
-      <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" name="accept_privacy" className="mt-1 size-4 accent-[var(--academy-secondary)]" />
-        <span>
-          Acepto el <strong>aviso de privacidad</strong>: mi boleta y mi correo solo los ven la mesa directiva y yo; en la
-          comunidad solo se muestran mi apodo y mi foto.
-        </span>
-      </label>
-      {errors.accept_privacy && <p className="text-xs font-semibold text-accent-2">{errors.accept_privacy}</p>}
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <Button type="submit" size="lg" loading={busy} icon={<UserPlus weight="bold" />}>
-        Crear cuenta
-      </Button>
-    </form>
-  );
-}
-
 function LoginPage() {
   const { status, user } = useAuth();
   const [params, setParams] = useSearchParams();
   const destination = useDestination();
   const navigate = useNavigate();
+  // First paint shows the form in place; switching tabs staggers the new fields in.
+  const [switched, setSwitched] = useState(false);
   const tab: Tab = params.get("tab") === "registro" ? "register" : "login";
 
   if (status === "loading") return <PageSkeleton />;
@@ -157,6 +40,8 @@ function LoginPage() {
 
   const onDone = (signedIn: UserMe) => navigate(destination(signedIn), { replace: true });
   const selectTab = (next: Tab) => {
+    if (next === tab) return;
+    setSwitched(true);
     const updated = new URLSearchParams(params);
     if (next === "register") updated.set("tab", "registro");
     else updated.delete("tab");
@@ -169,9 +54,11 @@ function LoginPage() {
 
   return (
     <AcademyTheme branding={CAMPUS_BRANDING} className="min-h-dvh bg-bg">
-      <main className="mx-auto grid min-h-dvh max-w-5xl items-center gap-8 px-4 py-10 sm:px-8 lg:grid-cols-2">
+      {/* Anchored to the top with fixed padding (not centered): the card's top edge never moves when
+          the tab or a message changes its height. */}
+      <main className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          <img src="/brand/upiixsol/wordmark.png" alt="UpiixSol" className="h-12 w-auto sm:h-14" />
+          <img src="/brand/upiixsol/wordmark.png" alt="UpiixSol" width={787} height={211} className="h-12 w-auto sm:h-14" />
           <h1 className="mt-6 text-3xl sm:text-4xl">Tus clubs en un solo campus</h1>
           <p className="mt-3 max-w-md text-muted">
             Retoma tus clases donde te quedaste y conversa con tu comunidad.
@@ -179,11 +66,13 @@ function LoginPage() {
           <img
             src="/brand/upiixsol/mascot.png"
             alt="Ajolote de UpiixSol"
+            width={670}
+            height={492}
             className="mt-6 hidden w-full max-w-xs sm:block"
           />
         </section>
 
-        <section className="rounded-card border border-line bg-surface p-5 shadow-soft sm:p-8">
+        <section aria-label="Tu cuenta" className="rounded-card border border-line bg-surface p-5 shadow-soft sm:p-8">
           <div role="tablist" aria-label="Acceso" className="mb-6 flex gap-1 rounded-full bg-bg p-1">
             <button
               role="tab"
@@ -204,9 +93,11 @@ function LoginPage() {
               Crear cuenta
             </button>
           </div>
-          <div role="tabpanel">
-            {tab === "login" ? <LoginForm onDone={onDone} /> : <RegisterForm onDone={onDone} />}
-          </div>
+          <AnimatedHeight>
+            <div role="tabpanel" aria-label={tab === "login" ? "Entrar" : "Crear cuenta"}>
+              {tab === "login" ? <LoginForm onDone={onDone} play={switched} /> : <RegisterForm onDone={onDone} play={switched} />}
+            </div>
+          </AnimatedHeight>
         </section>
       </main>
     </AcademyTheme>
