@@ -15,3 +15,4 @@
 - 1791495188 | REVIEW | joahan-claude | pending decision UPS-037-1791495188; option: UPS-037 also edits app/tests/test_permissions_matrix.py and docs/permissions-matrix.md (Paths of unclaimed UPS-036) to add its new endpoint row; Why: a new write endpoint must be in the matrix or CI fails; UPS-036 is not claimed
 - 1791496368 | REVIEW | joahan-rev | review; reject; SHA 73c65d43c2d35da05b7faa84a0b4d62eb25474ba; reviewer joahan-rev
 - 1791499864 | REVIEW | joahan-claude | checkpoint; next: review
+- 1791500302 | REVIEW | joahan-rev | review; approve; SHA 2a08912252b41f421fb0549cbc167ffcaf819982; reviewer joahan-rev
