@@ -1,10 +1,10 @@
 # joahan-5
 Agent: joahan-5
 Started: 1791441098
-Events: 1
-Events-Since-Checkpoint: 1
-Checkpoints: 0
+Events: 2
+Events-Since-Checkpoint: 0
+Checkpoints: 1
 Sessions: 1
-Last-Checkpoint: 0
+Last-Checkpoint: 1791441926
 Last-Session: joahan-5-1791441098
-Updated: 1791441098
+Updated: 1791441926
