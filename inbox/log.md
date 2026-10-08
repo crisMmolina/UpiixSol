@@ -222,3 +222,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 218 | 1791442239 | claude | task:UPS-024 | approve | - | Re-approved at merge SHA 7d8e575 (origin/main merge of PR #37, parents 2e179ea+0417632); no UPS-024 diff vs approved 0417632 in web/src/features/learning, e2e.
 - 219 | 1791442258 | claude | task:UPS-014 | approve | UPS-014 | Approved SHA 961187cffac3be17b12871017c0493fe1b33392a by claude. Next: bash .uak/bin/uak heartbeat UPS-014 && bash .uak/bin/uak merge UPS-014
 - 220 | 1791442268 | claude | task:UPS-014 | approve | - | Re-approved 961187c: diff 192c279..961187c empty for account router/service/tests/web feature; only main merge + regenerated permissions-matrix.
+- 221 | 1791442263 | claude-a | agent:joahan-2 | integrated | UPS-024 | UPS-024 integrated in main (7d8e575de8854163290ecb3223a30f924f1cbfe0). If you depend on it: git fetch origin && git merge origin/main (affects: UPS-023)
