@@ -67,11 +67,11 @@ export function Shell({
 
       <div className="lg:pl-[5.5rem]">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 bg-subtle/90 px-4 backdrop-blur sm:px-6">
-          <Link to={brandTo} className="flex shrink-0 items-center no-underline">
+          <Link to={brandTo} className="flex min-w-0 items-center no-underline">
             {brand}
           </Link>
           {headerSlot}
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             <NotificationBell />
             <UserMenu />
           </div>

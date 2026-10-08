@@ -83,15 +83,15 @@ export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
     </Badge>
   );
   return (
-    <AcademyTheme branding={academy}>
+    <AcademyTheme branding={academy} className="min-w-0">
       <Link to={`/a/${academy.slug}`} className="block h-full no-underline" aria-label={`Entrar a ${academy.name}`}>
         <Card interactive className="flex h-full flex-col">
-          <div className="flex h-24 items-center justify-center bg-primary/10 px-5">
+          <div className="flex min-h-24 items-center justify-center bg-primary/10 px-5 py-4">
             {logo ? (
               <img src={logo} alt="" className="max-h-14 w-auto" loading="lazy" />
             ) : (
               <h3 className="min-w-0 max-w-full text-center">
-                <Wordmark name={academy.name} colors={academy} className="text-3xl" />
+                <Wordmark name={academy.name} colors={academy} className="line-clamp-2 break-words text-2xl sm:text-3xl" />
               </h3>
             )}
           </div>
@@ -99,7 +99,7 @@ export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
           <div className="flex flex-1 flex-col gap-2 p-5">
             {logo ? (
               <div className="flex items-start justify-between gap-2">
-                <h3 className="text-xl">{academy.name}</h3>
+                <h3 className="min-w-0 break-words text-xl">{academy.name}</h3>
                 {badge}
               </div>
             ) : (
@@ -156,7 +156,7 @@ interface ClubHomeLite {
 /** Same silhouette as ContinueCard so the block does not jump when it resolves. */
 function ContinueSkeleton() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Cargando tu avance">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Cargando tu avance">
       {[0, 1, 2].map((i) => (
         <div key={i} className="rounded-card border border-line bg-surface p-5 shadow-soft">
           <Skeleton className="mb-3 h-8 w-24" />
@@ -174,12 +174,12 @@ function ContinueTile({ club }: { club: ClubHomeLite }) {
   const logo = safeAssetPath(club.academy.logo_url);
   const done = info.percent === 100;
   return (
-    <AcademyTheme branding={club.academy}>
+    <AcademyTheme branding={club.academy} className="min-w-0">
       <Card interactive className="flex h-full flex-col gap-3 p-5">
         {logo ? (
           <img src={logo} alt={club.academy.name} className="h-8 w-auto self-start" loading="lazy" />
         ) : (
-          <Wordmark name={club.academy.name} colors={club.academy} className="self-start text-xl" />
+          <Wordmark name={club.academy.name} colors={club.academy} className="block max-w-full self-start truncate text-xl" />
         )}
         <p className="text-lg font-semibold text-ink">
           Clase {info.lesson_number} · {info.lesson_title}
@@ -217,7 +217,7 @@ function ContinueLearning({ clubs }: { clubs: AcademyCardOut[] }) {
       {items === null && enrolled.length > 0 ? (
         <ContinueSkeleton />
       ) : items && items.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((club) => (
             <ContinueTile key={club.academy.id} club={club} />
           ))}
@@ -287,7 +287,7 @@ function HomePage() {
   const heroText = data.hero?.hero_text || "Retoma tus clases donde te quedaste y conversa con tu comunidad.";
 
   return (
-    <div className="grid gap-10">
+    <div className="grid grid-cols-1 gap-10">
       <section className="grid items-center gap-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
         <div>
           <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
@@ -333,7 +333,7 @@ function HomePage() {
       <section aria-labelledby="clubes">
         <SectionTitle title="Clubes" subtitle="Elige uno y entra: el campus toma su identidad." action={<Link to="/clubes">Ver todos</Link>} />
         {data.academies.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.academies.map((academy) => (
               <AcademyCard key={academy.id} academy={academy} />
             ))}
@@ -403,7 +403,7 @@ function ClubsPage() {
       <h1 className="mb-2 text-3xl sm:text-4xl">Clubes</h1>
       <p className="mb-8 text-muted">Todos los clubes activos del campus. Entra a cualquiera y sigue tu progreso.</p>
       {state === "loading" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <ClubCardSkeleton />
           <ClubCardSkeleton />
           <ClubCardSkeleton />
@@ -420,7 +420,7 @@ function ClubsPage() {
         <EmptyState title="Aún no hay clubes" description="La mesa directiva está preparando los primeros." />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((academy) => (
               <AcademyCard key={academy.id} academy={academy} />
             ))}

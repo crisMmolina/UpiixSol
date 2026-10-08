@@ -6,7 +6,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { api, ApiError } from "./api";
-import { SITE } from "./brand";
+import { contrastRatio, SITE } from "./brand";
 import type { AcademyBranding } from "./types";
 
 /** The campus as a "club": name, logo and palette from the site brand (lib/brand.tsx). */
@@ -21,21 +21,10 @@ export const CAMPUS_BRANDING: AcademyBranding = {
   color_accent_2: SITE.colors.accent2,
 };
 
+export { contrastRatio };
+
 const DARK_TEXT = "#1F2A24";
 const LIGHT_TEXT = "#FFFFFF";
-
-function luminance(hex: string): number {
-  const value = hex.replace("#", "");
-  const channels = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
-  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG contrast ratio between two #RRGGBB colors. */
-export function contrastRatio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
 
 /** Dark or white text, whichever reads better on `background` (DESIGN.md: never white on #00BF63). */
 export function readableTextOn(background: string): string {

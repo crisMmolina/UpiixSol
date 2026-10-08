@@ -31,7 +31,7 @@ export function CampusLayout({ children }: { children?: ReactNode }) {
           SITE.logoUrl ? (
             <img src={SITE.logoUrl} alt={SITE.name} className="h-7 w-auto sm:h-8" />
           ) : (
-            <Wordmark name={SITE.name} colors={CAMPUS_BRANDING} className="text-xl sm:text-2xl" />
+            <Wordmark name={SITE.name} colors={CAMPUS_BRANDING} className="block min-w-0 truncate text-xl sm:text-2xl" surface="#F5F6F7" />
           )
         }
         headerSlot={<ClubSwitcher current={null} />}

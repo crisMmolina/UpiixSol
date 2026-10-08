@@ -46,6 +46,25 @@ export const SITE = {
 
 if (typeof document !== "undefined") document.title = SITE.title;
 
+function luminance(hex: string): number {
+  const value = hex.replace("#", "");
+  const channels = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
+  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio between two #RRGGBB colors (re-exported by lib/theme.tsx). */
+// oxlint-disable-next-line react/only-export-components
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// A brand color too light (or too dark) for the surface keeps its hue and gets a thin outline that reads.
+const outline = (rgba: string) => [`1px 0 ${rgba}`, `-1px 0 ${rgba}`, `0 1px ${rgba}`, `0 -1px ${rgba}`].join(", ");
+const OUTLINE_ON_LIGHT = outline("rgb(22 24 29 / 70%)");
+const OUTLINE_ON_DARK = outline("rgb(255 255 255 / 80%)");
+
 interface WordmarkColors {
   color_primary: string;
   color_secondary: string;
@@ -56,29 +75,41 @@ interface WordmarkColors {
  * A club (or the campus) without a logo: its name as text in three colors. The letters before the first
  * "x" use the primary, that "x" the secondary and the rest the accent; with no "x" (or an "x" first) the
  * whole name uses the primary. "UpiixRobótica" → "Upii" · "x" · "Robótica".
- * Exposed as one image named after the club (logotype), like the logo it replaces.
+ * Exposed as one image named after the club (logotype), like the logo it replaces. A color under 3:1 against
+ * `surface` gets a thin outline so the name stays legible. Layout (block, truncate, line clamp, width) comes
+ * from `className`; the base only sets the type.
  */
-export function Wordmark({ name, colors, className = "" }: { name: string; colors: WordmarkColors; className?: string }) {
+export function Wordmark({
+  name,
+  colors,
+  className = "",
+  surface = "#FFFFFF",
+}: {
+  name: string;
+  colors: WordmarkColors;
+  className?: string;
+  /** Background the wordmark sits on (#RRGGBB), to decide when a color needs the outline. */
+  surface?: string;
+}) {
   const x = name.search(/x/i);
   const [head, mark, tail] = x > 0 ? [name.slice(0, x), name[x], name.slice(x + 1)] : [name, "", ""];
-  const color = (value: string, fallback: string) => (HEX.test(value) ? value : fallback);
+  const style = (value: string, fallback: string) => {
+    const color = HEX.test(value) ? value : fallback;
+    const outline = contrastRatio(color, surface) < 3 ? (luminance(surface) > 0.18 ? OUTLINE_ON_LIGHT : OUTLINE_ON_DARK) : undefined;
+    return { color, textShadow: outline };
+  };
   return (
-    <span
-      role="img"
-      aria-label={name}
-      data-wordmark=""
-      className={`inline-block max-w-full truncate whitespace-nowrap font-display font-bold leading-tight tracking-tight ${className}`}
-    >
-      <span aria-hidden style={{ color: color(colors.color_primary, SITE.colors.primary) }}>
+    <span role="img" aria-label={name} data-wordmark="" className={`font-display font-bold leading-tight tracking-tight ${className}`}>
+      <span aria-hidden style={style(colors.color_primary, SITE.colors.primary)}>
         {head}
       </span>
       {mark && (
-        <span aria-hidden style={{ color: color(colors.color_secondary, SITE.colors.secondary) }}>
+        <span aria-hidden style={style(colors.color_secondary, SITE.colors.secondary)}>
           {mark}
         </span>
       )}
       {tail && (
-        <span aria-hidden style={{ color: color(colors.color_accent, SITE.colors.accent) }}>
+        <span aria-hidden style={style(colors.color_accent, SITE.colors.accent)}>
           {tail}
         </span>
       )}

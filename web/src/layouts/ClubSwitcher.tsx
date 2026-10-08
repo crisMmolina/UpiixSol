@@ -82,7 +82,7 @@ export function ClubSwitcher({ current }: { current: string | null }) {
     `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink no-underline transition hover:bg-subtle ${active ? "bg-subtle" : ""}`;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         aria-haspopup="menu"
@@ -94,7 +94,7 @@ export function ClubSwitcher({ current }: { current: string | null }) {
         <CaretUpDown size={18} weight="bold" aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="animate-enter fixed inset-x-4 top-16 z-40 rounded-2xl sm:absolute sm:inset-x-auto sm:left-0 sm:top-auto sm:mt-2 sm:w-72 border border-line bg-surface p-1.5 shadow-lift">
+        <div role="menu" className="animate-enter fixed inset-x-4 top-16 z-40 rounded-2xl sm:absolute sm:inset-x-auto sm:left-0 sm:top-auto sm:mt-2 sm:w-72 max-h-[min(28rem,calc(100dvh-5rem))] overflow-y-auto overscroll-contain border border-line bg-surface p-1.5 shadow-lift">
           <Link role="menuitem" to="/" className={item(current === null)} onClick={() => setOpen(false)}>
             <img src={SITE.mascotUrl} alt="" className="size-8 object-contain" />
             <span className="flex-1">Campus {SITE.name}</span>
@@ -116,7 +116,7 @@ export function ClubSwitcher({ current }: { current: string | null }) {
                     <span className="flex-1 truncate">{club.name}</span>
                   ) : (
                     <span className="min-w-0 flex-1">
-                      <Wordmark name={club.name} colors={club} className="text-base" />
+                      <Wordmark name={club.name} colors={club} className="block truncate text-base" />
                     </span>
                   )}
                   {current === club.slug && <Check size={16} weight="bold" aria-hidden />}

@@ -82,7 +82,7 @@ export function AcademyLayout({ children }: { children?: ReactNode }) {
             safeAssetPath(branding.logo_url) ? (
               <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className="h-7 w-auto sm:h-8" />
             ) : (
-              <Wordmark name={branding.name} colors={branding} className="max-w-[45vw] text-xl sm:max-w-xs sm:text-2xl" />
+              <Wordmark name={branding.name} colors={branding} className="block min-w-0 truncate text-xl sm:text-2xl" surface="#F5F6F7" />
             )
           }
         >
