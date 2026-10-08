@@ -8,7 +8,8 @@ import { DURATION, EASE_OUT } from "./motionTokens";
  * Measures with ResizeObserver; with reduced motion the height switches instantly.
  * Appearing from or disappearing to nothing (a closed <dialog>, display:none) is instant: only real
  * resizes animate. The content gets a 4 px bleed so focus rings are not clipped. Do not put floating
- * menus inside: the container clips (overflow: clip, which also keeps focus() from scrolling it).
+ * menus inside: the container clips vertically (overflow-y: clip, which also keeps focus() from
+ * scrolling it); horizontal overflow still reaches the scrolling parent.
  */
 export function AnimatedHeight({ children, className = "" }: { children: ReactNode; className?: string }) {
   const inner = useRef<HTMLDivElement>(null);
@@ -28,7 +29,7 @@ export function AnimatedHeight({ children, className = "" }: { children: ReactNo
 
   return (
     <motion.div
-      className={`-m-1 overflow-clip ${className}`}
+      className={`-m-1 overflow-x-visible overflow-y-clip ${className}`}
       initial={false}
       animate={{ height: size.height }}
       transition={reduce || size.instant ? { duration: 0 } : { duration: DURATION.height, ease: EASE_OUT }}
