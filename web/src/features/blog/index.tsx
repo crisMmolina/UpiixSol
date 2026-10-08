@@ -1,8 +1,8 @@
 // UPS-017: blog.
 //   /blog         → published posts, newest first; superadmins also see drafts and create posts
 //   /blog/:slug   → post; superadmins edit, upload the cover and delete
-import { ArrowLeft, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { ArrowLeft, MagnifyingGlass, Newspaper, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams, type RouteObject } from "react-router";
 
 import { Avatar } from "@/components/Avatar";
@@ -12,7 +12,7 @@ import { Card } from "@/components/Card";
 import { TextArea, TextField, fieldErrors } from "@/components/Field";
 import { Markdown } from "@/components/Markdown";
 import { Modal } from "@/components/Overlay";
-import { PageSkeleton } from "@/components/Skeleton";
+import { PageSkeleton, Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { slugify } from "@/features/gallery/slug";
 import { CampusLayout } from "@/layouts";
@@ -24,20 +24,66 @@ export const order = 61;
 
 const dateFormat = new Intl.DateTimeFormat("es-MX", { dateStyle: "long" });
 
-function excerpt(markdown: string, max = 220): string {
+const WORDS_PER_MINUTE = 200;
+
+/** Reading time from the body length (about 200 words per minute, at least 1 minute). */
+function readMinutes(markdown: string): number {
+  const words = markdown.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / WORDS_PER_MINUTE));
+}
+
+function excerpt(markdown: string, max = 160): string {
   const text = markdown.replace(/[#*_>`[\]()!-]/g, " ").replace(/\s+/g, " ").trim();
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 function Byline({ post }: { post: BlogPostOut }) {
   return (
-    <div className="flex items-center gap-2 text-sm text-muted">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
       {post.author && <Avatar user={post.author} size="sm" />}
       <p className="min-w-0">
         <span className="font-semibold text-ink">{post.author?.nickname}</span>
         {post.published_at && <> · {dateFormat.format(new Date(post.published_at))}</>}
+        <> · {readMinutes(post.body)} min de lectura</>
       </p>
       {!post.published_at && <Badge tone="alert">Borrador</Badge>}
+    </div>
+  );
+}
+
+function Cover({ post, className = "" }: { post: BlogPostOut; className?: string }) {
+  if (post.cover_url?.startsWith("/media/")) {
+    return <img src={post.cover_url} alt="" loading="lazy" className={`w-full rounded-2xl bg-bg object-cover ${className}`} />;
+  }
+  return (
+    <div aria-hidden className={`grid w-full place-items-center rounded-2xl bg-primary/10 text-secondary ${className}`}>
+      <Newspaper size={40} />
+    </div>
+  );
+}
+
+function BlogSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando" className="grid gap-6">
+      <Card className="grid gap-4 p-5 lg:grid-cols-[1.2fr_1fr]">
+        <Skeleton className="aspect-[16/9] w-full" />
+        <div className="grid content-center gap-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      </Card>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="grid gap-3 p-4">
+            <Skeleton className="aspect-[16/9] w-full" />
+            <Skeleton className="h-6 w-5/6" />
+            <Skeleton className="h-4 w-full" />
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -46,6 +92,8 @@ function BlogPage() {
   const isSuper = useAuth().user?.role === "superadmin";
   const [params, setParams] = useSearchParams();
   const drafts = isSuper && params.get("borradores") === "1";
+  const author = params.get("autor");
+  const [query, setQuery] = useState("");
   const [items, setItems] = useState<BlogPostOut[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,12 +130,43 @@ function BlogPage() {
     }
   }
 
+  // The API has no categories or search: chips are the authors of the loaded posts, and the search
+  // runs in the browser over the posts already loaded (title, body and author).
+  const authors = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of items ?? []) if (p.author) counts.set(p.author.nickname, (counts.get(p.author.nickname) ?? 0) + 1);
+    return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([nick]) => nick);
+  }, [items]);
+
+  const term = normalize(query.trim());
+  const filtering = Boolean(term || author);
+  const visible = useMemo(
+    () =>
+      (items ?? []).filter(
+        (p) =>
+          (!author || p.author?.nickname === author) &&
+          (!term || normalize(`${p.title} ${p.body} ${p.author?.nickname ?? ""}`).includes(term)),
+      ),
+    [items, author, term],
+  );
+  const [featured, ...rest] = visible;
+  // "Trending" = the most recent posts after the featured one. There are no view or like counts.
+  const trending = filtering ? [] : rest.slice(0, 3);
+  const grid = filtering ? rest : rest.slice(3);
+
+  function pickAuthor(nick: string | null) {
+    const next = new URLSearchParams(params);
+    if (nick) next.set("autor", nick);
+    else next.delete("autor");
+    setParams(next);
+  }
+
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="mb-2 text-3xl sm:text-4xl">Blog</h1>
-          <p className="text-muted">Noticias y avisos de la mesa directiva.</p>
+          <p className="max-w-xl text-muted">Noticias, guías y avisos de la mesa directiva y de los clubs.</p>
         </div>
         {isSuper && (
           <div className="flex flex-wrap gap-2">
@@ -104,33 +183,120 @@ function BlogPage() {
       {error ? (
         <ErrorState message={error} />
       ) : items === null ? (
-        <PageSkeleton />
+        <BlogSkeleton />
       ) : items.length === 0 ? (
         <EmptyState title="Aún no hay entradas" description="Vuelve pronto para ver las novedades del club." />
       ) : (
         <>
-          <ul className="grid gap-5">
-            {items.map((post) => (
-              <li key={post.id}>
-                <Link to={`/blog/${post.slug}`} className="no-underline">
-                  <Card
-                    interactive
-                    // The image column exists only when there is an image; otherwise the text gets the full width.
-                    className={`grid gap-4 p-5 ${post.cover_url?.startsWith("/media/") ? "sm:grid-cols-[16rem_1fr] sm:items-center" : ""}`}
+          <div className="grid gap-3">
+            <label className="relative block max-w-xl">
+              <span className="sr-only">Buscar en el blog</span>
+              <MagnifyingGlass aria-hidden className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={20} />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar artículos"
+                className="min-h-11 w-full rounded-full border border-line bg-surface pl-11 pr-4 text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2"
+              />
+            </label>
+            {authors.length > 1 && (
+              <nav aria-label="Filtrar por autor" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+                {[null, ...authors].map((nick) => (
+                  <button
+                    key={nick ?? "todos"}
+                    type="button"
+                    aria-pressed={author === nick}
+                    onClick={() => pickAuthor(nick)}
+                    className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition ${
+                      author === nick ? "border-primary/40 bg-primary/15 text-ink" : "border-line bg-surface text-ink hover:border-secondary"
+                    }`}
                   >
-                    {post.cover_url?.startsWith("/media/") && (
-                      <img src={post.cover_url} alt="" loading="lazy" className="aspect-[16/10] w-full rounded-2xl bg-bg object-cover" />
-                    )}
-                    <div className="grid max-w-prose content-start gap-2">
-                      <h2 className="text-2xl text-balance">{post.title}</h2>
-                      <Byline post={post} />
-                      <p className="text-muted">{excerpt(post.body)}</p>
-                    </div>
-                  </Card>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                    {nick ?? "Todos"}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+
+          {!featured ? (
+            <EmptyState
+              title="No encontramos artículos"
+              description="Prueba con otras palabras o quita los filtros."
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setQuery("");
+                    pickAuthor(null);
+                  }}
+                >
+                  Limpiar búsqueda
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              <Link to={`/blog/${featured.slug}`} className="no-underline">
+                <Card interactive className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+                  <Cover post={featured} className="aspect-[16/9]" />
+                  <div className="grid content-center gap-3">
+                    <Badge>Destacado</Badge>
+                    <h2 className="text-2xl text-balance sm:text-3xl">{featured.title}</h2>
+                    <p className="text-muted">{excerpt(featured.body, 220)}</p>
+                    <Byline post={featured} />
+                  </div>
+                </Card>
+              </Link>
+
+              {trending.length > 0 && (
+                <section aria-labelledby="trending" className="grid gap-3">
+                  <div>
+                    <h2 id="trending" className="text-xl">
+                      Artículos en tendencia
+                    </h2>
+                    <p className="text-sm text-muted">Los más recientes del blog.</p>
+                  </div>
+                  <ol className="grid gap-3 md:grid-cols-3">
+                    {trending.map((post, i) => (
+                      <li key={post.id}>
+                        <Link to={`/blog/${post.slug}`} className="no-underline">
+                          <Card interactive className="flex h-full items-start gap-3 p-4">
+                            <span aria-hidden className="text-3xl font-bold text-secondary/60">
+                              {i + 1}
+                            </span>
+                            <div className="grid gap-1">
+                              <h3 className="text-base text-balance">{post.title}</h3>
+                              <p className="text-sm text-muted">{readMinutes(post.body)} min de lectura</p>
+                            </div>
+                          </Card>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+
+              {grid.length > 0 && (
+                <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {grid.map((post) => (
+                    <li key={post.id}>
+                      <Link to={`/blog/${post.slug}`} className="no-underline">
+                        <Card interactive className="flex h-full flex-col gap-3 p-4">
+                          <Cover post={post} className="hidden aspect-[16/9] sm:grid" />
+                          <h2 className="text-xl text-balance">{post.title}</h2>
+                          <p className="text-sm text-muted">{excerpt(post.body)}</p>
+                          <div className="mt-auto pt-1">
+                            <Byline post={post} />
+                          </div>
+                        </Card>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
           {cursor && (
             <div className="text-center">
               <Button variant="secondary" onClick={() => void loadMore()}>

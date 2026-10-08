@@ -33,19 +33,19 @@ def draft(db: Session, seeded: dict) -> Project:
 
 def test_draft_project_not_listed(client: TestClient, draft: Project) -> None:
     slugs = [p["slug"] for p in client.get("/api/projects").json()["items"]]
-    assert "secreto" not in slugs and len(slugs) == 3
+    assert "secreto" not in slugs and len(slugs) == 6
 
 
 def test_public_listing_is_anonymous_and_newest_first(client: TestClient, db: Session, seeded: dict) -> None:
     body = client.get("/api/projects", params={"limit": 2}).json()
     assert len(body["items"]) == 2 and body["next_cursor"]
     rest = client.get("/api/projects", params={"limit": 2, "cursor": body["next_cursor"]}).json()
-    assert len(rest["items"]) == 1 and rest["next_cursor"] is None
+    assert len(rest["items"]) == 2 and rest["next_cursor"]
 
 
 def test_filter_by_tag(client: TestClient, seeded: dict) -> None:
     items = client.get("/api/projects", params={"tag": "vision"}).json()["items"]
-    assert [p["slug"] for p in items] == ["clasificador-residuos"]
+    assert [p["slug"] for p in items] == ["clasificador-residuos", "detector-epp"]  # newest first
     assert client.get("/api/projects", params={"tag": "%"}).json()["items"] == []
 
 

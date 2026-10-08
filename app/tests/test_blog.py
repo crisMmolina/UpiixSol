@@ -25,7 +25,7 @@ def post_id(db: Session, seeded: dict) -> int:
 
 def test_public_listing_and_detail_expose_only_public_author(client: TestClient, seeded: dict) -> None:
     items = client.get("/api/blog").json()["items"]
-    assert [p["slug"] for p in items] == [SLUG]
+    assert SLUG in [p["slug"] for p in items] and len(items) == 6  # newest-first demo posts
     detail = client.get(f"/api/blog/{SLUG}").json()
     assert set(detail["author"]) == {"id", "nickname", "avatar_url"}  # never email or boleta
 

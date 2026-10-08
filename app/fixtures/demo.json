@@ -1,9 +1,9 @@
 {
   "demo_data": true,
-  "note": "Demo case from IDEA.md §3. Videos verified public via YouTube oEmbed on 2026-10-06 (titles in comments). [To validate with the UpiixIA admin: final videos]",
+  "note": "Demo case from IDEA.md §3. Videos verified public via YouTube oEmbed on 2026-10-06 (titles in comments). [To validate with the UpiixIA admin: final videos] Projects and blog posts are demo rows (`demo_data`): the models have no such column, so they carry the `demo` tag / a visible footer line instead.",
   "home": {
-    "hero_title": "Tu club, tus academias, un solo campus",
-    "hero_text": "Entra a cualquier academia del club, retoma la clase donde te quedaste y conversa con tu comunidad."
+    "hero_title": "Tus clubs en un solo campus",
+    "hero_text": "Entra a cualquier club, retoma la clase donde te quedaste y conversa con tu comunidad."
   },
   "academy": {
     "slug": "upiixia",
@@ -29,14 +29,24 @@
             "youtube_url": "https://www.youtube.com/watch?v=rfscVS0vtbw",
             "youtube_title": "Learn Python - Full Course for Beginners [Tutorial] · freeCodeCamp.org",
             "description": "Instala Python y escribe tus primeros programas. *Video en inglés.*",
-            "links": [{"label": "Tutorial oficial de Python", "url": "https://docs.python.org/3/tutorial/"}]
+            "links": [
+              {
+                "label": "Tutorial oficial de Python",
+                "url": "https://docs.python.org/3/tutorial/"
+              }
+            ]
           },
           {
             "title": "Machine learning para todos",
             "youtube_url": "https://www.youtube.com/watch?v=i_LwzRVP7bg",
             "youtube_title": "Machine Learning for Everybody – Full Course · freeCodeCamp.org",
             "description": "Qué es el aprendizaje automático y cómo se entrena un modelo. *Video en inglés.*",
-            "links": [{"label": "Guía de scikit-learn", "url": "https://scikit-learn.org/stable/user_guide.html"}]
+            "links": [
+              {
+                "label": "Guía de scikit-learn",
+                "url": "https://scikit-learn.org/stable/user_guide.html"
+              }
+            ]
           }
         ]
       },
@@ -49,8 +59,14 @@
             "youtube_title": "But what is a neural network? | Deep learning chapter 1 · 3Blue1Brown",
             "description": "Neuronas, capas y pesos explicados visualmente. *Video en inglés con subtítulos.*",
             "links": [
-              {"label": "Serie completa de 3Blue1Brown", "url": "https://www.3blue1brown.com/topics/neural-networks"},
-              {"label": "Tutorial oficial de Python", "url": "https://docs.python.org/3/tutorial/"}
+              {
+                "label": "Serie completa de 3Blue1Brown",
+                "url": "https://www.3blue1brown.com/topics/neural-networks"
+              },
+              {
+                "label": "Tutorial oficial de Python",
+                "url": "https://docs.python.org/3/tutorial/"
+              }
             ]
           },
           {
@@ -66,34 +82,193 @@
   },
   "member_completed_lessons": 2,
   "resources": [
-    {"type": "document", "title": "Documentación de Python (PDF y HTML)", "url": "https://docs.python.org/3/download.html",
-     "description": "Descarga la documentación oficial para estudiar sin conexión."},
-    {"type": "link", "title": "Guía de usuario de scikit-learn", "url": "https://scikit-learn.org/stable/user_guide.html",
-     "description": "Referencia de los modelos clásicos de machine learning."},
-    {"type": "video", "title": "Redes neuronales en 20 minutos", "url": "https://www.youtube.com/watch?v=aircAruvnKk",
-     "description": "Repaso visual del capítulo 1 de redes neuronales."}
+    {
+      "type": "document",
+      "title": "Documentación de Python (PDF y HTML)",
+      "url": "https://docs.python.org/3/download.html",
+      "description": "Descarga la documentación oficial para estudiar sin conexión."
+    },
+    {
+      "type": "link",
+      "title": "Guía de usuario de scikit-learn",
+      "url": "https://scikit-learn.org/stable/user_guide.html",
+      "description": "Referencia de los modelos clásicos de machine learning."
+    },
+    {
+      "type": "video",
+      "title": "Redes neuronales en 20 minutos",
+      "url": "https://www.youtube.com/watch?v=aircAruvnKk",
+      "description": "Repaso visual del capítulo 1 de redes neuronales."
+    }
   ],
   "events": [
-    {"title": "Taller: tu primera red neuronal", "days_from_now": 3, "hour": 17, "duration_h": 2,
-     "location": "UPIIZ · Laboratorio de cómputo", "description": "Trae tu laptop con Python instalado.", "academy": true},
-    {"title": "Noche de proyectos UpiixSol", "days_from_now": 10, "hour": 18, "duration_h": 2,
-     "location": "UPIIZ · Auditorio", "description": "Las academias presentan sus avances del mes.", "academy": false}
+    {
+      "title": "Taller: tu primera red neuronal",
+      "days_from_now": 3,
+      "hour": 17,
+      "duration_h": 2,
+      "location": "UPIIZ · Laboratorio de cómputo",
+      "description": "Trae tu laptop con Python instalado.",
+      "academy": true
+    },
+    {
+      "title": "Noche de proyectos UpiixSol",
+      "days_from_now": 10,
+      "hour": 18,
+      "duration_h": 2,
+      "location": "UPIIZ · Auditorio",
+      "description": "Los clubs presentan sus avances del mes.",
+      "academy": false
+    }
   ],
   "posts": [
-    {"author": "admin.ia@upiixsol.dev", "body": "¡Arrancamos la ruta **Fundamentos de IA con Python**! Empiecen por la clase 1 y compartan aquí sus dudas."},
-    {"author": "alumno.demo@upiixsol.dev", "body": "Terminé la clase 2. Lo de *overfitting* por fin me quedó claro 🙌"},
-    {"author": "superadmin1@upiixsol.dev", "body": "Recuerden: el taller de redes neuronales es esta semana en el laboratorio de cómputo."},
-    {"author": "alumno.demo@upiixsol.dev", "body": "¿Alguien tiene un dataset sencillo para practicar clasificación?", "link_url": "https://scikit-learn.org/stable/datasets/toy_dataset.html"},
-    {"author": "admin.ia@upiixsol.dev", "body": "Tip: si el video no carga en la escuela, revisen los recursos de la clase; están las ligas de lectura."}
+    {
+      "author": "admin.ia@upiixsol.dev",
+      "body": "¡Arrancamos la ruta **Fundamentos de IA con Python**! Empiecen por la clase 1 y compartan aquí sus dudas."
+    },
+    {
+      "author": "alumno.demo@upiixsol.dev",
+      "body": "Terminé la clase 2. Lo de *overfitting* por fin me quedó claro 🙌"
+    },
+    {
+      "author": "superadmin1@upiixsol.dev",
+      "body": "Recuerden: el taller de redes neuronales es esta semana en el laboratorio de cómputo."
+    },
+    {
+      "author": "alumno.demo@upiixsol.dev",
+      "body": "¿Alguien tiene un dataset sencillo para practicar clasificación?",
+      "link_url": "https://scikit-learn.org/stable/datasets/toy_dataset.html"
+    },
+    {
+      "author": "admin.ia@upiixsol.dev",
+      "body": "Tip: si el video no carga en la escuela, revisen los recursos de la clase; están las ligas de lectura."
+    }
   ],
   "projects": [
-    {"title": "Clasificador de residuos con visión", "slug": "clasificador-residuos", "summary": "Modelo que separa PET, cartón y orgánico con una cámara.", "authors": "Equipo UpiixIA", "tags": ["vision", "python"]},
-    {"title": "Bot de horarios UPIIZ", "slug": "bot-horarios", "summary": "Asistente que responde dudas de horarios y salones.", "authors": "Equipo UpiixSol", "tags": ["bot"]},
-    {"title": "Tablero de asistencia del club", "slug": "tablero-asistencia", "summary": "Registro de asistencia a talleres con QR.", "authors": "Mesa directiva", "tags": ["web"]}
+    {
+      "title": "Clasificador de residuos con visión",
+      "slug": "clasificador-residuos",
+      "summary": "Modelo que separa PET, cartón y orgánico con una cámara.",
+      "authors": "Equipo UpiixIA",
+      "tags": [
+        "vision",
+        "python",
+        "demo"
+      ],
+      "demo_data": true,
+      "days_ago": 1
+    },
+    {
+      "title": "Bot de horarios UPIIZ",
+      "slug": "bot-horarios",
+      "summary": "Asistente que responde dudas de horarios y salones.",
+      "authors": "Equipo UpiixSol",
+      "tags": [
+        "bot",
+        "demo"
+      ],
+      "demo_data": true,
+      "days_ago": 3
+    },
+    {
+      "title": "Tablero de asistencia del club",
+      "slug": "tablero-asistencia",
+      "summary": "Registro de asistencia a talleres con QR.",
+      "authors": "Mesa directiva",
+      "tags": [
+        "web",
+        "demo"
+      ],
+      "demo_data": true,
+      "days_ago": 7
+    },
+    {
+      "title": "Detector de EPP en laboratorio",
+      "slug": "detector-epp",
+      "summary": "Detecta casco y lentes en video en tiempo real para talleres.",
+      "authors": "Equipo UpiixIA",
+      "tags": [
+        "vision",
+        "python",
+        "demo"
+      ],
+      "demo_data": true,
+      "days_ago": 2
+    },
+    {
+      "title": "Chatbot de servicio social",
+      "slug": "chatbot-servicio-social",
+      "summary": "Preguntas frecuentes sobre trámites, respondidas con búsqueda semántica.",
+      "authors": "Equipo UpiixSol",
+      "tags": [
+        "bot",
+        "python",
+        "demo"
+      ],
+      "demo_data": true,
+      "days_ago": 5
+    },
+    {
+      "title": "Sitio de eventos del club",
+      "slug": "sitio-eventos",
+      "summary": "Calendario público de talleres y conferencias del club.",
+      "authors": "Mesa directiva",
+      "tags": [
+        "web",
+        "demo"
+      ],
+      "demo_data": true,
+      "days_ago": 9
+    }
   ],
-  "blog": {
-    "title": "Bienvenidos a UpiixSol Campus",
-    "slug": "bienvenidos-a-upiixsol-campus",
-    "body": "Este semestre el material de todas las academias vive en un solo lugar. Entra, inscríbete a tu academia y retoma tus clases donde te quedaste."
-  }
+  "blog": [
+    {
+      "title": "Bienvenidos a UpiixSol Campus",
+      "slug": "bienvenidos-a-upiixsol-campus",
+      "author": "superadmin1@upiixsol.dev",
+      "days_ago": 1,
+      "body": "Este semestre el material de todos los clubs vive en un solo lugar. Entra, inscríbete a tu club y retoma tus clases donde te quedaste.\n\n## Qué encontrarás\n\n- Rutas de aprendizaje con videos y recursos.\n- Una comunidad para resolver dudas.\n- Un calendario con los eventos del club.\n\nEmpieza por la sección **Clubes** y elige el que más te llame la atención.\n\n_Contenido de demostración._",
+      "demo_data": true
+    },
+    {
+      "title": "Cómo sacarle provecho a tu ruta de aprendizaje",
+      "slug": "provecho-ruta-aprendizaje",
+      "author": "admin.ia@upiixsol.dev",
+      "days_ago": 3,
+      "body": "Una ruta funciona mejor con constancia que con maratones. Estas ideas te ayudan a avanzar sin saturarte.\n\n## Tres hábitos\n\n1. Dedica 30 minutos fijos, tres días por semana.\n2. Termina cada clase con una pequeña práctica propia.\n3. Comparte tus dudas en la comunidad: casi siempre alguien tuvo la misma.\n\nAl final de cada módulo, repasa tus notas antes de pasar al siguiente. Revisar lo aprendido consolida la memoria mucho mejor que seguir de largo, y te deja listo para los proyectos que verás en la galería.\n\n_Contenido de demostración._",
+      "demo_data": true
+    },
+    {
+      "title": "Calendario del semestre: talleres y sesiones",
+      "slug": "calendario-semestre",
+      "author": "superadmin2@upiixsol.dev",
+      "days_ago": 6,
+      "body": "Publicamos el calendario de talleres del semestre. Cada club añade sus sesiones en la sección **Calendario**, con fecha, hora y lugar.\n\nSi organizas una sesión, avisa a la mesa directiva para que aparezca en el campus.\n\n_Contenido de demostración._",
+      "demo_data": true
+    },
+    {
+      "title": "Guía rápida para publicar tu proyecto",
+      "slug": "guia-publicar-proyecto",
+      "author": "superadmin3@upiixsol.dev",
+      "days_ago": 10,
+      "body": "La galería reúne lo que construye el club. Para proponer el tuyo prepara tres cosas:\n\n- Un título claro y un resumen de una o dos frases.\n- Una descripción con el problema, la solución y las herramientas usadas.\n- Etiquetas que ayuden a otros a encontrarlo.\n\nLa mesa directiva revisa las propuestas y las publica. Mientras tanto puedes mostrar avances en la comunidad de tu club.\n\n_Contenido de demostración._",
+      "demo_data": true
+    },
+    {
+      "title": "Buenas prácticas para trabajar en equipo",
+      "slug": "buenas-practicas-equipo",
+      "author": "admin.ia@upiixsol.dev",
+      "days_ago": 14,
+      "body": "Un proyecto de club casi siempre se hace entre varias personas. Algunas prácticas sencillas evitan fricciones.\n\n## Antes de empezar\n\nDefinan quién decide qué, cómo se comunicarán y dónde vivirá el código. Un repositorio compartido y un tablero de pendientes bastan.\n\n## Durante el proyecto\n\nReúnanse cada semana unos quince minutos: qué se hizo, qué sigue y qué está bloqueado. Documenten las decisiones importantes para que quien se incorpore después no empiece desde cero.\n\n## Al terminar\n\nHagan una retrospectiva breve y publiquen el resultado en la galería.\n\n_Contenido de demostración._",
+      "demo_data": true
+    },
+    {
+      "title": "Reconocimientos y próximos pasos del club",
+      "slug": "reconocimientos-proximos-pasos",
+      "author": "superadmin4@upiixsol.dev",
+      "days_ago": 20,
+      "body": "Cerramos el primer mes con la incorporación de nuevos integrantes a la comunidad. Gracias a quienes abrieron conversación, respondieron dudas y compartieron material.\n\nLo que sigue: más rutas, más eventos y nuevos proyectos en la galería.\n\n_Contenido de demostración._",
+      "demo_data": true
+    }
+  ]
 }

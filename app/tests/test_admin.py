@@ -287,7 +287,7 @@ def test_reset_password(as_superadmin: TestClient, client: TestClient, seeded: d
 
 def test_home_content_get_and_put(as_superadmin: TestClient, as_member: TestClient, seeded: dict) -> None:
     assert (
-        as_superadmin.get("/api/admin/home").json()["hero_title"] == "Tu club, tus academias, un solo campus"
+        as_superadmin.get("/api/admin/home").json()["hero_title"] == "Tus clubs en un solo campus"
     )
     body = {
         "hero_title": "Semestre 2026-2",
