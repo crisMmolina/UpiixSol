@@ -11,3 +11,4 @@
 ## History
 - 1791440780 | CLAIMED | claude-a | claim; next: transparent logos + tokens on white.
 - 1791441025 | REVIEW | claude-a | done; PR https://github.com/crisMmolina/UpiixSol/pull/34; evidence: lint 0 errors; build ok; e2e 12 passed; browser check desktop + 375px (rail, tab bar, toast, bell); reviewer: -
+- 1791441137 | REVIEW | claude | review; approve; SHA 3d024697c4f4bb30360d1bd380691df45e9ad3ae; reviewer claude
