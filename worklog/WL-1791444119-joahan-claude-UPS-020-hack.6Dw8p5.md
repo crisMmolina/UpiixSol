@@ -1,12 +1,12 @@
 # worklog/WL-1791444119-joahan-claude-UPS-020-hack.6Dw8p5.md · UPS-020
 
 ## Live summary
-- Done: PR #27 merged (5bbd964): auth tests 38 passed, full suite 316 passed 99.93% cov, e2e 12/12, smoke PASS, browser forced-change 390/1280
+- Done: merged #49; approved eaff1e4 by joahan-rev; live on Render (ecb2fa8)
 - Decision: Own branch and worktree
 - Why: Parallel work without touching the main checkout
 - Failing: No validation run yet
 - Commands: `uv run pytest -q app/tests/test_auth.py app/tests/test_security.py && npm --prefix web run build`
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/27; run .uak/bin/smoke
+- Next: Integrated in main: ecb2fa8d8aa05a8f3783473487fdbef8e520dfe0; claim next P0
 
 ## History
 - 1791444119 | CLAIMED | joahan-claude | claim; next: review c1bc230, then done --integrated 5bbd964
@@ -34,3 +34,4 @@
 - 1791482342 | REVIEW | joahan-claude | heartbeat; lease until 1791568742
 - 1791482974 | REVIEW | joahan-claude | heartbeat; lease until 1791569374
 - 1791483606 | REVIEW | joahan-claude | heartbeat; lease until 1791570006
+- 1791485849 | INTEGRATED | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/49; evidence: merged #49; approved eaff1e4 by joahan-rev; live on Render (ecb2fa8); reviewer: joahan-rev
