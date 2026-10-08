@@ -12,6 +12,8 @@ from e2e.conftest import SEED_PASSWORD, Site
 MEMBER = "alumno.demo@upiixsol.dev"
 ADMIN_IA = "admin.ia@upiixsol.dev"
 SUPERADMIN = "superadmin1@upiixsol.dev"
+NEW_ADMIN = "admin.robotica@upiixsol.dev"
+NEW_ADMIN_TEMP_PASSWORD = "temporal-robot-1"  # noqa: S105 · set by the superadmin in step 6
 # --academy-accent of the outermost themed wrapper (AcademyTheme sets it inline; cards inside are themed too).
 THEMED_ACCENT = """
   [...document.querySelectorAll('[style*="--academy-accent"]')].map((el) =>
@@ -32,12 +34,12 @@ def sign_out(page: Page) -> None:
     page.goto("about:blank")
 
 
-def sign_in(site: Site, email: str, path: str = "/") -> None:
+def sign_in(site: Site, email: str, path: str = "/", password: str = SEED_PASSWORD) -> None:
     sign_out(site.page)
     page = site.page
     page.goto(site.url(f"/login?next={path}"))
     page.get_by_role("textbox", name="Correo", exact=True).fill(email)
-    page.get_by_label("Contraseña", exact=True).fill(SEED_PASSWORD)
+    page.get_by_label("Contraseña", exact=True).fill(password)
     page.get_by_role("button", name="Entrar").click()
     expect(page).not_to_have_url(re.compile(r"/login"))
 
@@ -63,7 +65,13 @@ def test_step2_academy_retheme_and_continue(site: Site) -> None:
     campus_accent = page.evaluate(THEMED_ACCENT)
     page.get_by_role("link", name="Entrar a UpiixIA").click()
     expect(page).to_have_url(site.url("/a/upiixia"))
+    # v2 shell (UPS-021): icon rail on desktop, tab bar on phones, notifications bell in the top bar.
+    nav = "Principal" if site.name == "desktop" else "Principal móvil"
+    expect(page.get_by_role("navigation", name=nav, exact=True)).to_be_visible()
+    bell = page.get_by_role("banner").get_by_role("button", name=re.compile(r"^Notificaciones"))
+    expect(bell).to_be_visible()
     # "Continúa aprendiendo": the route tile says where the member is (UPS-023).
+    expect(page.get_by_role("heading", name="Continúa aprendiendo")).to_be_visible()
     continue_link = page.get_by_role("link", name="Continuar: Fundamentos de IA con Python")
     expect(continue_link).to_be_visible()
     expect(continue_link).to_contain_text("50 %")
@@ -190,11 +198,11 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     dialog.get_by_label("Rol").select_option("academy_admin")
     dialog.get_by_label("Club").select_option(label="UpiixRobótica")
     dialog.get_by_label("Nombre completo").fill("Rocío Robótica")
-    dialog.get_by_label("Correo").fill("admin.robotica@upiixsol.dev")
-    dialog.get_by_label("Contraseña temporal").fill("temporal-robot-1")
+    dialog.get_by_label("Correo").fill(NEW_ADMIN)
+    dialog.get_by_label("Contraseña temporal").fill(NEW_ADMIN_TEMP_PASSWORD)
     dialog.get_by_role("button", name="Crear usuario").click()
     expect(dialog).to_be_hidden()
-    expect(page.get_by_text("admin.robotica@upiixsol.dev")).to_be_visible()
+    expect(page.get_by_text(NEW_ADMIN)).to_be_visible()
 
     page.goto(site.url("/calendario?vista=lista"))
     page.get_by_role("button", name="Nuevo evento").click()
@@ -213,3 +221,17 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     page.goto(site.url("/comunidad"))
     expect(page.get_by_role("complementary", name="Canales").get_by_text("upiixrobotica")).to_be_visible()
     site.shot("6-home-community")
+
+    # The new club admin signs in with the temporary password: the v2 shell warns through the
+    # notifications bell (UPS-021), not with a banner over every page.
+    sign_in(site, NEW_ADMIN, "/", password=NEW_ADMIN_TEMP_PASSWORD)
+    expect(page).to_have_url(site.url("/"))
+    unread = re.compile(r"^Notificaciones \(1 sin leer\)")
+    page.get_by_role("banner").get_by_role("button", name=unread).click()
+    panel = page.get_by_role("dialog", name="Notificaciones")
+    expect(panel.get_by_text("Cambia tu contraseña provisional")).to_be_visible()
+    # Checked once the session has rendered the shell; /cuenta keeps its own notice, so stay on "/".
+    expect(page.get_by_text("Estás usando una contraseña provisional")).to_have_count(0)
+    panel.get_by_role("link", name="Ir a Seguridad").click()
+    expect(page).to_have_url(re.compile(r"/cuenta\?tab=seguridad"))
+    site.shot("6-provisional-password")
