@@ -39,7 +39,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/services/media.py | UPS-030 |
 | app/services/progress.py | UPS-002 |
 | app/tests/conftest.py | UPS-020 |
-| app/seed.py | UPS-027 |
+| app/seed.py | UPS-031 |
 | web/DESIGN.md | UPS-021 |
 | web/src/lib/types.ts | UPS-002 |
 | web/src/lib/api.ts | UPS-020 |
