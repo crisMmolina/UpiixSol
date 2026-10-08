@@ -1,25 +1,27 @@
-// Flow step 4 (UPS-011): Discord-style community — Feed, General and one channel per academy.
-// No realtime in v1: the open channel refreshes every 30 s (IDEA §9).
+// Flow step 4 (UPS-011, redesign UPS-025): Discord-style community with Feed, General and one channel
+// per club. Inside a club (/a/:slug/comunidad) only that club's channel is shown, in the club layout.
+// Hidden posts/comments stay in place as "Mensaje oculto". No realtime in v1: refresh every 30 s.
 import { ChatCircle, EyeSlash, Hash, ImageSquare, LinkSimple, PaperPlaneRight, Rss } from "@phosphor-icons/react";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { useSearchParams, type RouteObject } from "react-router";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { Link, useSearchParams, type RouteObject } from "react-router";
 
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Markdown } from "@/components/Markdown";
-import { Skeleton } from "@/components/Skeleton";
+import { ListSkeleton, Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState, Notice } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
 import type { AcademyCardOut, ChannelOut, CommentOut, Page, PostOut, UserMe } from "@/lib/types";
-import { CampusLayout } from "@/layouts";
+import { AcademyLayout, CampusLayout, useAcademy } from "@/layouts";
 
 import { Reactions } from "./Reactions";
 
 export const order = 35;
 
 const REFRESH_MS = 30_000;
+const POST_MAX_CHARS = 512; // same limit as the API (app/schemas/community.py)
 const relative = new Intl.RelativeTimeFormat("es-MX", { numeric: "auto" });
 
 function timeAgo(iso: string): string {
@@ -41,6 +43,7 @@ function Composer({ channel, onPosted }: { channel: ChannelOut; onPosted: (post:
   const [error, setError] = useState<string | null>(null);
   const [showLink, setShowLink] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [length, setLength] = useState(0);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +60,7 @@ function Composer({ channel, onPosted }: { channel: ChannelOut; onPosted: (post:
       formElement.reset();
       setFileName(null);
       setShowLink(false);
+      setLength(0);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -74,7 +78,9 @@ function Composer({ channel, onPosted }: { channel: ChannelOut; onPosted: (post:
           id="post-body"
           name="body"
           rows={3}
-          maxLength={5000}
+          maxLength={POST_MAX_CHARS}
+          aria-describedby="post-count"
+          onChange={(event) => setLength(event.target.value.length)}
           placeholder={`Comparte un hallazgo en #${channel.slug}…`}
           className="w-full resize-y rounded-[var(--radius-field)] border border-line bg-surface px-3.5 py-2.5 focus:border-secondary focus:outline-none focus:ring-3 focus:ring-primary/25"
         />
@@ -106,7 +112,14 @@ function Composer({ channel, onPosted }: { channel: ChannelOut; onPosted: (post:
           >
             <LinkSimple weight="bold" aria-hidden /> Link
           </button>
-          <Button type="submit" loading={busy} icon={<PaperPlaneRight weight="fill" />} className="ml-auto">
+          <span
+            id="post-count"
+            aria-live="polite"
+            className={`ml-auto text-xs tabular-nums ${length > POST_MAX_CHARS - 32 ? "font-semibold text-accent-2" : "text-muted"}`}
+          >
+            {length}/{POST_MAX_CHARS}
+          </span>
+          <Button type="submit" loading={busy} icon={<PaperPlaneRight weight="fill" />}>
             Publicar
           </Button>
         </div>
@@ -150,9 +163,9 @@ function Comments({ post, moderator, onCount }: { post: PostOut; moderator: bool
     if (!window.confirm("¿Ocultar este comentario?")) return;
     try {
       await api(`/comments/${comment.id}/hide`, { method: "POST" });
-      const next = (items ?? []).filter((c) => c.id !== comment.id);
+      const next = (items ?? []).map((c) => (c.id === comment.id ? { ...c, body: "", is_hidden: true } : c));
       setItems(next);
-      onCount(next.length);
+      onCount(next.filter((c) => !c.is_hidden).length);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -164,10 +177,15 @@ function Comments({ post, moderator, onCount }: { post: PostOut; moderator: bool
       {!items ? (
         <Skeleton className="h-10" />
       ) : (
-        items.map((comment) => (
+        items.map((comment) =>
+          comment.is_hidden ? (
+            <p key={comment.id} className="flex items-center gap-2 rounded-2xl bg-subtle px-3 py-2 text-sm italic text-muted">
+              <EyeSlash aria-hidden /> Comentario oculto por moderación
+            </p>
+          ) : (
           <div key={comment.id} className="flex gap-2">
             <Avatar user={comment.author} size="sm" />
-            <div className="min-w-0 flex-1 rounded-2xl bg-bg px-3 py-2">
+            <div className="min-w-0 flex-1 rounded-2xl bg-subtle px-3 py-2">
               <p className="text-xs">
                 <strong>{comment.author.nickname}</strong> <span className="text-muted">· {timeAgo(comment.created_at)}</span>
               </p>
@@ -179,7 +197,8 @@ function Comments({ post, moderator, onCount }: { post: PostOut; moderator: bool
               </button>
             )}
           </div>
-        ))
+          ),
+        )
       )}
       <form onSubmit={submit} className="flex gap-2">
         <input
@@ -218,8 +237,18 @@ function PostCard({ post, channels, moderator, onHidden, onError }: {
     }
   }
 
+  if (post.is_hidden) {
+    return (
+      <article className="flex items-center gap-3 rounded-card border border-dashed border-line bg-subtle px-4 py-3 text-sm text-muted">
+        <EyeSlash size={20} aria-hidden />
+        <p className="flex-1 italic">Mensaje oculto por moderación</p>
+        <span className="text-xs">{timeAgo(post.created_at)}</span>
+      </article>
+    );
+  }
+
   return (
-    <article className="rounded-card border border-line bg-surface p-4 shadow-soft">
+    <article className="rounded-card border border-line bg-surface p-4">
       <header className="flex items-center gap-3">
         <Avatar user={post.author} />
         <div className="min-w-0 flex-1">
@@ -236,7 +265,7 @@ function PostCard({ post, channels, moderator, onHidden, onError }: {
       </header>
       <Markdown source={post.body} className="mt-3" />
       {post.image_url?.startsWith("/media/") && (
-        <img src={post.image_url} alt="Imagen de la publicación" loading="lazy" className="mt-3 max-h-96 w-full rounded-2xl object-contain bg-bg" />
+        <img src={post.image_url} alt="Imagen de la publicación" loading="lazy" className="mt-3 max-h-96 w-full rounded-2xl bg-subtle object-contain" />
       )}
       {post.link_url && (
         <a href={post.link_url} target="_blank" rel="noopener noreferrer nofollow" className="mt-3 inline-flex max-w-full items-center gap-1.5 truncate text-sm font-semibold">
@@ -257,7 +286,8 @@ function PostCard({ post, channels, moderator, onHidden, onError }: {
   );
 }
 
-function CommunityPage() {
+/** `clubSlug` set = club-scoped view (/a/:slug/comunidad): only that club's channel, no channel list. */
+function CommunityPage({ clubSlug }: { clubSlug?: string }) {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [channels, setChannels] = useState<ChannelOut[] | null>(null);
@@ -267,8 +297,8 @@ function CommunityPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const slug = params.get("canal") ?? "feed";
-  const channel = channels?.find((c) => c.slug === slug) ?? channels?.[0];
+  const slug = clubSlug ?? params.get("canal") ?? "feed";
+  const channel = channels?.find((c) => c.slug === slug) ?? (clubSlug ? undefined : channels?.[0]);
   const channelId = channel?.id;
   const currentId = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -279,11 +309,12 @@ function CommunityPage() {
     api<ChannelOut[]>("/channels")
       .then(setChannels)
       .catch((err) => setError(errorMessage(err)));
-    // Academy colors for the channel dots (optional decoration).
+    if (clubSlug) return;
+    // Club colors for the channel markers (optional decoration).
     api<Page<AcademyCardOut>>("/academies", { query: { limit: 50 } })
       .then((page) => setColors(Object.fromEntries(page.items.map((a) => [a.id, a.color_primary]))))
       .catch(() => undefined);
-  }, []);
+  }, [clubSlug]);
 
   const loadFirst = useCallback(async (id: number) => {
     try {
@@ -291,9 +322,11 @@ function CommunityPage() {
       if (currentId.current !== id) return; // user switched channel meanwhile
       setPosts((prev) => {
         if (!prev) return page.items;
-        // Periodic refresh: prepend only posts we do not have yet; keep older pages already loaded.
+        // Periodic refresh: new posts on top; posts we already have take the server's latest state
+        // (e.g. hidden by a moderator meanwhile); older pages already loaded stay.
+        const fresh = new Map(page.items.map((p) => [p.id, p]));
         const known = new Set(prev.map((p) => p.id));
-        return [...page.items.filter((p) => !known.has(p.id)), ...prev];
+        return [...page.items.filter((p) => !known.has(p.id)), ...prev.map((p) => fresh.get(p.id) ?? p)];
       });
       setCursor((prev) => prev ?? page.next_cursor);
       setError(null);
@@ -329,6 +362,9 @@ function CommunityPage() {
   }
 
   if (error && !channels) return <ErrorState message={error} />;
+  if (clubSlug && channels && !channel) {
+    return <EmptyState title="Este club aún no tiene canal" action={<Link to="/comunidad">Ver toda la comunidad</Link>} />;
+  }
 
   const channelButton = (c: ChannelOut) => {
     const active = c.id === channelId;
@@ -338,8 +374,8 @@ function CommunityPage() {
         type="button"
         onClick={() => setParams({ canal: c.slug }, { replace: true })}
         aria-current={active ? "page" : undefined}
-        className={`flex min-h-11 w-auto shrink-0 items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold lg:w-full ${
-          active ? "bg-primary/15 text-ink ring-1 ring-primary/40" : "text-muted hover:bg-line/50 hover:text-ink"
+        className={`flex min-h-11 w-auto shrink-0 items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold transition lg:w-full ${
+          active ? "bg-subtle text-ink ring-1 ring-line" : "text-muted hover:bg-subtle hover:text-ink"
         }`}
       >
         {c.type === "feed" ? (
@@ -354,62 +390,94 @@ function CommunityPage() {
     );
   };
 
+  const feed = (
+    <section aria-label={`Canal ${channel?.slug ?? ""}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
+      {channel && !clubSlug && (
+        <div>
+          <h2 className="text-xl">{channel.type === "feed" ? "Feed" : `#${channel.slug}`}</h2>
+          <p className="text-sm text-muted">
+            {channel.type === "feed"
+              ? "Lo más reciente de General y de todos los clubes."
+              : channel.type === "general"
+                ? "Conversación abierta para todo el campus."
+                : `Canal del club ${channel.name}.`}
+          </p>
+        </div>
+      )}
+      {channel && channel.type !== "feed" && (
+        <Composer channel={channel} onPosted={(post) => setPosts((prev) => [post, ...(prev ?? [])])} />
+      )}
+      {error && <Notice tone="alert">{error}</Notice>}
+      {!posts ? (
+        <ListSkeleton rows={3} />
+      ) : posts.length === 0 ? (
+        <EmptyState title="Aún no hay publicaciones" description="Sé la primera persona en compartir algo aquí." />
+      ) : (
+        posts.map((post, index) => (
+          <div key={post.id} className="enter" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+            <PostCard
+              post={post}
+              channels={channels ?? []}
+              moderator={canModerate(user, channels?.find((c) => c.id === post.channel_id))}
+              onHidden={(id) =>
+                setPosts((prev) =>
+                  (prev ?? []).map((p) =>
+                    p.id === id ? { ...p, is_hidden: true, body: "", image_url: null, link_url: null, reactions: {}, comment_count: 0 } : p,
+                  ),
+                )
+              }
+              onError={setError}
+            />
+          </div>
+        ))
+      )}
+      {cursor && posts && posts.length > 0 && (
+        <Button variant="secondary" className="justify-self-center" loading={loadingMore} onClick={() => void loadMore()}>
+          Ver publicaciones anteriores
+        </Button>
+      )}
+    </section>
+  );
+
+  if (clubSlug) {
+    return (
+      <div className="mx-auto grid max-w-3xl gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h1 className="text-3xl">Comunidad</h1>
+            <p className="text-sm text-muted">{channel ? `Canal del club ${channel.name}.` : "Cargando canal…"}</p>
+          </div>
+          <Link to="/comunidad" className="text-sm font-semibold">
+            Ver toda la comunidad
+          </Link>
+        </div>
+        {feed}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <aside aria-label="Canales" className="lg:sticky lg:top-24 lg:self-start">
-        <h1 className="mb-3 text-2xl">Comunidad</h1>
+      <aside aria-label="Canales" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+        <h1 className="mb-3 text-3xl">Comunidad</h1>
         {!channels ? (
-          <Skeleton className="h-32" />
+          <div className="grid gap-2">
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-10" />
+            ))}
+          </div>
         ) : (
           <nav className="flex gap-1 overflow-x-auto pb-1 lg:grid lg:overflow-visible">{channels.map(channelButton)}</nav>
         )}
       </aside>
-
-      <section aria-label={`Canal ${channel?.slug ?? ""}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
-        {channel && (
-          <div>
-            <h2 className="text-xl">{channel.type === "feed" ? "Feed" : `#${channel.slug}`}</h2>
-            <p className="text-sm text-muted">
-              {channel.type === "feed"
-                ? "Lo más reciente de General y de todas las academias. Se actualiza cada 30 segundos."
-                : channel.type === "general"
-                  ? "Conversación abierta para todo el club."
-                  : `Canal de la academia ${channel.name}.`}
-            </p>
-          </div>
-        )}
-        {channel && channel.type !== "feed" && (
-          <Composer channel={channel} onPosted={(post) => setPosts((prev) => [post, ...(prev ?? [])])} />
-        )}
-        {channel?.type === "feed" && <Notice>Para publicar, elige General o el canal de una academia.</Notice>}
-        {error && <Notice tone="alert">{error}</Notice>}
-        {!posts ? (
-          <>
-            <Skeleton className="h-28" />
-            <Skeleton className="h-28" />
-          </>
-        ) : posts.length === 0 ? (
-          <EmptyState title="Aún no hay publicaciones" description="Sé la primera persona en compartir algo aquí." />
-        ) : (
-          posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              channels={channels ?? []}
-              moderator={canModerate(user, channels?.find((c) => c.id === post.channel_id))}
-              onHidden={(id) => setPosts((prev) => (prev ?? []).filter((p) => p.id !== id))}
-              onError={setError}
-            />
-          ))
-        )}
-        {cursor && posts && posts.length > 0 && (
-          <Button variant="secondary" className="justify-self-center" loading={loadingMore} onClick={() => void loadMore()}>
-            Ver publicaciones anteriores
-          </Button>
-        )}
-      </section>
+      {feed}
     </div>
   );
+}
+
+function ClubCommunity() {
+  const academy = useAcademy();
+  return <CommunityPage key={academy.slug} clubSlug={academy.slug} />;
 }
 
 export const routes: RouteObject[] = [
@@ -420,5 +488,14 @@ export const routes: RouteObject[] = [
       </RequireRole>
     ),
     children: [{ path: "/comunidad", element: <CommunityPage /> }],
+  },
+  {
+    path: "/a/:slug",
+    element: (
+      <RequireRole>
+        <AcademyLayout />
+      </RequireRole>
+    ),
+    children: [{ path: "comunidad", element: <ClubCommunity /> }],
   },
 ];

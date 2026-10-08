@@ -1,7 +1,8 @@
 """Community (flow step 4): Feed / General / one channel per academy, posts, comments, moderation.
 
-Only nickname + avatar of authors are exposed (PublicUser). Hidden posts/comments disappear for
-everyone; who hid them and when is recorded (repudiation, plan 001 STRIDE).
+Only nickname + avatar of authors are exposed (PublicUser). Hidden posts/comments stay in place as
+"Mensaje oculto": the API sends the flag and nothing of the content (redacted here, server-side), and
+nobody can comment or react on them. Who hid them and when is recorded (repudiation, plan 001 STRIDE).
 """
 
 from sqlalchemy import Select, or_, select
@@ -47,7 +48,7 @@ def get_channel(db: Session, channel_id: int) -> Channel:
 
 
 def _posts_stmt(db: Session, channel: Channel) -> Select:
-    stmt = select(Post).options(selectinload(Post.author)).where(Post.is_hidden.is_(False))
+    stmt = select(Post).options(selectinload(Post.author))
     if channel.type == ChannelType.feed:
         postable = (
             _visible_channels_stmt().where(Channel.type != ChannelType.feed).with_only_columns(Channel.id)
@@ -56,14 +57,29 @@ def _posts_stmt(db: Session, channel: Channel) -> Select:
     return stmt.where(Post.channel_id == channel.id)
 
 
+def _redact_post(out: PostOut) -> PostOut:
+    return out.model_copy(
+        update={
+            "body": "",
+            "image_url": None,
+            "link_url": None,
+            "reactions": {},
+            "comment_count": 0,
+            "is_hidden": True,
+        }
+    )
+
+
 def list_posts(db: Session, channel: Channel, cursor: str | None, limit: int) -> Page[PostOut]:
     page = paginate(db, _posts_stmt(db, channel), [Post.created_at, Post.id], cursor=cursor, limit=limit)
-    return Page[PostOut](items=posts_out(db, page.items), next_cursor=page.next_cursor)
+    hidden = {p.id for p in page.items if p.is_hidden}
+    items = [_redact_post(out) if out.id in hidden else out for out in posts_out(db, page.items)]
+    return Page[PostOut](items=items, next_cursor=page.next_cursor)
 
 
 def ensure_postable(channel: Channel) -> None:
     if channel.type == ChannelType.feed:
-        raise AppError(422, "El Feed reúne los canales: publica en General o en el canal de una academia.")
+        raise AppError(422, "El Feed reúne los canales: publica en General o en el canal de un club.")
 
 
 def create_post(
@@ -100,18 +116,15 @@ def _comment_out(comment: Comment) -> CommentOut:
         id=comment.id,
         post_id=comment.post_id,
         author=PublicUser.model_validate(comment.author),
-        body=comment.body,
+        body="" if comment.is_hidden else comment.body,  # redacted server-side
         created_at=comment.created_at,
+        is_hidden=comment.is_hidden,
     )
 
 
 def list_comments(db: Session, post_id: int, cursor: str | None, limit: int) -> Page[CommentOut]:
     post, _channel = _visible_post(db, post_id)
-    stmt = (
-        select(Comment)
-        .options(selectinload(Comment.author))
-        .where(Comment.post_id == post.id, Comment.is_hidden.is_(False))
-    )
+    stmt = select(Comment).options(selectinload(Comment.author)).where(Comment.post_id == post.id)
     return paginate(
         db,
         stmt,

@@ -70,4 +70,4 @@ class Reaction(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True
     )
-    kind: Mapped[str] = mapped_column(String(20), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # one reaction per user and post (UPS-025)

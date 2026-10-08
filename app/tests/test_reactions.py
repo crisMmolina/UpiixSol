@@ -30,14 +30,16 @@ def test_reaction_idempotent(as_member: TestClient, post: Post, db: Session) -> 
     assert _count(db, post.id, "fire") == 1
 
 
-def test_one_per_user_and_kind_counts_aggregate(
-    as_member: TestClient, as_admin_ia: TestClient, post: Post
+def test_one_reaction_per_account_replaces_previous(
+    as_member: TestClient, as_admin_ia: TestClient, post: Post, db: Session
 ) -> None:
     as_member.put(f"/api/posts/{post.id}/reactions/like")
-    as_member.put(f"/api/posts/{post.id}/reactions/idea")
+    switched = as_member.put(f"/api/posts/{post.id}/reactions/idea").json()
+    assert switched["mine"] == ["idea"] and switched["reactions"] == {"idea": 1}
     body = as_admin_ia.put(f"/api/posts/{post.id}/reactions/like").json()
-    assert body["reactions"] == {"like": 2, "idea": 1}
+    assert body["reactions"] == {"like": 1, "idea": 1}
     assert body["mine"] == ["like"]
+    assert _count(db, post.id) == 2
 
 
 def test_delete_is_idempotent(as_member: TestClient, post: Post, db: Session) -> None:
@@ -97,7 +99,7 @@ def test_mine_lists_my_kinds_for_visible_posts(as_member: TestClient, post: Post
     as_member.put(f"/api/posts/{post.id}/reactions/like")
     as_member.put(f"/api/posts/{post.id}/reactions/idea")
     body = as_member.get("/api/reactions/mine", params={"post_ids": f"{post.id},{other.id},999999"}).json()
-    assert body == {str(post.id): ["idea", "like"]}
+    assert body == {str(post.id): ["idea"]}
 
 
 def test_mine_is_per_user(as_member: TestClient, db: Session, post: Post) -> None:
@@ -119,3 +121,16 @@ def test_out_of_range_ids_422(as_member: TestClient) -> None:
     assert as_member.put(f"/api/posts/{huge}/reactions/like").status_code == 422
     assert as_member.delete(f"/api/posts/{huge}/reactions/like").status_code == 422
     assert as_member.get("/api/reactions/mine", params={"post_ids": f"1,{huge}"}).status_code == 422
+
+
+def test_concurrent_put_from_same_user_keeps_one(
+    as_member: TestClient, post: Post, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two PUTs from the same account racing: the second hits the (post_id, user_id) key and is a no-op."""
+    from app.services import reactions as service
+
+    as_member.put(f"/api/posts/{post.id}/reactions/like")
+    # Simulate the race: the other request's row is already there when this one inserts.
+    monkeypatch.setattr(service, "delete", lambda *_a, **_k: select(Reaction).where(Reaction.post_id == -1))
+    body = as_member.put(f"/api/posts/{post.id}/reactions/fire").json()
+    assert body["mine"] == ["like"] and _count(db, post.id) == 1
