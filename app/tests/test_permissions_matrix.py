@@ -193,6 +193,13 @@ MATRIX: list[Rule] = [
     Rule("DELETE", "/api/resources/{resource_id}", OWN),
     Rule("POST", "/api/resources/{resource_id}/file", OWN, _file()),
     # ── My account (UPS-014): always the caller's own data ───
+    Rule(
+        "POST",
+        "/api/analytics/events",
+        ANY,
+        _json(lambda _w: {"session_id": "matrix-0001", "events": [{"name": "page.view"}]}),
+        note="usage analytics, 30/min per user (UPS-037)",
+    ),
     Rule("PATCH", "/api/account/profile", ANY, _json(lambda _w: {"nickname": "yo-mismo"})),
     Rule("POST", "/api/account/avatar", ANY, _file()),
     Rule(
