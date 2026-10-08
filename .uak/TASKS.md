@@ -373,3 +373,154 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - `must_change_password` is enforced: every authenticated endpoint except `GET /api/auth/me`, `POST /api/auth/logout|refresh` and `POST /api/account/password` → 403 `password_change_required`; the UI sends the user to `/cuenta?tab=seguridad` until they change it. Setting `REQUIRE_PASSWORD_CHANGE` (default `true`) can be set to `false` for a demo with the seeded accounts (IDEA §2.3).
 - **Verify:** `uv run pytest -q app/tests/test_auth.py app/tests/test_security.py && npm --prefix web run build`
 - **Next step:** `test_concurrent_refresh_only_one_wins`.
+
+## UPS-021 · Redesign v2: design system and app shell (white theme, side rail, notifications, transparent logos)
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 180 min
+- **Rubric / Spec:** S001 · redesign feedback 2026-10-08 (items 1, 2, 5, 6, 7, 10, 11, 15, 21, 24, *skeletons)
+- **Depends on:** none
+- **Uses contract:** UPS-004
+- **Related:** UPS-022, UPS-023, UPS-024, UPS-025, UPS-026, UPS-027, UPS-028
+- **Paths:** web/DESIGN.md, web/src/index.css, web/src/components/, web/src/layouts/, web/src/lib/theme.tsx, web/src/lib/notifications.tsx, web/src/lib/providers.tsx, web/public/brand/, web/index.html
+- **Freeze-Allowed:** no
+- **Contract (published first, so wave 2 starts in parallel):** token and class names stay (`bg-bg`, `bg-surface`, `text-ink`, `text-muted`, `border-line`, `text-link`, `--academy-*`); `Skeleton`, `Card`, `Button`, `Field`, `States`, `Overlay` keep their props (new optional props only). New: `[data-theme="dark"]` scope with the same token names (course view), `useNotifications()` (`notify({id,title,body,action})`), nav routes `/clubes` and `/a/:slug/comunidad`.
+- **Acceptance:**
+  - Light theme on pure white `#FFFFFF` background with one neutral gray family; AA re-checked and recorded in `web/DESIGN.md` (incl. link color on dark).
+  - Layout like the reference campus: left icon rail (labels under icons) with Inicio, Clubes, Comunidad, Calendario, Galería, Blog; slim top bar with logo, notification bell and user menu; mobile = bottom/drawer nav. No footer anywhere.
+  - Club context: the rail switches to the club (Inicio, Rutas, Recursos, Comunidad, Eventos), a club switcher, and an obvious "Campus" way back; Comunidad inside a club stays in the club (`/a/:slug/comunidad`).
+  - Notifications: on sign-in, transient cards slide in top-right and auto-dismiss; the bell (with unread count) reopens a right-side panel with them. The provisional-password notice moves there (no more banner).
+  - Logos and mascots as transparent PNGs (background removed, edges clean), checked on white and on dark.
+  - Every shared component has a skeleton variant; subtle motion (hover lift, fade/slide-in, staggered lists, 150–250 ms) with `prefers-reduced-motion` respected.
+  - All user-visible "Academia/Academias" in shell and components → "Club/Clubes".
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** transparent logos + tokens on white.
+
+## UPS-022 · Redesign v2: login and campus home
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 90 min
+- **Rubric / Spec:** feedback items 3, 4, 8, 9, *skeletons
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-021, UPS-027
+- **Paths:** web/src/features/auth/, web/src/features/home/
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Login shows "Tus clubs en un solo campus" with the transparent logo; clean white layout.
+  - Campus home in the reference style (welcome + continue learning + upcoming events + latest posts), the same phrase in the hero; the "Explorar academias" and "Comunidad" buttons removed from the hero card.
+  - `/clubes` lists the clubs (cards with logo and color); `/academias` redirects to `/clubes`. No "Academia" in visible text.
+  - Skeletons that match each block's final shape.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** login copy and layout.
+
+## UPS-023 · Redesign v2: club home and route catalog
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 120 min
+- **Rubric / Spec:** feedback items 19, 20, 23
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-021, UPS-024
+- **Paths:** web/src/features/academy/
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Club home without the "Inscribirme" button and without "Continuar donde te quedaste"; one "Continúa aprendiendo" block with route cards.
+  - Route catalog like the reference: colored cover tiles (club color + icon), title, progress line, "Iniciar / Continuar / Repasar" pill on the tile.
+  - Skeletons per block; no "Academia" in visible text.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** route cards.
+
+## UPS-024 · Redesign v2: dark course player, completion when the video ends
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 150 min
+- **Rubric / Spec:** feedback items 25, 26 · player reference image
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-007, UPS-023
+- **Paths:** web/src/features/learning/
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The route and player pages use the dark course theme (`data-theme="dark"`), layout like the reference: top bar with "Ir a inicio", left sidebar (route title, % bar, search, collapsible modules with x/y and checks), video area, description and resources below.
+  - No manual "Marcar como completada": the lesson is marked complete when the YouTube video ends (iframe `enablejsapi=1` + postMessage state from the youtube-nocookie origin, no external script, no CSP change); the UI shows the state and moves on. Messages from other origins are ignored.
+  - Skeletons for sidebar and video; works at 390 px (drawer).
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** postMessage listener with origin check.
+
+## UPS-025 · Redesign v2: community fixes (hidden messages, 512 chars, one reaction, club-scoped)
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** feedback items 12, 13, 14, 16, 22
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-011, UPS-018
+- **Paths:** web/src/features/community/, app/routers/community.py, app/services/community.py, app/routers/reactions.py, app/services/reactions.py, app/schemas/community.py, app/models/community.py, app/migrations/versions/0003_one_reaction_per_user.py, app/tests/test_community.py, app/tests/test_reactions.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The "Para publicar…" notice is gone.
+  - Hidden posts/comments stay in place as "Mensaje oculto": the API sends a flag and no body, image or link (redacted server-side); no comments or reactions on hidden items.
+  - Posts limited to 512 characters (schema → 422) with a live counter in the composer.
+  - One reaction per account per post: reacting with another kind replaces the previous one; migration dedupes existing rows (tested on Postgres).
+  - `/a/:slug/comunidad` shows the club channel inside the club layout (no jump to the campus theme).
+  - Skeletons for channels and posts. Security review required.
+- **Verify:** `uv run pytest -q app/tests/test_community.py app/tests/test_reactions.py && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** `test_hidden_post_is_redacted`.
+
+## UPS-026 · Redesign v2: calendar day filter and copy
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 60 min
+- **Rubric / Spec:** feedback items 17, 18
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-013
+- **Paths:** web/src/features/events/
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Clicking a day in the month view filters the list below to that day (clear filter button; keyboard accessible).
+  - Subtitle: "Talleres, sesiones, hackatones y eventos en todos los clubes". No "Academia" in visible text. Skeletons.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build`
+- **Next step:** selected-day state.
+
+## UPS-027 · Redesign v2: blog and gallery with demo content
+
+- **Type:** feature
+- **Priority:** P2
+- **Estimate:** 150 min
+- **Rubric / Spec:** feedback "Galería/Blog" · ipnprofes blog reference images
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-017
+- **Paths:** web/src/features/blog/, web/src/features/gallery/, app/fixtures/demo.json, app/seed.py, app/tests/test_seed.py, app/tests/test_academies.py, app/tests/test_admin.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Blog like the reference: title + subtitle, search, "Artículos en tendencia" row, category chips, featured article + card grid; read time from body length; no invented views/likes.
+  - Gallery with project cards; empty states designed.
+  - Seed adds demo projects and blog posts (`demo_data`), and the seed copy uses "club" (hero title "Tus clubs en un solo campus"); idempotent.
+- **Verify:** `uv run pytest -q app/tests/test_seed.py && npm --prefix web run build`
+- **Next step:** demo fixtures.
+
+## UPS-028 · Redesign v2: "Club" terminology in the API and admin panels
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 90 min
+- **Rubric / Spec:** feedback item 3
+- **Depends on:** none
+- **Uses contract:** UPS-021
+- **Related:** UPS-008, UPS-009, UPS-014
+- **Paths:** web/src/features/academy-admin/, web/src/features/superadmin/, web/src/features/account/, web/src/features/resources/, app/services/admin.py, app/services/events.py, app/services/academies.py, app/services/gallery.py, app/services/academy_admin.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Every user-visible "Academia/Academias" in API messages and in the panels says "Club/Clubes" (routes `/a/:slug`, models, API paths and `academy_id` stay).
+  - Panels get skeletons and the v2 look.
+- **Verify:** `uv run pytest -q && npm --prefix web run build`
+- **Next step:** grep and replace messages.
