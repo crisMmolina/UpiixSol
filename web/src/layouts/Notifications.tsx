@@ -49,17 +49,24 @@ export function NotificationBell() {
 }
 
 /**
- * Transient cards; they leave on their own after a few seconds (the bell keeps them). Bottom-right, above the
- * phone tab bar: page headers keep their actions top-right ("Ver como miembro"), so cards never sit there.
+ * Transient cards; they leave on their own after a few seconds (the bell keeps them). Page headers keep their
+ * actions top-right ("Ver como miembro") and lists and forms keep theirs at the bottom ("Publicar"), so the
+ * newest toast shows as one compact card (title + action) laid over the app's top bar, never over the page
+ * (on phones it stops short of the bell and the user menu, so those stay reachable).
+ * The full text stays in the bell's panel.
  */
 export function Toasts() {
   const { toasts, dismissToast } = useNotifications();
   if (toasts.length === 0) return null;
   return (
-    <section aria-label="Avisos" aria-live="polite" className="fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 grid gap-2 sm:left-auto sm:w-88 lg:bottom-6 lg:right-6">
+    <section
+      aria-label="Avisos"
+      aria-live="polite"
+      className="fixed left-2 right-[8.5rem] top-1 z-40 grid grid-cols-1 [&>*+*]:hidden sm:right-auto sm:left-1/2 sm:w-[26rem] sm:-translate-x-1/2"
+    >
       {toasts.map((toast) => (
         <div key={toast.id} className="animate-toast-in rounded-card border border-line bg-surface shadow-lift">
-          <NotificationCard notification={toast} onDismiss={() => dismissToast(toast.id)} onAction={() => dismissToast(toast.id)} />
+          <NotificationCard notification={toast} compact onDismiss={() => dismissToast(toast.id)} onAction={() => dismissToast(toast.id)} />
         </div>
       ))}
     </section>
@@ -70,28 +77,38 @@ function NotificationCard({
   notification,
   onDismiss,
   onAction,
+  compact = false,
 }: {
   notification: AppNotification;
+  /** One line of title + the action, so the toast fits over the 64 px top bar. */
+  compact?: boolean;
   onDismiss: () => void;
   onAction: () => void;
 }) {
+  // Compact and full layouts pick their classes outright (two conflicting utilities would race in the CSS order).
+  const pick = (full: string, small: string) => (compact ? small : full);
   return (
-    <div className="flex gap-3 rounded-card bg-surface p-4 ring-1 ring-line">
+    <div className={`flex rounded-card bg-surface ring-1 ring-line ${pick("gap-3 p-4", "items-center gap-2 p-2 pl-3")}`}>
       {notification.tone === "warning" && (
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/20 text-ink">
+        <span className={`grid shrink-0 place-items-center rounded-full bg-accent/20 text-ink ${pick("size-9", "size-8 max-sm:hidden")}`}>
           <Warning size={18} weight="bold" aria-hidden />
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="font-semibold leading-snug">{notification.title}</p>
-        {notification.body && <p className="mt-0.5 text-sm text-muted">{notification.body}</p>}
+        <p className={`font-semibold leading-snug ${pick("", "truncate text-sm")}`}>{notification.title}</p>
+        {notification.body && !compact && <p className="mt-0.5 text-sm text-muted">{notification.body}</p>}
         {notification.action && (
-          <Link to={notification.action.to} onClick={onAction} className="mt-2 inline-block text-sm font-semibold">
+          <Link to={notification.action.to} onClick={onAction} className={`text-sm font-semibold ${pick("mt-2 inline-block", "block")}`}>
             {notification.action.label}
           </Link>
         )}
       </div>
-      <button type="button" aria-label="Descartar" onClick={onDismiss} className="grid size-8 shrink-0 place-items-center rounded-full text-muted hover:bg-subtle hover:text-ink">
+      <button
+        type="button"
+        aria-label="Descartar"
+        onClick={onDismiss}
+        className={`grid shrink-0 place-items-center rounded-full text-muted hover:bg-subtle hover:text-ink ${pick("size-8", "size-10")}`}
+      >
         <X size={16} weight="bold" />
       </button>
     </div>
