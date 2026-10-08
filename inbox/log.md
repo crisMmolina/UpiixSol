@@ -173,3 +173,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 169 | 1791438096 | claude | task:UPS-012 | approve | UPS-012 | Approved SHA 3d717a3c54c5b767ceb1ad04011b6a170c9a6d29 by claude. Next: bash .uak/bin/uak heartbeat UPS-012 && bash .uak/bin/uak merge UPS-012
 - 170 | 1791438107 | claude | task:UPS-012 | approve | - | approve 3d717a3c54c5b767ceb1ad04011b6a170c9a6d29: Verify+full pytest 100% cov+build green; scope ok; scope check before upload, http(s) url, sanitized md, noopener
 - 171 | 1791438118 | claude | task:UPS-017 | approve | UPS-017 | Approved SHA a65ee150e247cd612e990b3fafa9782604e3b584 by claude. Next: bash .uak/bin/uak heartbeat UPS-017 && bash .uak/bin/uak merge UPS-017
+- 172 | 1791438129 | claude | task:UPS-017 | approve | - | a65ee15 approved: Verify, full pytest 100% cov, build OK; superadmin-only writes, nh3+DOMPurify, slug 409, matrix 52/52
