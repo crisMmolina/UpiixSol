@@ -1,7 +1,8 @@
 """Idempotent seed: accounts from IDEA §2.3 + the UpiixIA demo case (§3). Run: `uv run python -m app.seed`.
 
 Running it twice changes nothing. Seeded accounts get `must_change_password = true`;
-the initial password comes from SEED_DEFAULT_PASSWORD (prod refuses the documented default).
+the initial password comes from SEED_DEFAULT_PASSWORD (prod refuses the documented default). While a
+seeded account was never used, a new SEED_DEFAULT_PASSWORD replaces its provisional one (UPS-031).
 """
 
 import json
@@ -34,7 +35,7 @@ from app.models import (
 )
 from app.models.common import utcnow
 from app.sanitize import clean_markdown
-from app.security import hash_password
+from app.security import hash_password, verify_password
 from app.services.progress import complete_lesson
 from app.services.youtube import extract_video_id
 
@@ -131,7 +132,8 @@ def _seed_route(db: Session, academy: Academy, data: dict) -> list[Lesson]:
 def seed(db: Session) -> dict:
     """Load accounts + demo data. Flushes but does not commit (the caller owns the transaction)."""
     demo = json.loads(DEMO.read_text(encoding="utf-8"))
-    password_hash = hash_password(get_settings().seed_default_password)
+    seed_password = get_settings().seed_default_password
+    password_hash = hash_password(seed_password)
     now = utcnow()
 
     academy_data = demo["academy"]
@@ -151,7 +153,13 @@ def seed(db: Session) -> dict:
             "must_change_password": True,
             "academy_id": academy.id if account.get("academy") else None,
         }
-        users[account["email"]], _ = _get_or_create(db, User, {"email": account["email"]}, values)
+        user, created = _get_or_create(db, User, {"email": account["email"]}, values)
+        # Never used since seeding (no change, no admin reset): its provisional password follows
+        # SEED_DEFAULT_PASSWORD, so a lost first value is recovered with a new one (UPS-031).
+        never_used = user.must_change_password and user.password_changed_at is None
+        if not created and never_used and not verify_password(user.password_hash, seed_password):
+            user.password_hash = password_hash
+        users[account["email"]] = user
     member = users["alumno.demo@upiixsol.dev"]
     _get_or_create(db, Enrollment, {"user_id": member.id, "academy_id": academy.id})
 

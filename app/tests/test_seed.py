@@ -20,7 +20,7 @@ from app.models import (
     Role,
     User,
 )
-from app.security import verify_password
+from app.security import hash_password, verify_password
 from app.seed import ACCOUNTS, seed
 from app.services.progress import academy_continue
 
@@ -89,6 +89,36 @@ def test_seed_uses_configured_password(db: Session, monkeypatch: pytest.MonkeyPa
     seed(db)
     user = db.scalar(select(User).filter_by(email="superadmin2@upiixsol.dev"))
     assert verify_password(user.password_hash, "otra-clave-larga-123")
+
+
+def test_unused_seeded_accounts_follow_a_new_seed_password(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A lost first SEED_DEFAULT_PASSWORD is recovered by setting a new one and seeding again (UPS-031);
+    accounts that changed their password or got an admin reset keep theirs."""
+    from app.config import get_settings
+    from app.services.auth import revoke_all_for_user
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "seed_default_password", "primera-clave-perdida")
+    seed(db)
+    changed = db.scalar(select(User).filter_by(email="superadmin1@upiixsol.dev"))
+    changed.password_hash, changed.must_change_password = hash_password("la-de-ana-123"), False
+    reset = db.scalar(select(User).filter_by(email="admin.ia@upiixsol.dev"))
+    reset.password_hash = hash_password("temporal-del-admin")  # admin reset: still provisional, but stamped
+    revoke_all_for_user(db, reset.id)
+    db.flush()
+
+    monkeypatch.setattr(settings, "seed_default_password", "segunda-clave-nueva")
+    seed(db)
+    unused = db.scalar(select(User).filter_by(email="superadmin2@upiixsol.dev"))
+    assert verify_password(unused.password_hash, "segunda-clave-nueva")
+    assert verify_password(changed.password_hash, "la-de-ana-123")
+    assert verify_password(reset.password_hash, "temporal-del-admin")
+
+    same_hash = unused.password_hash
+    seed(db)  # same password again: nothing is rewritten
+    assert unused.password_hash == same_hash
 
 
 def test_migrations_match_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

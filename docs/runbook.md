@@ -64,6 +64,8 @@ Las cuentas del seed (`IDEA.md` §2.3) nacen con `must_change_password = true` y
 2. Cada dueño entra y cambia su contraseña en Mi cuenta → Seguridad (UPS-014). Con `REQUIRE_PASSWORD_CHANGE=true` (default) la API no deja hacer nada más hasta cambiarla y la web lleva directo a esa pestaña (UPS-020). Por eso el superadmin que va a repartir accesos cambia la suya primero. Para cuentas sin dueño todavía, ese superadmin la restablece desde el panel de usuarios (UPS-009) y entrega la contraseña temporal en persona; la temporal también obliga a cambiarla.
 3. Cambia también `SEED_DEFAULT_PASSWORD` en `.env`, para que un seed accidental no use el valor que ya se compartió.
 
+Si se perdió la contraseña inicial antes de que alguien entrara: pon un `SEED_DEFAULT_PASSWORD` nuevo y arranca una vez con `SEED_ON_START=true`. Las cuentas sembradas que nunca se usaron (siguen con contraseña provisional y nadie se la ha cambiado ni restablecido) toman el valor nuevo; las demás no cambian (UPS-031).
+
 ## 7. TLS
 nginx escucha HTTP en `${HTTP_BIND}:${HTTP_PORT}` (default `127.0.0.1:8080`). Pon delante un terminador TLS **en el mismo host** (nginx o Caddy del sistema con Let's Encrypt) que haga proxy a `http://127.0.0.1:8080`. El hosting de producción sigue sin decidirse (spec 001, preguntas abiertas). El terminador debe:
 - Agregar `X-Forwarded-For` con la IP del cliente. nginx usa la **última** dirección de ese encabezado, así que da igual si el terminador sobrescribe o agrega: un valor que mande el cliente nunca se toma.
