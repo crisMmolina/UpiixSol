@@ -54,8 +54,26 @@ Un solo gris (frío, neutral). Nada de beige.
 
 ## Movimiento (sutil)
 - Entrada de listas escalonada (`.enter` + `--i`, 40 ms por elemento, 260 ms).
-- Tarjetas de aviso deslizan desde la derecha; menús aparecen con un fade corto.
+- Tarjetas de aviso deslizan desde la derecha; menús aparecen con un fade corto; modales entran con fade + escala y los paneles laterales se deslizan (ver abajo).
 - Skeleton con brillo suave. Todo se apaga con `prefers-reduced-motion`.
+
+## Movimiento y estabilidad
+Regla: **un mensaje nunca mueve el layout** y lo que aparece o cambia de tamaño **se anima**, nunca "salta". Todo en `@/components`.
+
+| Primitiva | Cuándo | Uso |
+|---|---|---|
+| `TextField`/`TextArea`/`SelectField` con `reserve` | Campo que puede mostrar error y no tiene `hint` (con `hint` la línea ya existe: el error la reemplaza) | `<TextField label="Correo" reserve error={errors.email} />` |
+| `FormMessage` | Error o resultado de un formulario, bajo el botón de enviar; también el "por qué" de un botón deshabilitado (`hint`) | `<FormMessage message={error} tone="error" hint={motivo} lines={1} />` |
+| `AnimatedHeight` | Contenedor cuyo contenido cambia de alto (pestañas, pasos, cuerpo de un modal) | `<AnimatedHeight>{tab === "a" ? <A /> : <B />}</AnimatedHeight>` |
+| `Stagger` + `StaggerItem` | Campos o tarjetas nuevos tras un cambio (no en la primera carga: `play={cambio}`) | `<Stagger play={switched}><StaggerItem>…</StaggerItem></Stagger>` |
+| `Modal` / `Drawer` | Diálogos y paneles; ya animan entrada y salida | `<Modal open={abierto} onClose={…} title="…">` |
+
+- **Espacio reservado:** `FormMessage` guarda `lines` líneas (1 por defecto; 2 donde el texto puede partirse en 390 px). Mensajes cortos en español que quepan en esa línea. Un mensaje nuevo **reemplaza** al anterior (un solo estado por pestaña o formulario), y escribir en el campo borra su error.
+- **Anclar arriba:** pantallas cuyo alto cambia (login, modales) se anclan con padding fijo arriba, no se centran en vertical: así el borde superior nunca salta y lo que crece, crece hacia abajo.
+- **Modales:** cuelgan a `max(1rem, 8dvh)` del borde superior. Para que se vea la salida, déjalos montados y cambia `open` (`{abierto && <Modal open …>}` cierra sin animación). Enfocan su primer campo solo en escritorio; los `Drawer` enfocan el botón Cerrar (en teléfono un campo abriría el teclado).
+- **Duraciones y curva** (`DURATION`, `EASE_OUT`, `EASE_IN`): mensajes 160 ms · entrada de campos y overlays 220 ms · cambio de alto 260 ms · salida 160 ms · escalonado 40 ms. Entrar/crecer con `EASE_OUT` `cubic-bezier(.2,.8,.2,1)` (la misma de `.enter`), salir con `EASE_IN`. Solo `opacity`, `transform` y el alto del contenedor.
+- **Movimiento reducido:** cada primitiva usa `useReducedMotion()`: con `prefers-reduced-motion` todo cambia al instante (sin desplazamientos), pero el espacio reservado sigue igual.
+- **No usar** `AnimatedHeight` alrededor de menús flotantes (recorta su contenido) ni animar `top`/`margin`/`width`.
 
 ## Estados
 Cada vista de datos tiene skeleton con la forma final (`SkeletonText`, `CardSkeleton`, `ListSkeleton`, `GridSkeleton`, `SkeletonAvatar`), vacío con la mascota del club y error con reintentar.
