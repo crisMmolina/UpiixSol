@@ -138,7 +138,7 @@ export function ResourceBoard({ slug, academyId, canManage, mascotUrl }: {
       ) : items.length === 0 ? (
         <EmptyState
           title={filter ? `No hay ${typeInfo(filter).plural.toLowerCase()} todavía` : "Aún no hay recursos"}
-          description={canManage ? undefined : "Vuelve pronto: el equipo de la academia los irá subiendo."}
+          description={canManage ? undefined : "Vuelve pronto: el equipo del club los irá subiendo."}
           action={
             canManage && academyId !== null ? (
               <Button icon={<Plus weight="bold" />} onClick={() => setDialog({ kind: "form" })}>

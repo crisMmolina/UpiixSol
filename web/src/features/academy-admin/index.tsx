@@ -145,7 +145,7 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
       const saved = await api<AcademyOut>(`/academies/${academy.id}/branding`, { method: "PATCH", json: payload });
       onSaved(saved);
       setDraft(saved);
-      setMessage({ tone: "ok", text: "Identidad guardada. El tema ya se aplica en toda la academia." });
+      setMessage({ tone: "ok", text: "Identidad guardada. El tema ya se aplica en todo el club." });
     } catch (err) {
       setMessage({ tone: "error", text: errorMessage(err) });
     } finally {
@@ -217,7 +217,7 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
             value={draft.short_description}
             maxLength={200}
             onChange={(e) => setDraft({ ...draft, short_description: e.target.value })}
-            hint="Aparece en la tarjeta de la academia."
+            hint="Aparece en la tarjeta del club."
           />
           <TextArea
             label="Texto de bienvenida (markdown)"
@@ -492,7 +492,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
         </Button>
       </div>
 
-      {content.routes.length === 0 && <EmptyState title="Aún no hay rutas" description="Crea la primera ruta de tu academia." mascotUrl={academy.mascot_url} />}
+      {content.routes.length === 0 && <EmptyState title="Aún no hay rutas" description="Crea la primera ruta de tu club." mascotUrl={academy.mascot_url} />}
 
       {content.routes.map((route, routeIndex) => (
         <Card key={route.id} stripe className="grid gap-4 p-5">
@@ -782,7 +782,7 @@ function AcademyPanel() {
   }, [slug]);
 
   if (!slug) {
-    return <EmptyState title="Tu cuenta no tiene una academia asignada" description="Pide a la mesa directiva que te asigne una." />;
+    return <EmptyState title="Tu cuenta no tiene un club asignado" description="Pide a la mesa directiva que te asigne uno." />;
   }
   if (error) return <ErrorState message={error} />;
   if (!academy) return <PageSkeleton />;
@@ -799,7 +799,7 @@ function AcademyPanel() {
       <div className="grid gap-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-link">Panel de academia</p>
+            <p className="text-sm font-semibold text-link">Panel del club</p>
             <h1 className="text-3xl sm:text-4xl">{academy.name}</h1>
           </div>
           <ButtonLink to={`/a/${academy.slug}`} variant="secondary" icon={<Eye weight="bold" />}>

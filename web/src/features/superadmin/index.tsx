@@ -22,7 +22,7 @@ type Tab = "academias" | "usuarios" | "inicio";
 
 const ROLE_LABEL: Record<Role, string> = {
   superadmin: "Superadmin",
-  academy_admin: "Admin de academia",
+  academy_admin: "Admin de club",
   member: "Miembro",
 };
 
@@ -126,7 +126,7 @@ function NewAcademyForm({ onCreated, onClose }: { onCreated: (a: AcademyOut) => 
           Cancelar
         </Button>
         <Button type="submit" loading={busy}>
-          Crear academia
+          Crear club
         </Button>
       </div>
     </form>
@@ -155,9 +155,9 @@ function AcademiesTab() {
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted">Al crear una academia se crea también su canal en la comunidad.</p>
+        <p className="text-muted">Al crear un club se crea también su canal en la comunidad.</p>
         <Button icon={<Plus weight="bold" />} onClick={() => setCreating(true)}>
-          Nueva academia
+          Nuevo club
         </Button>
       </div>
       {notice && <Notice tone="accent">{notice}</Notice>}
@@ -169,7 +169,7 @@ function AcademiesTab() {
               <Card stripe className={`grid gap-3 p-5 ${academy.is_active ? "" : "opacity-70"}`}>
                 <div className="flex items-start justify-between gap-2">
                   {logo ? <img src={logo} alt="" className="h-9 w-auto" /> : <span className="font-display text-2xl font-bold">{academy.name}</span>}
-                  <Badge tone={academy.is_active ? "primary" : "alert"}>{academy.is_active ? "Activa" : "Inactiva"}</Badge>
+                  <Badge tone={academy.is_active ? "primary" : "alert"}>{academy.is_active ? "Activo" : "Inactivo"}</Badge>
                 </div>
                 <p className="text-sm">
                   <strong>{academy.name}</strong> · <span className="text-muted">/a/{academy.slug}</span>
@@ -188,12 +188,12 @@ function AcademiesTab() {
           );
         })}
       </div>
-      <Modal open={creating} onClose={() => setCreating(false)} title="Nueva academia">
+      <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo club">
         {creating && (
           <NewAcademyForm
             onClose={() => setCreating(false)}
             onCreated={(academy) => {
-              setNotice(`${academy.name} creada con su canal #${academy.slug}. Ya aparece en la página principal.`);
+              setNotice(`${academy.name} creado con su canal #${academy.slug}. Ya aparece en la página principal.`);
               void reload();
             }}
           />
@@ -243,11 +243,11 @@ function NewUserForm({ academies, onCreated, onClose }: { academies: AcademyOut[
   return (
     <form onSubmit={submit} className="grid gap-4" noValidate>
       <SelectField label="Rol" value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
-        <option value="academy_admin">Admin de academia</option>
+        <option value="academy_admin">Admin de club</option>
         <option value="member">Miembro</option>
       </SelectField>
       {role === "academy_admin" && (
-        <SelectField label="Academia" name="academy_id" required defaultValue={academies[0]?.id}>
+        <SelectField label="Club" name="academy_id" required defaultValue={academies[0]?.id}>
           {academies.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -353,7 +353,7 @@ function UsersTab() {
           <SelectField label="Rol" name="role" defaultValue={filters.role}>
             <option value="">Todos</option>
             <option value="superadmin">Superadmin</option>
-            <option value="academy_admin">Admin de academia</option>
+            <option value="academy_admin">Admin de club</option>
             <option value="member">Miembro</option>
           </SelectField>
         </div>
@@ -374,7 +374,7 @@ function UsersTab() {
               <tr>
                 <th className="px-4 py-3 font-semibold">Nombre</th>
                 <th className="px-4 py-3 font-semibold">Rol</th>
-                <th className="px-4 py-3 font-semibold">Academia</th>
+                <th className="px-4 py-3 font-semibold">Club</th>
                 <th className="px-4 py-3 font-semibold">Boleta</th>
                 <th className="px-4 py-3 font-semibold">Estado</th>
                 <th className="px-4 py-3 font-semibold">
@@ -393,7 +393,7 @@ function UsersTab() {
                   <td className="px-4 py-3">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
                   <td className="px-4 py-3 tabular-nums">{user.boleta ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <Badge tone={user.is_active ? "primary" : "alert"}>{user.is_active ? "Activa" : "Inactiva"}</Badge>
+                    <Badge tone={user.is_active ? "primary" : "alert"}>{user.is_active ? "Activo" : "Inactivo"}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
@@ -505,7 +505,7 @@ function SuperadminPage() {
   const [search, setSearch] = useSearchParams();
   const tab: Tab = (["academias", "usuarios", "inicio"] as const).find((t) => t === search.get("tab")) ?? "academias";
   const tabs: { id: Tab; label: string }[] = [
-    { id: "academias", label: "Academias" },
+    { id: "academias", label: "Clubes" },
     { id: "usuarios", label: "Usuarios" },
     { id: "inicio", label: "Página principal" },
   ];

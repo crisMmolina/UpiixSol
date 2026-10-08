@@ -56,14 +56,14 @@ def list_events(db: Session, stmt: Select, cursor: str | None, limit: int) -> Pa
 def academy_by_slug(db: Session, slug: str) -> Academy:
     academy = db.scalar(select(Academy).where(Academy.slug == slug, Academy.is_active.is_(True)))
     if academy is None:
-        raise AppError(404, "No encontramos esa academia.")
+        raise AppError(404, "No encontramos ese club.")
     return academy
 
 
 def _check_target(db: Session, user: User, academy_id: int | None) -> str | None:
     """Scope for the academy an event belongs to (None = global → superadmin only). Returns its slug."""
     if academy_id is not None and db.get(Academy, academy_id) is None:
-        raise AppError(404, "No encontramos esa academia.")
+        raise AppError(404, "No encontramos ese club.")
     ensure_academy_scope(user, academy_id)
     return db.scalar(select(Academy.slug).where(Academy.id == academy_id)) if academy_id else None
 

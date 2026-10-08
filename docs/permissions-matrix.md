@@ -6,7 +6,7 @@ Cobertura: **56/56 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
-| Método | Ruta | Anónimo | Miembro | Admin (su academia) | Admin (otra academia) | Superadmin | Nota |
+| Método | Ruta | Anónimo | Miembro | Admin (su club) | Admin (otro club) | Superadmin | Nota |
 |---|---|---|---|---|---|---|---|
 | POST | `/api/auth/register` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | rate-limited per IP |
 | POST | `/api/auth/login` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | rate-limited per IP |
