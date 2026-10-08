@@ -36,6 +36,15 @@ Reemplaza `<servicio>` por la URL que te dio Render, p. ej. `upiixsol.onrender.c
    - `alumno.demo`.
 3. Cambia también `SEED_DEFAULT_PASSWORD` a un valor nuevo. Las cuentas que ya existen no cambian con esto: solo evita que un seed accidental use el valor que ya se compartió. Cada cuenta cambia su contraseña desde la app.
 
+### Si nadie puede entrar con la contraseña inicial
+Puede pasar si cambiaste `SEED_DEFAULT_PASSWORD` antes del primer login: las cuentas se crearon con el valor anterior.
+1. En **Environment** pon un `SEED_DEFAULT_PASSWORD` nuevo, de 12 caracteres o más y distinto de `admin123`.
+2. Pon también `SEED_ON_START=true` y guarda con redespliegue.
+3. Las cuentas sembradas que **nunca se usaron** toman esa contraseña. Las que ya la cambiaron, o a las que un admin se la restableció, no se tocan.
+4. Entra, cambia tu contraseña y regresa `SEED_ON_START=false`.
+
+`SEED_DEFAULT_PASSWORD` es obligatoria en producción aunque `SEED_ON_START=false`: sin ella la API no arranca.
+
 ## 5. Actualizar y respaldar
 - Con el repo conectado, cada merge a `main` redepliega solo. Si no, usa **Manual Deploy → Deploy latest commit**. Las migraciones nuevas se aplican al arrancar.
 - **Respaldo:** usa `pg_dump` con la cadena directa de Neon, p. ej. `pg_dump "<cadena directa>" -Fc -f upiixsol-$(date +%F).dump`. Las imágenes viajan dentro del dump, en `media_objects`.
