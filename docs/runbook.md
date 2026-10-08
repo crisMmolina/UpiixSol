@@ -61,8 +61,7 @@ Después verifica `/api/ready` y entra con una cuenta real. En un servidor nuevo
 ## 6. Contraseñas sembradas (Seed)
 Las cuentas del seed (`IDEA.md` §2.3) nacen con `must_change_password = true` y la contraseña `SEED_DEFAULT_PASSWORD`. Antes de abrir el sitio:
 1. Pon `SEED_ON_START=false` en `.env` y aplica con `docker compose up -d --wait`.
-2. Cada dueño entra y cambia su contraseña en Mi cuenta → Seguridad (UPS-014). Para cuentas sin dueño todavía, un superadmin la restablece desde el panel de usuarios (UPS-009) y entrega la contraseña temporal en persona.
-   *Sin verificar en este runbook: UPS-009 y UPS-014 no estaban integradas cuando se escribió (7 oct 2026).*
+2. Cada dueño entra y cambia su contraseña en Mi cuenta → Seguridad (UPS-014). Con `REQUIRE_PASSWORD_CHANGE=true` (default) la API no deja hacer nada más hasta cambiarla y la web lleva directo a esa pestaña (UPS-020). Por eso el superadmin que va a repartir accesos cambia la suya primero. Para cuentas sin dueño todavía, ese superadmin la restablece desde el panel de usuarios (UPS-009) y entrega la contraseña temporal en persona; la temporal también obliga a cambiarla.
 3. Cambia también `SEED_DEFAULT_PASSWORD` en `.env`, para que un seed accidental no use el valor que ya se compartió.
 
 ## 7. TLS
