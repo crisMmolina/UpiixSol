@@ -1,0 +1,33 @@
+# Render Blueprint (UPS-030): UpiixSol on one free web service. Postgres lives on Neon (free) and uploads
+# are stored in it (MEDIA_STORAGE=database), because the free Render disk is wiped on every restart.
+# Step by step: docs/deploy-render.md
+services:
+  - type: web
+    name: upiixsol
+    runtime: docker
+    plan: free
+    region: ohio # same region as the Neon project (AWS us-east-2)
+    dockerfilePath: ./Dockerfile # last stage: `single` (API + built SPA)
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENV
+        value: prod
+      - key: DATABASE_URL # Neon direct connection string; the entrypoint adds the psycopg driver
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEFAULT_PASSWORD # first password of the 6 seeded accounts; read it in the dashboard
+        generateValue: true
+      - key: SEED_ON_START # set to false after the first deploy (docs/deploy-render.md §4)
+        value: "true"
+      - key: REQUIRE_PASSWORD_CHANGE
+        value: "true"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: RATELIMIT_ENABLED
+        value: "true"
+      - key: MEDIA_STORAGE
+        value: database
+      # Only Render's proxy reaches the container (see deploy/entrypoint.sh for the rate-limit trade-off).
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"

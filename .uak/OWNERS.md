@@ -9,7 +9,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | uv.lock | UPS-001 |
 | web/package.json | UPS-001 |
 | web/package-lock.json | UPS-001 |
-| app/main.py | UPS-001 |
+| app/main.py | UPS-030 |
 | app/config.py | UPS-020 |
 | app/db.py | UPS-001 |
 | app/errors.py | UPS-001 |
@@ -23,7 +23,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | .gitignore | UPS-001 |
 | .env.example | UPS-020 |
 | app/schemas/ | UPS-002 |
-| app/models/__init__.py | UPS-002 |
+| app/models/__init__.py | UPS-030 |
 | app/models/academy.py | UPS-002 |
 | app/models/common.py | UPS-002 |
 | app/models/community.py | UPS-002 |
@@ -32,10 +32,11 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/models/user.py | UPS-020 |
 | app/migrations/versions/0001_initial.py | UPS-002 |
 | app/migrations/versions/0002_password_changed_at.py | UPS-020 |
+| app/migrations/versions/0004_media_objects.py | UPS-030 |
 | app/security.py | UPS-020 |
 | app/pagination.py | UPS-002 |
 | app/sanitize.py | UPS-002 |
-| app/services/media.py | UPS-002 |
+| app/services/media.py | UPS-030 |
 | app/services/progress.py | UPS-002 |
 | app/tests/conftest.py | UPS-020 |
 | app/seed.py | UPS-027 |
