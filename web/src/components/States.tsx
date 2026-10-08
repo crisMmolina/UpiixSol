@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "./Button";
 
-/** Empty state with the mascot of the current academy (or UpiixSol's) and an optional action. */
+/** Empty state with the mascot of the current club (or UpiixSol's) and an optional action. */
 export function EmptyState({
   title,
   description,
@@ -16,8 +16,8 @@ export function EmptyState({
   mascotUrl?: string | null;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line bg-surface/60 px-6 py-10 text-center">
-      {mascotUrl && <img src={mascotUrl} alt="" className="h-28 w-auto rounded-2xl object-contain" loading="lazy" />}
+    <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line bg-surface px-6 py-12 text-center">
+      {mascotUrl && <img src={mascotUrl} alt="" className="h-28 w-auto object-contain" loading="lazy" />}
       <h3 className="text-xl">{title}</h3>
       {description && <p className="max-w-md text-muted">{description}</p>}
       {action}

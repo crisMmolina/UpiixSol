@@ -35,7 +35,7 @@ export function UserMenu() {
     );
   }
 
-  const item = "flex min-h-11 items-center gap-2 rounded-xl px-3 text-ink no-underline hover:bg-line/50";
+  const item = "flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-ink no-underline transition hover:bg-subtle";
   return (
     <div ref={ref} className="relative">
       <button
@@ -43,20 +43,20 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 items-center gap-2 rounded-full pl-1 pr-2 hover:bg-line/50"
+        className="flex min-h-11 items-center gap-2 rounded-full pl-1 pr-2 transition hover:bg-line/60"
       >
         <Avatar user={user} size="sm" />
         <span className="hidden max-w-32 truncate text-sm font-semibold sm:inline">{user.nickname}</span>
         <CaretDown size={14} weight="bold" aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-30 mt-2 w-56 rounded-2xl border border-line bg-surface p-1.5 shadow-lift">
+        <div role="menu" className="animate-enter absolute right-0 z-40 mt-2 w-56 rounded-2xl border border-line bg-surface p-1.5 shadow-lift">
           <Link role="menuitem" to="/cuenta" className={item} onClick={() => setOpen(false)}>
             <UserCircle size={20} aria-hidden /> Mi cuenta
           </Link>
           {user.role !== "member" && (
             <Link role="menuitem" to={homeFor(user)} className={item} onClick={() => setOpen(false)}>
-              <GearSix size={20} aria-hidden /> {user.role === "superadmin" ? "Panel de superadmin" : "Panel de mi academia"}
+              <GearSix size={20} aria-hidden /> {user.role === "superadmin" ? "Panel de superadmin" : "Panel de mi club"}
             </Link>
           )}
           <button

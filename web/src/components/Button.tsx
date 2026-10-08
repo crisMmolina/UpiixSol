@@ -5,14 +5,15 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold transition " +
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold transition duration-200 ease-out " +
+  "active:scale-[0.98] " +
   "disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3";
 
 const variants: Record<Variant, string> = {
   // DESIGN.md: text on --academy-primary is computed (dark on #00BF63), never hard-coded white.
-  primary: "bg-primary text-on-primary hover:brightness-95 active:brightness-90 shadow-soft",
-  secondary: "border-2 border-secondary bg-surface text-link hover:bg-primary/10",
-  ghost: "text-link hover:bg-primary/10",
+  primary: "bg-primary text-on-primary hover:brightness-95 active:brightness-90",
+  secondary: "border border-line bg-surface text-ink hover:border-ink/25 hover:bg-subtle",
+  ghost: "text-ink hover:bg-subtle",
   danger: "bg-danger text-white hover:brightness-110",
 };
 
