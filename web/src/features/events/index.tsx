@@ -217,22 +217,37 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
 
   const dayList = selected && events ? events.filter((e) => sameDay(new Date(e.starts_at), selected)) : [];
   const grid = useMemo(() => monthGrid(month), [month]);
-  const load = useCallback(async () => {
+  const fetchEvents = useCallback(() => {
+    const range =
+      view === "month"
+        ? { from: grid[0].toISOString(), to: new Date(grid[41].getTime() + 86_400_000).toISOString() }
+        : { from: new Date().toISOString() };
+    return fetchAll({ ...range, academy: filter || undefined });
+  }, [grid, view, filter]);
+
+  // State is set only when the request resolves, and a stale response (month changed) is dropped.
+  useEffect(() => {
+    let alive = true;
+    fetchEvents()
+      .then((items) => {
+        if (!alive) return;
+        setEvents(items);
+        setError(null);
+      })
+      .catch((err) => alive && setError(errorMessage(err)));
+    return () => {
+      alive = false;
+    };
+  }, [fetchEvents]);
+
+  async function load() {
     try {
-      const range =
-        view === "month"
-          ? { from: grid[0].toISOString(), to: new Date(grid[41].getTime() + 86_400_000).toISOString() }
-          : { from: new Date().toISOString() };
-      setEvents(await fetchAll({ ...range, academy: filter || undefined }));
+      setEvents(await fetchEvents());
       setError(null);
     } catch (err) {
       setError(errorMessage(err));
     }
-  }, [grid, view, filter]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  }
   useEffect(() => {
     api<Page<AcademyCardOut>>("/academies", { query: { limit: 50 } })
       .then((page) => setAcademies(page.items))
