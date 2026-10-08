@@ -27,3 +27,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1791441495 | UPS-024 | stacked on feat/ups-021 (dark tokens); PR after #34 merges | Why: UPS-021 contract not on main yet
 - 1791441926 | UPS-027 | No categories in API: chips = authors; trending = most recent; demo marker = demo tag + footer line (no column) | Why: No model/API changes allowed
 - 1791444003 | UPS-028 | Routes, models, API paths and academy_id unchanged | Why: Task scope: only user-visible copy
+- 1791445250 | deadline decision/UPS-025-1791444332/1791445232 | REVERSIBLE_AND_LOG | Option: Edit app/schemas/community.py, app/models/community.py, migration 0003, web/src/lib/types.ts, web/src/layouts (nav links) and app/tests/test_academies.py; owners UPS-002/UPS-021/UPS-006 are integrated; Why: plan #35 lists them as owned elsewhere; required for 512 limit, hidden flag, one reaction per user, club-scoped community link; no money, accounts, publishing or scope expansion.
