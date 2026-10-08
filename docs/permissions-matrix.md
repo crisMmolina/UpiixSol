@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **52/52 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **56/56 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -56,6 +56,10 @@ Cobertura: **52/52 endpoints de escritura (100 %)** × 5 roles.
 | PUT | `/api/blog/{blog_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | DELETE | `/api/blog/{blog_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | POST | `/api/blog/{blog_id}/cover` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/academies/{academy_id}/resources` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| PATCH | `/api/resources/{resource_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| DELETE | `/api/resources/{resource_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
+| POST | `/api/resources/{resource_id}/file` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | PATCH | `/api/account/profile` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/account/avatar` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/account/email` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
