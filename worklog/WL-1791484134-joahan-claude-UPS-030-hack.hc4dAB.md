@@ -6,7 +6,7 @@
 - Why: Parallel work without touching the main checkout
 - Failing: No validation run yet
 - Commands: `uv run pytest -q app/tests/test_media_storage.py && docker build -t upiixsol-single .`
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/48; run .uak/bin/smoke
+- Next: Cancelled: Work is INTEGRATED in main via PR #48 (362e588), approved c95309d by joahan-rev, live on Render. The claim was taken after the merge, so Task-Base = tip and done --integrated refuses; cancelled only to free its paths (see decision UPS-030).
 
 ## History
 - 1791484134 | CLAIMED | joahan-claude | claim; next: implement the storage switch, the single stage, the blueprint and the guide.
@@ -16,3 +16,4 @@
 - 1791485143 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/48; evidence: c95309d: pytest 100 %, e2e 12, PG migrations up/down, Render+Neon live at upiixsol-3g0f.onrender.com (health/ready 200); reviewer: -
 - 1791485185 | REVIEW | joahan-rev | review; approve; SHA c95309dab9ec6ac739a4224de483e5e2bd977b04; reviewer joahan-rev
 - 1791485270 | REVIEW | joahan-claude | pending decision UPS-030-1791485270; option: Treat UPS-030 as integrated: merged in #48 (362e588), approved c95309d by joahan-rev, live on Render. The claim was taken after the merge, so Task-Base = tip and done --integrated refuses; leave the claim in REVIEW until a human closes it.; Why: uak computes Task-Base from the merge-base at claim time; claiming after merge makes it equal to the tip
+- 1791491913 | CANCELLED | joahan-claude | release; claim released by joahan-claude; reason: Work is INTEGRATED in main via PR #48 (362e588), approved c95309d by joahan-rev, live on Render. The claim was taken after the merge, so Task-Base = tip and done --integrated refuses; cancelled only to free its paths (see decision UPS-030).; summary kept
