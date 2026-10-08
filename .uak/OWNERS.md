@@ -23,7 +23,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | .gitignore | UPS-001 |
 | .env.example | UPS-020 |
 | app/schemas/ | UPS-002 |
-| app/models/__init__.py | UPS-002 |
+| app/models/__init__.py | UPS-030 |
 | app/models/academy.py | UPS-002 |
 | app/models/common.py | UPS-002 |
 | app/models/community.py | UPS-002 |

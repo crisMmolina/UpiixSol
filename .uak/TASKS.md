@@ -553,7 +553,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Depends on:** UPS-015
 - **Uses contract:** UPS-015
 - **Related:** UPS-020
-- **Paths:** app/services/media.py, app/models/media.py, app/migrations/versions/0004_media_objects.py, app/main.py, app/tests/test_media_storage.py, Dockerfile, deploy/entrypoint.sh, render.yaml, docs/deploy-render.md, .uak/OWNERS.md
+- **Paths:** app/services/media.py, app/models/media.py, app/models/__init__.py, app/migrations/versions/0004_media_objects.py, app/main.py, app/tests/test_media_storage.py, Dockerfile, deploy/entrypoint.sh, render.yaml, docs/deploy-render.md, .uak/OWNERS.md
 - **Freeze-Allowed:** no
 - **Acceptance:**
   - `MEDIA_STORAGE=database` stores uploads in a `media_objects` table (migration 0004, reversible) instead of the disk, because the free Render disk is wiped on every restart. Stored URLs stay `/media/<kind>/<name>`; `GET /media/...` serves them with the media CSP and a long immutable cache. `MEDIA_STORAGE=disk` (default) keeps today's behavior.
