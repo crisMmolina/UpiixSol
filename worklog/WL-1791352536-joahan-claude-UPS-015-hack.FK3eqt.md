@@ -13,3 +13,4 @@
 - 1791353491 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-015; evidence: c5857e1: docker compose config -q && bash -n deploy/backup.sh exit 0; smoke PRODUCT_PASS; live stack on Postgres 16: 3 services healthy, migrations+seed, nginx headers/SPA/media CSP+cache, 7MB→413, per-client rate limit (A 429 after 5, B unaffected, injected XFF ignored), api no internet, backup+restore rehearsed; security-reviewer MEDIUMs fixed+retested; reviewer: -
 - 1791353499 | REVIEW | joahan-claude | checkpoint; next: Review de c5857e1; PR lo abre el humano
 - 1791354731 | REVIEW | claude | review; approve; SHA c5857e149fe5dcbe9e65e8f9a614226082a247c8; reviewer claude
+- 1791444562 | REVIEW | joahan-claude | heartbeat; lease until 1791530962
