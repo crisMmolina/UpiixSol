@@ -198,7 +198,7 @@ def test_step6_superadmin_creates_academy_admin_and_global_event(site: Site) -> 
     page.get_by_role("button", name="Nuevo evento").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Título").fill(event_title)
-    dialog.get_by_label("Academia").select_option("")  # global event
+    dialog.get_by_label("Club").select_option("")  # global event
     dialog.get_by_label("Lugar").fill("UPIIZ · Auditorio")
     dialog.get_by_role("button", name="Publicar evento").click()
     expect(dialog).to_be_hidden()
