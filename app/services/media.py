@@ -10,6 +10,7 @@ hosts whose disk is wiped on every restart (Render free). The URL is the same ei
 """
 
 import io
+import logging
 import re
 import uuid
 import xml.etree.ElementTree as ET  # noqa: S405 (DTDs/entities are rejected before parsing)
@@ -22,6 +23,7 @@ from fastapi import UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import delete
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -29,6 +31,7 @@ from app.db import SessionLocal
 from app.errors import AppError
 from app.models import MediaObject
 
+log = logging.getLogger(__name__)
 Kind = Literal["logo", "mascot", "avatar", "post", "cover", "resource"]
 MB = 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 40_000_000  # decompression-bomb guard
@@ -240,9 +243,12 @@ def delete_media(url: str | None) -> None:
     if media_storage() == "database":
         key = url.removeprefix("/media/")
         if MEDIA_KEY.fullmatch(key):
-            with SessionLocal() as db:
-                db.execute(delete(MediaObject).where(MediaObject.key == key))
-                db.commit()
+            try:  # runs after the caller committed: an orphan row is better than a 500 for a saved change
+                with SessionLocal() as db:
+                    db.execute(delete(MediaObject).where(MediaObject.key == key))
+                    db.commit()
+            except SQLAlchemyError:
+                log.warning("media delete failed: %s", key, exc_info=True)
         return
     base = Path(get_settings().media_dir).resolve()
     target = (base / url.removeprefix("/media/")).resolve()

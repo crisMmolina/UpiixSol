@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import Engine, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db import get_db
@@ -57,6 +58,8 @@ def test_media_is_served_from_the_database_with_its_csp(site: TestClient) -> Non
     assert "immutable" in response.headers["cache-control"]
     with Image.open(io.BytesIO(response.content)) as image:
         assert image.format == "WEBP"
+    head = site.head(url)
+    assert head.status_code == 200 and head.headers["content-type"] == "image/webp" and head.content == b""
 
 
 UNKNOWN = "/media/post/" + "0" * 32 + ".webp"
@@ -83,3 +86,14 @@ def test_storage_defaults_to_disk_and_reads_media_storage(monkeypatch: pytest.Mo
     assert media.media_storage() in ("disk", "database")
     monkeypatch.setenv("MEDIA_STORAGE", "database")
     assert StorageSettings(_env_file=None).media_storage == "database"
+
+
+def test_delete_media_failure_is_logged_not_raised(
+    in_database: None, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def broken() -> Session:
+        raise OperationalError("DELETE", {}, Exception("db down"))
+
+    monkeypatch.setattr(media, "SessionLocal", broken)
+    delete_media("/media/post/" + "b" * 32 + ".webp")  # the caller already committed its change
+    assert "media delete failed" in caplog.text

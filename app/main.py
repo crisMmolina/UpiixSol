@@ -115,7 +115,7 @@ def create_app() -> FastAPI:
 
     if media_storage() == "database":  # UPS-030: uploads live in media_objects, not on the disk
 
-        @app.get("/media/{key:path}", include_in_schema=False)
+        @app.api_route("/media/{key:path}", methods=["GET", "HEAD"], include_in_schema=False)
         def media(key: str, db: Session = Depends(get_db)) -> Response:
             stored = load_media(db, key)
             if stored is None:

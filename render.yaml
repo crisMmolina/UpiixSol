@@ -9,7 +9,6 @@ services:
     region: ohio # same region as the Neon project (AWS us-east-2)
     dockerfilePath: ./Dockerfile # last stage: `single` (API + built SPA)
     healthCheckPath: /api/health
-    autoDeploy: true
     envVars:
       - key: ENV
         value: prod
