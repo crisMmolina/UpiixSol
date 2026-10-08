@@ -1,7 +1,9 @@
 """Registration, login and refresh-token rotation (ADR 0001).
 
 Refresh tokens: random, stored as sha256, rotated on every use. Reusing an already-used token
-means it was stolen, so the whole family is revoked (the user must log in again).
+means it was stolen, so the whole family is revoked (the user must log in again). The use is claimed
+atomically, and a reuse within REFRESH_GRACE of the first one is two tabs refreshing at once: it gets a
+401 `refresh_race` that keeps the family (UPS-020).
 """
 
 import secrets
@@ -9,6 +11,7 @@ import unicodedata
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -27,6 +30,7 @@ from app.security import (
 
 INVALID_CREDENTIALS = "Correo o contraseña incorrectos."
 DUPLICATE_ACCOUNT = "Ya existe una cuenta con ese correo o esa boleta. Inicia sesión o recupera tu acceso."
+REFRESH_GRACE = timedelta(seconds=10)
 
 
 def _aware(moment: datetime) -> datetime:
@@ -60,8 +64,12 @@ def register_member(db: Session, data: RegisterIn) -> User:
         nickname=data.nickname or default_nickname(data.full_name),
         boleta=data.boleta,
     )
-    db.add(user)
-    db.flush()
+    try:
+        with db.begin_nested():  # a concurrent register with the same email/boleta is a 409, never a 500
+            db.add(user)
+            db.flush()
+    except IntegrityError as exc:
+        raise AppError(409, DUPLICATE_ACCOUNT, code="account_exists") from exc
     return user
 
 
@@ -110,20 +118,31 @@ def rotate_refresh(db: Session, raw: str | None) -> tuple[TokenOut, str]:
     stored = (
         db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_token(raw))) if raw else None
     )
-    if stored is None:
+    if stored is None or _aware(stored.expires_at) <= utcnow():
         raise AppError(401, code="invalid_refresh")
-    if stored.used_at is not None or stored.revoked_at is not None:
+    # Only one request can move used_at from NULL: two refreshes with the same token never both win.
+    claimed = db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.id == stored.id,
+            RefreshToken.used_at.is_(None),
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(used_at=utcnow())
+    ).rowcount
+    if claimed != 1:
+        db.refresh(stored)  # what the request that won wrote
+        just_used = stored.used_at is not None and utcnow() - _aware(stored.used_at) <= REFRESH_GRACE
+        if just_used and stored.revoked_at is None:
+            raise AppError(401, code="refresh_race")  # another tab of the same browser just rotated it
         revoke_family(db, stored.family_id)  # replay of a used token → assume theft
         db.commit()
-        raise AppError(401, code="invalid_refresh")
-    if _aware(stored.expires_at) <= utcnow():
         raise AppError(401, code="invalid_refresh")
     user = db.get(User, stored.user_id)
     if user is None or not user.is_active:
         revoke_family(db, stored.family_id)
         db.commit()
         raise AppError(401, code="invalid_refresh")
-    stored.used_at = utcnow()
     return issue_session(db, user, stored.family_id)
 
 
@@ -136,10 +155,13 @@ def logout(db: Session, raw: str | None) -> None:
 
 
 def revoke_all_for_user(db: Session, user_id: int) -> None:
-    """Used after a password change (UPS-014)."""
+    """Ends every session: refresh tokens are revoked and access tokens already issued stop matching the
+    new password_changed_at (password change UPS-014, reset and deactivation UPS-009, UPS-020)."""
+    now = utcnow()
     db.execute(
         update(RefreshToken)
         .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
-        .values(revoked_at=utcnow())
+        .values(revoked_at=now)
     )
+    db.execute(update(User).where(User.id == user_id).values(password_changed_at=now))
     db.flush()

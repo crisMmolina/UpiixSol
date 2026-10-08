@@ -7,7 +7,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.errors import AppError, error_response
 from app.models import User
-from app.ratelimit import LOGIN_LIMIT, limiter
+from app.ratelimit import LOGIN_LIMIT, hit_login_email, limiter
 from app.schemas.users import LoginIn, RegisterIn, TokenOut, UserMe
 from app.security import current_user
 from app.services import auth as service
@@ -45,7 +45,12 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_fetch_header)],
+)
 @limiter.limit(LOGIN_LIMIT)
 def register(
     request: Request, response: Response, data: RegisterIn, db: Session = Depends(get_db)
@@ -57,9 +62,10 @@ def register(
     return token
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post("/login", response_model=TokenOut, dependencies=[Depends(require_fetch_header)])
 @limiter.limit(LOGIN_LIMIT)
 def login(request: Request, response: Response, data: LoginIn, db: Session = Depends(get_db)) -> TokenOut:
+    hit_login_email(data.email)  # per account too, not only per IP
     user = service.authenticate(db, data)
     token, raw = service.issue_session(db, user)
     db.commit()
@@ -76,9 +82,11 @@ def refresh(
     try:
         token, raw = service.rotate_refresh(db, upx_refresh)
     except AppError as error:
-        # The failed token must not stick around in the browser.
         failed = error_response(error.status, error.code, "Tu sesión expiró. Inicia sesión de nuevo.")
-        _clear_refresh_cookie(failed)
+        # The failed token must not stick around in the browser, unless another tab just rotated it:
+        # clearing the cookie then would delete the one that tab received.
+        if error.code != "refresh_race":
+            _clear_refresh_cookie(failed)
         return failed
     db.commit()
     _set_refresh_cookie(response, raw)
