@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
+import { SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, safeAssetPath } from "@/lib/theme";
 import type { AcademyCardOut, ContinueOut, EventOut, HomeContentOut, Page, PostOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
@@ -70,8 +71,17 @@ function useData<T>(path: string) {
   return { ...state, retry: useCallback(() => setAttempt((n) => n + 1), []) };
 }
 
+/**
+ * Club card in the club's colors. With a logo: logo band + name heading. Without one, the band shows the
+ * name as a wordmark and that wordmark is the heading, so the name never shows twice.
+ */
 export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
   const logo = safeAssetPath(academy.logo_url);
+  const badge = academy.is_enrolled && (
+    <Badge tone="primary" icon={<CheckCircle weight="bold" />}>
+      Miembro
+    </Badge>
+  );
   return (
     <AcademyTheme branding={academy}>
       <Link to={`/a/${academy.slug}`} className="block h-full no-underline" aria-label={`Entrar a ${academy.name}`}>
@@ -80,21 +90,23 @@ export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
             {logo ? (
               <img src={logo} alt="" className="max-h-14 w-auto" loading="lazy" />
             ) : (
-              <span className="font-display text-2xl font-bold text-ink">{academy.name}</span>
+              <h3 className="min-w-0 max-w-full text-center">
+                <Wordmark name={academy.name} colors={academy} className="text-3xl" />
+              </h3>
             )}
           </div>
           <div aria-hidden className="h-1 bg-primary" />
           <div className="flex flex-1 flex-col gap-2 p-5">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="text-xl">{academy.name}</h3>
-              {academy.is_enrolled && (
-                <Badge tone="primary" icon={<CheckCircle weight="bold" />}>
-                  Miembro
-                </Badge>
-              )}
-            </div>
-            <p className="flex-1 text-sm text-muted">{academy.short_description}</p>
-            <span className="inline-flex items-center gap-1 font-semibold text-link">
+            {logo ? (
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-xl">{academy.name}</h3>
+                {badge}
+              </div>
+            ) : (
+              badge && <div className="self-start">{badge}</div>
+            )}
+            <p className="text-sm text-muted">{academy.short_description || "Rutas, recursos y comunidad del club."}</p>
+            <span className="mt-auto inline-flex items-center gap-1 pt-1 font-semibold text-link">
               Entrar <ArrowRight weight="bold" aria-hidden />
             </span>
           </div>
@@ -164,7 +176,11 @@ function ContinueTile({ club }: { club: ClubHomeLite }) {
   return (
     <AcademyTheme branding={club.academy}>
       <Card interactive className="flex h-full flex-col gap-3 p-5">
-        {logo ? <img src={logo} alt={club.academy.name} className="h-8 w-auto self-start" loading="lazy" /> : <p className="font-display font-bold text-ink">{club.academy.name}</p>}
+        {logo ? (
+          <img src={logo} alt={club.academy.name} className="h-8 w-auto self-start" loading="lazy" />
+        ) : (
+          <Wordmark name={club.academy.name} colors={club.academy} className="self-start text-xl" />
+        )}
         <p className="text-lg font-semibold text-ink">
           Clase {info.lesson_number} · {info.lesson_title}
         </p>
@@ -282,7 +298,7 @@ function HomePage() {
             {heroText}
           </p>
         </div>
-        <img src="/brand/upiixsol/mascot.png" alt="Ajolote de UpiixSol" className="mx-auto w-full max-w-xs" />
+        <img src={SITE.mascotUrl} alt={`Mascota de ${SITE.name}`} className="mx-auto w-full max-w-xs" />
       </section>
 
       <ContinueLearning clubs={data.academies} />

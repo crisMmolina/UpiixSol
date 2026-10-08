@@ -48,12 +48,15 @@ export function NotificationBell() {
   );
 }
 
-/** Transient cards top-right; they leave on their own after a few seconds (the bell keeps them). */
+/**
+ * Transient cards; they leave on their own after a few seconds (the bell keeps them). Bottom-right, above the
+ * phone tab bar: page headers keep their actions top-right ("Ver como miembro"), so cards never sit there.
+ */
 export function Toasts() {
   const { toasts, dismissToast } = useNotifications();
   if (toasts.length === 0) return null;
   return (
-    <section aria-label="Avisos" aria-live="polite" className="fixed right-4 top-20 z-40 grid w-[min(22rem,calc(100vw-2rem))] gap-2">
+    <section aria-label="Avisos" aria-live="polite" className="fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 grid gap-2 sm:left-auto sm:w-88 lg:bottom-6 lg:right-6">
       {toasts.map((toast) => (
         <div key={toast.id} className="animate-toast-in rounded-card border border-line bg-surface shadow-lift">
           <NotificationCard notification={toast} onDismiss={() => dismissToast(toast.id)} onAction={() => dismissToast(toast.id)} />

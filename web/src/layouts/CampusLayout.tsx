@@ -2,6 +2,7 @@ import { Article, CalendarBlank, ChatsCircle, House, ImagesSquare, UsersThree } 
 import type { ReactNode } from "react";
 import { Outlet } from "react-router";
 
+import { SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 
 import { ClubSwitcher } from "./ClubSwitcher";
@@ -17,8 +18,8 @@ export const CAMPUS_NAV: NavItem[] = [
 ];
 
 /**
- * UpiixSol campus chrome. Use as a layout route (`element: <CampusLayout />` + children) or wrap a page.
- * Always applies the UpiixSol palette, even after visiting a club.
+ * Campus chrome (name and logo from SITE, lib/brand.tsx). Use as a layout route (`element: <CampusLayout />` + children) or wrap a page.
+ * Always applies the site palette, even after visiting a club.
  */
 export function CampusLayout({ children }: { children?: ReactNode }) {
   return (
@@ -26,7 +27,13 @@ export function CampusLayout({ children }: { children?: ReactNode }) {
       <Shell
         brandTo="/"
         nav={CAMPUS_NAV}
-        brand={<img src="/brand/upiixsol/wordmark.png" alt="UpiixSol" className="h-7 w-auto sm:h-8" />}
+        brand={
+          SITE.logoUrl ? (
+            <img src={SITE.logoUrl} alt={SITE.name} className="h-7 w-auto sm:h-8" />
+          ) : (
+            <Wordmark name={SITE.name} colors={CAMPUS_BRANDING} className="text-xl sm:text-2xl" />
+          )
+        }
         headerSlot={<ClubSwitcher current={null} />}
       >
         {children ?? <Outlet />}
