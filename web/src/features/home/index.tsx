@@ -267,9 +267,8 @@ function HomePage() {
   if (loading) return <HomeSkeleton />;
   if (error || !data) return <ErrorState message={error ?? "No pudimos cargar el inicio."} onRetry={retry} />;
 
-  // Admin-edited text may still use the old wording; the campus speaks of clubs.
-  const custom = data.hero?.hero_text;
-  const heroText = custom && !/academia/i.test(custom) ? custom : "Retoma tus clases donde te quedaste y conversa con tu comunidad.";
+  // The superadmin's text always wins (the seed copy says "clubs" since UPS-027).
+  const heroText = data.hero?.hero_text || "Retoma tus clases donde te quedaste y conversa con tu comunidad.";
 
   return (
     <div className="grid gap-10">
