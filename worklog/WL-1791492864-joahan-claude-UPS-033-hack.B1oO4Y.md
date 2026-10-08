@@ -12,3 +12,4 @@
 - 1791492864 | CLAIMED | joahan-claude | claim; next: build the primitives, then apply them to auth and account.
 - 1791495048 | CLAIMED | joahan-claude | checkpoint; next: review
 - 1791495199 | REVIEW | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-033; evidence: 5bb37c3: lint ok, build ok, e2e 21 passed 1 skipped (new test_layout_stability); reviewer: -
+- 1791499421 | REVIEW | joahan-rev | review; reject; SHA 5bb37c3fcccfbd1a7b614826df733fe4aa6dc85d; reviewer joahan-rev
