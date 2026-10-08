@@ -97,6 +97,16 @@
   --theme-line: #2b3036;
   --theme-link: #3dd68c;
   --theme-danger: #f0846f;
+  /* Custom properties resolve where they are declared (:root), so the color tokens are re-declared
+     here to pick up the dark values above. */
+  --color-bg: var(--theme-bg);
+  --color-surface: var(--theme-surface);
+  --color-subtle: var(--theme-subtle);
+  --color-ink: var(--theme-ink);
+  --color-muted: var(--theme-muted);
+  --color-line: var(--theme-line);
+  --color-link: var(--theme-link);
+  --color-danger: var(--theme-danger);
   color-scheme: dark;
   background-color: var(--theme-bg);
   color: var(--theme-ink);
