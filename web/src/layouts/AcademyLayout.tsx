@@ -1,10 +1,11 @@
 import { ArrowUUpLeft, CalendarBlank, ChatsCircle, FolderOpen, House, Path } from "@phosphor-icons/react";
-import { createContext, use, type ReactNode } from "react";
+import { createContext, use, useEffect, type ReactNode } from "react";
 import { Link, Outlet, useParams } from "react-router";
 
 import { PageSkeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { ApiError, errorMessage } from "@/lib/api";
+import { SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, safeAssetPath, useAcademyBranding } from "@/lib/theme";
 import type { AcademyBranding } from "@/lib/types";
 
@@ -41,6 +42,16 @@ const CAMPUS_LINK: NavItem = { to: "/", label: "Campus", end: true, icon: ArrowU
 export function AcademyLayout({ children }: { children?: ReactNode }) {
   const { slug } = useParams<{ slug: string }>();
   const { status, branding, error, retry } = useAcademyBranding(slug);
+  const clubName = branding?.name;
+
+  // Tab title: "Club · Campus"; back to the site title when leaving the club.
+  useEffect(() => {
+    if (!clubName) return;
+    document.title = `${clubName} · ${SITE.name}`;
+    return () => {
+      document.title = SITE.title;
+    };
+  }, [clubName]);
 
   if (status === "loading") return <PageSkeleton />;
   if (status === "error") {
@@ -71,7 +82,7 @@ export function AcademyLayout({ children }: { children?: ReactNode }) {
             safeAssetPath(branding.logo_url) ? (
               <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className="h-7 w-auto sm:h-8" />
             ) : (
-              <span className="font-display text-2xl font-bold text-ink">{branding.name}</span>
+              <Wordmark name={branding.name} colors={branding} className="block min-w-0 truncate text-xl sm:text-2xl" surface="#F5F6F7" />
             )
           }
         >

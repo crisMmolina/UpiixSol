@@ -5,11 +5,13 @@
 @import "@fontsource/fredoka/700.css";
 @import "@fontsource-variable/inter";
 
-@theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fredoka", "Inter Variable", ui-sans-serif, sans-serif;
-
-  /* Values come from the theme variables below, so [data-theme="dark"] swaps them in place. */
+/* Color tokens reference runtime variables, so they are `inline`: utilities emit `var(--academy-*)` /
+   `var(--theme-*)` directly and resolve on each element. Without `inline`, Tailwind declares
+   `--color-primary: var(--academy-primary)` on :root, the var() is resolved once there with the campus
+   palette, and every descendant inherits that value: AcademyTheme and [data-theme="dark"] would never reach
+   `bg-primary`, `text-ink`, etc. */
+@theme inline {
+  /* Light/dark surfaces: [data-theme="dark"] swaps the --theme-* values in place. */
   --color-bg: var(--theme-bg);
   --color-surface: var(--theme-surface);
   --color-subtle: var(--theme-subtle);
@@ -17,16 +19,22 @@
   --color-muted: var(--theme-muted);
   --color-line: var(--theme-line);
   --color-video: #0b0c0e;
-  --color-link: var(--theme-link);
   --color-danger: var(--theme-danger);
 
-  /* Academy theme: defaults = UpiixSol palette; AcademyTheme overrides the --academy-* vars. */
+  /* Club palette: defaults = site palette on :root; AcademyTheme overrides the --academy-* vars. */
   --color-primary: var(--academy-primary);
   --color-secondary: var(--academy-secondary);
   --color-accent: var(--academy-accent);
   --color-accent-2: var(--academy-accent-2);
   --color-on-primary: var(--academy-on-primary);
   --color-on-accent: var(--academy-on-accent);
+  /* Links follow the club too (an AA shade of its primary, computed by AcademyTheme). */
+  --color-link: var(--academy-link);
+}
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fredoka", "Inter Variable", ui-sans-serif, sans-serif;
 
   --radius-card: 1rem;
   --radius-field: 0.75rem;
@@ -74,6 +82,7 @@
   --academy-accent-2: #b4422f;
   --academy-on-primary: #1f2a24;
   --academy-on-accent: #16181d;
+  --academy-link: var(--theme-link);
 
   /* Light theme: pure white page, one cool-neutral gray family (AA values in web/DESIGN.md). */
   --theme-bg: #ffffff;
@@ -97,19 +106,19 @@
   --theme-line: #2b3036;
   --theme-link: #3dd68c;
   --theme-danger: #f0846f;
-  /* Custom properties resolve where they are declared (:root), so the color tokens are re-declared
-     here to pick up the dark values above. */
-  --color-bg: var(--theme-bg);
-  --color-surface: var(--theme-surface);
-  --color-subtle: var(--theme-subtle);
-  --color-ink: var(--theme-ink);
-  --color-muted: var(--theme-muted);
-  --color-line: var(--theme-line);
-  --color-link: var(--theme-link);
-  --color-danger: var(--theme-danger);
   color-scheme: dark;
   background-color: var(--theme-bg);
   color: var(--theme-ink);
+}
+
+/* Links in a club: AcademyTheme provides AA shades of its primary for light and dark surfaces. A dark
+   scope can sit inside the club wrapper or wrap it (course view), so both orders pick the dark shade. */
+[data-academy-theme] {
+  --academy-link: var(--academy-link-light, var(--theme-link));
+}
+[data-theme="dark"],
+[data-theme="dark"] [data-academy-theme] {
+  --academy-link: var(--academy-link-dark, var(--theme-link));
 }
 
 @layer base {
