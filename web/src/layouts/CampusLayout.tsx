@@ -9,7 +9,7 @@ import { Shell, type NavItem } from "./Shell";
 
 export const CAMPUS_NAV: NavItem[] = [
   { to: "/", label: "Inicio", end: true, icon: House },
-  { to: "/academias", label: "Clubes", icon: UsersThree },
+  { to: "/clubes", label: "Clubes", icon: UsersThree },
   { to: "/comunidad", label: "Comunidad", icon: ChatsCircle },
   { to: "/calendario", label: "Calendario", icon: CalendarBlank },
   { to: "/galeria", label: "Galería", icon: ImagesSquare },

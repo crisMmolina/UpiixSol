@@ -26,7 +26,7 @@ export function academyNav(slug: string): NavItem[] {
     { to: `/a/${slug}`, label: "Inicio", end: true, icon: House },
     { to: `/a/${slug}/rutas`, label: "Rutas", icon: Path },
     { to: `/a/${slug}/recursos`, label: "Recursos", icon: FolderOpen },
-    { to: `/comunidad?canal=${slug}`, label: "Comunidad", icon: ChatsCircle },
+    { to: `/a/${slug}/comunidad`, label: "Comunidad", icon: ChatsCircle },
     { to: `/a/${slug}/eventos`, label: "Eventos", icon: CalendarBlank },
   ];
 }
@@ -50,7 +50,7 @@ export function AcademyLayout({ children }: { children?: ReactNode }) {
           <EmptyState
             title="Este club no existe o ya no está activo"
             description="Revisa el enlace o explora los clubes del campus."
-            action={<Link to="/academias">Ver clubes</Link>}
+            action={<Link to="/clubes">Ver clubes</Link>}
           />
         ) : (
           <ErrorState message={errorMessage(error)} onRetry={retry} />

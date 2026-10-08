@@ -7,7 +7,8 @@ from app.models.common import ChannelType
 from app.schemas.common import HttpUrl, InModel, OutModel
 from app.schemas.users import PublicUser
 
-PostBody = Annotated[str, StringConstraints(min_length=1, max_length=5_000)]
+POST_MAX_CHARS = 512  # redesign v2 (UPS-025)
+PostBody = Annotated[str, StringConstraints(min_length=1, max_length=POST_MAX_CHARS)]
 CommentBody = Annotated[str, StringConstraints(min_length=1, max_length=2_000)]
 
 
@@ -50,3 +51,4 @@ class CommentOut(OutModel):
     author: PublicUser
     body: str
     created_at: datetime
+    is_hidden: bool = False
