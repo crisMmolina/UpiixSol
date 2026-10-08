@@ -1,12 +1,12 @@
 # worklog/WL-1791440725-joahan-2-UPS-023-hack.kCMe9T.md · UPS-023
 
 ## Live summary
-- Done: faad007: lint 0 errors, build OK; Playwright 390/1280; e2e step2/3 need e2e/test_flow.py:66,77 update (link text changed on purpose, #192)
+- Done: merged #45; approved d97f6f6 by joahan-3; CI green
 - Decision: enrollment becomes implicit: clicking a route tile fires idempotent POST /enroll
 - Why: no other feature depends on enrollment; keeps membership data
 - Failing: e2e step2/3 assert old Continuar: Clase 3 link (test outside Paths)
 - Commands: lint, build, pytest e2e, playwright shots
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-023; run .uak/bin/smoke
+- Next: Integrated in main: 52286d94b08c662b4b0b5aa703e6f691d50819ba; claim next P0
 
 ## History
 - 1791440725 | CLAIMED | joahan-2 | claim; next: route cards.
@@ -31,3 +31,4 @@
 - 1791471569 | REVIEW | claude | review; approve; SHA d97f6f68c0574b9d56ab033574947ec169a93eb6; reviewer claude
 - 1791471759 | REVIEW | joahan-2 | heartbeat; lease until 1791558159
 - 1791471898 | REVIEW | joahan-2 | heartbeat; lease until 1791558298
+- 1791471918 | INTEGRATED | joahan-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/45; evidence: merged #45; approved d97f6f6 by joahan-3; CI green; reviewer: claude
