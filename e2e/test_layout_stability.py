@@ -126,6 +126,25 @@ def test_login_card_keeps_top_and_size(site: Site) -> None:
     assert_box(card, (top, login_height))
 
 
+def test_register_conflict_keeps_card_size(site: Site) -> None:
+    """A 409 (email or boleta already registered) fits its reserved lines, also at 390 px."""
+    page = site.page
+    sign_out(page)
+    page.goto(site.url("/login?tab=registro"))
+    card = login_card(page)
+    expect(page.get_by_label("Nombre completo")).to_be_visible()
+    start = stable_box(card)
+    page.get_by_label("Nombre completo").fill("Cuenta Repetida")
+    page.get_by_label("Número de boleta").fill("2026999900" if site.name == "desktop" else "2026999901")
+    page.get_by_role("textbox", name="Correo", exact=True).fill(MEMBER)  # already registered
+    page.get_by_label("Contraseña", exact=True).fill("una-clave-segura")
+    page.get_by_role("checkbox").check()
+    page.get_by_role("button", name="Crear cuenta").last.click()
+    expect(page.get_by_text("Ese correo o esa boleta ya tienen cuenta.")).to_be_visible()
+    assert_box(card, start)
+    site.shot("layout-register-conflict")
+
+
 @pytest.fixture
 def animated_page(browser: Browser, site: Site) -> Iterator[Page]:
     """Same viewport as the site, but with motion on."""
@@ -219,11 +238,35 @@ def test_account_messages_replace_each_other_without_growing(site: Site) -> None
     expect(page.get_by_text(re.compile("String should have"))).to_have_count(0)
 
 
+def test_account_invalid_email_and_tab_bar_do_not_move(site: Site) -> None:
+    # Still signed in as MEMBER from the previous test: the API allows 5 logins per minute per IP.
+    page = site.page
+    page.goto(site.url("/cuenta"))
+    tablist = page.get_by_role("tablist", name="Secciones")
+    expect(page.get_by_role("heading", name="Datos del perfil")).to_be_visible()
+    # The provisional-password notice keeps its height on both tabs: the tab bar does not jump.
+    expect(page.get_by_text("Estás usando una contraseña provisional")).to_be_visible()
+    bar = stable_box(tablist)
+    page.get_by_role("tab", name="Seguridad").click()
+    expect(page.get_by_role("heading", name="Contraseña", exact=True)).to_be_visible()
+    assert_box(tablist, bar)
+
+    panel = page.get_by_role("tabpanel")
+    start = stable_box(panel)
+    email_form = page.locator("form").filter(has=page.get_by_role("heading", name="Correo", exact=True))
+    email_form.get_by_label("Nuevo correo").fill("nombre@dominio")
+    email_form.get_by_label("Contraseña actual").fill(SEED_PASSWORD)
+    email_form.get_by_role("button", name="Cambiar correo").click()
+    expect(email_form.get_by_text("Escribe un correo válido.")).to_be_visible()
+    assert_box(panel, start)
+    site.shot("layout-account-invalid-email")
+
+
 def test_drawer_does_not_focus_a_text_field_on_phones(site: Site) -> None:
     if site.name != "mobile":
         pytest.skip("the lesson drawer exists only below lg")
-    sign_in(site, MEMBER, "/a/upiixia/clases/3")
-    page = site.page
+    page = site.page  # still signed in as MEMBER (login rate limit, see above)
+    page.goto(site.url("/a/upiixia/clases/3"))
     page.get_by_role("button", name="Contenido").click()
     drawer = page.get_by_role("dialog", name="Contenido de la ruta")
     expect(drawer).to_be_visible()
