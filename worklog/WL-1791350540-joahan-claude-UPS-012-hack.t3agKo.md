@@ -1,12 +1,12 @@
 # worklog/WL-1791350540-joahan-claude-UPS-012-hack.t3agKo.md · UPS-012
 
 ## Live summary
-- Done: UX pass (redesign-existing-projects) at c911309; lint+build OK; browser e2e OK against main+open PRs
+- Done: PR #29 merged (29a8413); approved 6878bcb by claude; pytest 100% cov, matrix 56/56
 - Decision: front-end only; no API/security changes
 - Why: Joahan asked to apply the UX/UI skills
 - Failing: none
 - Commands: npm --prefix web run lint && npm --prefix web run build
-- Next: re-review of the new SHA; PR when the token allows it
+- Next: Integrated in main: 29a84138d5bee9ba076682fbf5479f0345d3bb39; claim next P0
 
 ## History
 - 1791350540 | CLAIMED | joahan-claude | claim; next: `test_admin_other_academy_cannot_create_resource_403`.
@@ -21,3 +21,4 @@
 - 1791382058 | REVIEW | joahan-claude | checkpoint; next: re-review of the new SHA; PR when the token allows it
 - 1791438096 | REVIEW | claude | review; approve; SHA 3d717a3c54c5b767ceb1ad04011b6a170c9a6d29; reviewer claude
 - 1791439020 | REVIEW | claude | review; approve; SHA 6878bcb9170c46e859e6311f6d55b50a508b2742; reviewer claude
+- 1791439619 | INTEGRATED | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/29; evidence: PR #29 merged (29a8413); approved 6878bcb by claude; pytest 100% cov, matrix 56/56; reviewer: claude
