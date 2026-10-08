@@ -49,5 +49,3 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | web/src/layouts/ | UPS-021 |
 | web/src/index.css | UPS-021 |
 | app/fixtures/demo.json | UPS-027 |
-| app/schemas/community.py | UPS-025 |
-| app/models/community.py | UPS-025 |

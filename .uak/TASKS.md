@@ -461,7 +461,8 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Depends on:** none
 - **Uses contract:** UPS-021
 - **Related:** UPS-011, UPS-018
-- **Paths:** web/src/features/community/, app/routers/community.py, app/services/community.py, app/routers/reactions.py, app/services/reactions.py, app/schemas/community.py, app/models/community.py, app/migrations/versions/0003_one_reaction_per_user.py, app/tests/test_community.py, app/tests/test_reactions.py
+- **Paths:** web/src/features/community/, app/routers/community.py, app/services/community.py, app/routers/reactions.py, app/services/reactions.py, app/tests/test_community.py, app/tests/test_reactions.py
+- **Owned elsewhere (logged decision, owner UPS-002 integrated):** app/schemas/community.py (512-char limit, hidden flag), app/models/community.py + app/migrations/versions/0003_one_reaction_per_user.py (one reaction per user and post).
 - **Freeze-Allowed:** no
 - **Acceptance:**
   - The "Para publicar…" notice is gone.
