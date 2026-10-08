@@ -215,6 +215,14 @@ MATRIX: list[Rule] = [
         ),
         note="also requires the current password",
     ),
+    # ── Usage analytics (UPS-037): the caller's own events ───
+    Rule(
+        "POST",
+        "/api/analytics/events",
+        ANY,
+        _json(lambda _w: {"session_id": "matrix-0001", "events": [{"name": "page.view"}]}),
+        note="usage analytics, 30/min per user (UPS-037)",
+    ),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}
