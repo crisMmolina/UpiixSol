@@ -1,12 +1,12 @@
 # worklog/WL-1791442844-joahan-claude-UPS-028-hack.yOc1Tq.md · UPS-028
 
 ## Live summary
-- Done: 7fba3eb: pytest 100% cov, ruff OK, lint 0 errors, build OK; e2e step 6 green; with UPS-023 d97f6f6 on main e2e 12/12; Playwright 390/1280 panels without 'Academia'
+- Done: merged #43; approved 7fba3eb by joahan-2; e2e 12 passed
 - Decision: Routes, models, API paths and academy_id unchanged
 - Why: Task scope: only user-visible copy
 - Failing: none
 - Commands: uv run pytest -q; npm --prefix web run build; uv run pytest -q e2e
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/new/feat/ups-028; run .uak/bin/smoke
+- Next: Integrated in main: aaaaf3468b8647ea3033797141690414ee55e29e; claim next P0
 
 ## History
 - 1791442844 | CLAIMED | joahan-claude | claim; next: grep and replace messages.
@@ -25,3 +25,4 @@
 - 1791470303 | REVIEW | joahan-claude | heartbeat; lease until 1791556703
 - 1791471006 | REVIEW | joahan-claude | heartbeat; lease until 1791557406
 - 1791471050 | REVIEW | joahan-2 | review; approve; SHA 7fba3eb1c341c449075478e412afc194473ccb4d; reviewer joahan-2
+- 1791471119 | INTEGRATED | joahan-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/43; evidence: merged #43; approved 7fba3eb by joahan-2; e2e 12 passed; reviewer: joahan-2
