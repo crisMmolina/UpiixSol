@@ -72,17 +72,32 @@ def test_step2_academy_retheme_and_continue(site: Site) -> None:
     site.shot("2-academy-home")
 
 
+# The player marks a lesson complete when the YouTube embed reports "ended" over postMessage (UPS-024).
+# The test plays that message from the YouTube origin and from the player's own iframe.
+VIDEO_ENDED = """
+  () => {
+    const frame = document.querySelector('iframe[src*="youtube-nocookie.com/embed/"]');
+    window.dispatchEvent(new MessageEvent("message", {
+      data: JSON.stringify({ event: "onStateChange", info: 0 }),
+      origin: "https://www.youtube-nocookie.com",
+      source: frame.contentWindow,
+    }));
+  }
+"""
+
+
 def test_step3_player_complete_lesson(site: Site) -> None:
     page = site.page
     page.get_by_role("link", name=re.compile(r"Continuar: Clase 3")).click()
     expect(page).to_have_url(re.compile(r"/a/upiixia/clases/\d+"))
-    complete = page.get_by_role("button", name="Marcar como completada")
-    expect(complete).to_be_visible()
-    lesson_url = page.url
-    complete.click()
-    # Completing jumps to the next lesson; the progress persists after a reload.
-    expect(page).not_to_have_url(lesson_url)
-    page.reload()
+    expect(page.get_by_text("Se marca como completada al terminar el video")).to_be_visible()
+    page.locator('iframe[src*="youtube-nocookie.com/embed/"]').wait_for(state="attached")
+    page.evaluate(VIDEO_ENDED.replace("https://www.youtube-nocookie.com", "https://evil.example"))
+    page.wait_for_timeout(300)
+    expect(page.get_by_text("Se marca como completada al terminar el video")).to_be_visible()  # ignored
+    page.evaluate(VIDEO_ENDED)
+    expect(page.get_by_text("Clase completada").first).to_be_visible()
+    page.reload()  # the progress persists
     if site.name == "mobile":  # the route sidebar lives in a drawer on phones
         page.get_by_role("button", name="Contenido").click()
     expect(page.get_by_role("progressbar").first).to_have_attribute("aria-valuenow", "75")
