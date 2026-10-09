@@ -2,7 +2,7 @@ import { Article, CalendarBlank, ChatsCircle, House, ImagesSquare, UsersThree } 
 import type { ReactNode } from "react";
 import { Outlet } from "react-router";
 
-import { SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 
 import { ClubSwitcher } from "./ClubSwitcher";
@@ -29,9 +29,9 @@ export function CampusLayout({ children }: { children?: ReactNode }) {
         nav={CAMPUS_NAV}
         brand={
           SITE.logoUrl ? (
-            <img src={SITE.logoUrl} alt={SITE.name} className="h-7 w-auto sm:h-8" />
+            <img src={SITE.logoUrl} alt={SITE.name} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.header}`} />
           ) : (
-            <Wordmark name={SITE.name} colors={CAMPUS_BRANDING} className="block min-w-0 truncate text-xl sm:text-2xl" surface="#F5F6F7" />
+            <Wordmark name={SITE.name} colors={CAMPUS_BRANDING} className={`block min-w-0 truncate ${LOGO_HEIGHT.header}`} />
           )
         }
         headerSlot={<ClubSwitcher current={null} />}

@@ -5,7 +5,7 @@ import { Navigate, useNavigate, useSearchParams, type RouteObject } from "react-
 import { AnimatedHeight } from "@/components/Motion";
 import { PageSkeleton } from "@/components/Skeleton";
 import { homeFor, useAuth } from "@/lib/auth";
-import { SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 import type { UserMe } from "@/lib/types";
 
@@ -66,10 +66,9 @@ function LoginPage() {
       <main className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
           {SITE.logoUrl ? (
-            <img src={SITE.logoUrl} alt={SITE.name} {...SITE.logoSize} className="h-12 w-auto sm:h-14" />
+            <img src={SITE.logoUrl} alt={SITE.name} {...SITE.logoSize} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.login}`} />
           ) : (
-            // Same letter size as an h-12 / sm:h-14 logo image (see Wordmark in lib/brand.tsx).
-            <Wordmark name={SITE.name} colors={SITE_WORDMARK} className="block max-w-full break-words text-[2.15rem] sm:text-[2.625rem]" />
+            <Wordmark name={SITE.name} colors={SITE_WORDMARK} className={`block max-w-full break-words ${LOGO_HEIGHT.login}`} />
           )}
           <h1 className="mt-6 text-3xl sm:text-4xl">Tus clubs en un solo campus</h1>
           <p className="mt-3 max-w-md text-muted">

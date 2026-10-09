@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { Skeleton } from "@/components/Skeleton";
 import { api } from "@/lib/api";
-import { SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
 import { CAMPUS_BRANDING, readableTextOn, safeAssetPath, safeColor } from "@/lib/theme";
 import type { AcademyCardOut, Page } from "@/lib/types";
 
@@ -116,7 +116,7 @@ export function ClubSwitcher({ current }: { current: string | null }) {
                     <span className="flex-1 truncate">{club.name}</span>
                   ) : (
                     <span className="min-w-0 flex-1">
-                      <Wordmark name={club.name} colors={club} className="block truncate text-base" />
+                      <Wordmark name={club.name} colors={club} className={`block truncate ${LOGO_HEIGHT.menu}`} />
                     </span>
                   )}
                   {current === club.slug && <Check size={16} weight="bold" aria-hidden />}

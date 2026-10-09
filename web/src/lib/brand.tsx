@@ -1,9 +1,11 @@
 // Site brand (UPS-032): the campus name, logo, mascot and palette live here and nowhere else.
 //
 //   SITE.name / SITE.logoUrl / SITE.mascotUrl / SITE.colors   // VITE_SITE_NAME, VITE_SITE_LOGO override them
-//   <Wordmark name={club.name} colors={club} />                // a name drawn like the logo images, in three colors
+//   <Wordmark name={club.name} colors={club} className={LOGO_HEIGHT.header} />  // a name drawn like the logos
 //
 // Leaf module: lib/theme.tsx builds CAMPUS_BRANDING from SITE, so this file must not import theme.tsx.
+
+import type { CSSProperties } from "react";
 
 declare global {
   interface ImportMetaEnv {
@@ -66,13 +68,36 @@ export function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// The logo images (public/brand/*/wordmark.png) are Fredoka 700 at its own spacing, and an image `h-N` is
-// 0.949 em tall (the "i" dot to the "p" tail). Callers size a wordmark like plain text: the header uses
-// `text-xl sm:text-2xl` where a logo is `h-7 sm:h-8`, so the letters are drawn 1.475 em (phone) and 1.405 em
-// (sm and up) of that size, the x-height of the image (checked side by side in e2e/test_wordmark.py). The
-// images space the letters 0.01 em wider than the font does. Fredoka's ink (i dot to p tail) sits 0.115 em
-// below the middle of its line box: lifting it centers the letters where a logo image would be centered.
-const LOGO_TYPE = "relative -top-[0.115em] text-[1.475em] tracking-[0.01em] sm:text-[1.405em]";
+// Height of the logo in each place it shows, as the CSS variable --logo-h. The <img> and the <Wordmark> that
+// replaces it take the same entry (`h-(--logo-h)` / `max-h-(--logo-h)` on the image), so they cannot drift.
+// oxlint-disable-next-line react/only-export-components
+export const LOGO_HEIGHT = {
+  /** Top bar (campus and club). */
+  header: "[--logo-h:1.75rem] sm:[--logo-h:2rem]",
+  /** Club card band in /clubes and the campus home. */
+  card: "[--logo-h:3.5rem]",
+  /** "Mis clubs" continue tile. */
+  tile: "[--logo-h:2rem]",
+  /** Login screen. */
+  login: "[--logo-h:3rem] sm:[--logo-h:3.5rem]",
+  /** Club switcher rows (no logo image there: the name sits beside the club's icon). */
+  menu: "[--logo-h:1.25rem]",
+} as const;
+
+// The logo images (public/brand/*/wordmark.png) are Fredoka 700 with 0.01 em of extra spacing, and their
+// height is the ink from the "i" dot to the "p" tail: 0.949 em. So a wordmark for a --logo-h tall logo uses
+// font-size --logo-h / 0.949. Its line box is 1.2 --logo-h (two lines never touch) with -0.1 --logo-h
+// margins, so a single line takes exactly the logo's box; Fredoka's ink sits 0.1155 em below the middle of
+// the line box, so the whole name (ellipsis included) is lifted by that much. Checked side by side against
+// the logos in e2e/test_wordmark.py.
+const LOGO_H = "var(--logo-h, 1.75rem)";
+const LOGO_BOX: CSSProperties = {
+  fontSize: `calc(${LOGO_H} / 0.949)`,
+  lineHeight: `calc(${LOGO_H} * 1.2)`,
+  marginBlock: `calc(${LOGO_H} * -0.1)`,
+  position: "relative",
+  top: "-0.1155em",
+};
 
 interface WordmarkColors {
   color_primary: string;
@@ -86,8 +111,9 @@ interface WordmarkColors {
  * first "x" use the primary, that "x" the secondary and the rest the accent; with no "x" (or an "x" first)
  * the whole name uses the primary. Before the "x" and the "x" itself are shown lowercase, the rest keeps its
  * case: "UpiixRobótica" → "upii" · "x" · "Robótica" (CSS only, so the text keeps the stored case).
- * Exposed as one image named after the club (logotype), like the logo it replaces. Layout (block, truncate,
- * line clamp, width) and the base size come from `className`; the letters are drawn larger (LOGO_TYPE).
+ * Exposed as one image named after the club (logotype), like the logo it replaces. Its size is the logo's
+ * height: pass the same LOGO_HEIGHT entry the <img> uses in `className`, with the layout (block, truncate,
+ * line clamp, width).
  */
 export function Wordmark({
   name,
@@ -97,8 +123,6 @@ export function Wordmark({
   name: string;
   colors: WordmarkColors;
   className?: string;
-  /** No longer used (the outline is gone); kept so callers that still pass it compile. */
-  surface?: string;
 }) {
   const x = name.search(/x/i);
   const [head, mark, tail] = x > 0 ? [name.slice(0, x), name[x], name.slice(x + 1)] : [name, "", ""];
@@ -114,19 +138,19 @@ export function Wordmark({
       role="img"
       aria-label={name}
       data-wordmark=""
-      style={{ color: last }}
-      className={`font-display font-bold leading-tight tracking-normal ${className}`}
+      style={{ ...LOGO_BOX, color: last }}
+      className={`font-display font-bold tracking-[0.01em] ${className}`}
     >
-      <span aria-hidden className={LOGO_TYPE} style={piece(colors.color_primary, SITE.colors.primary, x > 0)}>
+      <span aria-hidden style={piece(colors.color_primary, SITE.colors.primary, x > 0)}>
         {head}
       </span>
       {mark && (
-        <span aria-hidden className={LOGO_TYPE} style={piece(colors.color_secondary, SITE.colors.secondary, true)}>
+        <span aria-hidden style={piece(colors.color_secondary, SITE.colors.secondary, true)}>
           {mark}
         </span>
       )}
       {tail && (
-        <span aria-hidden className={LOGO_TYPE} style={piece(colors.color_accent, SITE.colors.accent, false)}>
+        <span aria-hidden style={piece(colors.color_accent, SITE.colors.accent, false)}>
           {tail}
         </span>
       )}

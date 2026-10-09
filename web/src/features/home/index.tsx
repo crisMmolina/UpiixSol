@@ -1,4 +1,4 @@
-// Flow step 2 (UPS-006): UpiixSol campus home + clubs list.
+// Flow step 2 (UPS-006): campus home + clubs list.
 import { ArrowRight, CalendarBlank, CheckCircle, PlayCircle, Sparkle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, type RouteObject } from "react-router";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
-import { SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, safeAssetPath } from "@/lib/theme";
 import type { AcademyCardOut, ContinueOut, EventOut, HomeContentOut, Page, PostOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
@@ -88,10 +88,10 @@ export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
         <Card interactive className="flex h-full flex-col">
           <div className="flex min-h-24 items-center justify-center bg-primary/10 px-5 py-4">
             {logo ? (
-              <img src={logo} alt="" className="max-h-14 w-auto" loading="lazy" />
+              <img src={logo} alt="" className={`max-h-(--logo-h) w-auto ${LOGO_HEIGHT.card}`} loading="lazy" />
             ) : (
               <h3 className="min-w-0 max-w-full text-center">
-                <Wordmark name={academy.name} colors={academy} className="line-clamp-2 break-words text-2xl sm:text-3xl" />
+                <Wordmark name={academy.name} colors={academy} className={`line-clamp-2 break-words ${LOGO_HEIGHT.card}`} />
               </h3>
             )}
           </div>
@@ -177,9 +177,9 @@ function ContinueTile({ club }: { club: ClubHomeLite }) {
     <AcademyTheme branding={club.academy} className="min-w-0">
       <Card interactive className="flex h-full flex-col gap-3 p-5">
         {logo ? (
-          <img src={logo} alt={club.academy.name} className="h-8 w-auto self-start" loading="lazy" />
+          <img src={logo} alt={club.academy.name} className={`h-(--logo-h) w-auto self-start ${LOGO_HEIGHT.tile}`} loading="lazy" />
         ) : (
-          <Wordmark name={club.academy.name} colors={club.academy} className="block max-w-full self-start truncate text-xl" />
+          <Wordmark name={club.academy.name} colors={club.academy} className={`block max-w-full self-start truncate ${LOGO_HEIGHT.tile}`} />
         )}
         <p className="text-lg font-semibold text-ink">
           Clase {info.lesson_number} · {info.lesson_title}
