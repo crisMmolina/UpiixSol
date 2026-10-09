@@ -10,3 +10,4 @@
 
 ## History
 - 1791507960 | CLAIMED | joahan-claude | claim; next: security fixes first (hidden image, 500), then layout, then delete.
+- 1791510489 | CLAIMED | joahan-claude | heartbeat; lease until 1791524889
