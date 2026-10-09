@@ -17,13 +17,13 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | alembic.ini | UPS-001 |
 | app/migrations/env.py | UPS-001 |
 | app/migrations/script.py.mako | UPS-001 |
-| web/src/App.tsx | UPS-039 |
+| web/src/App.tsx | UPS-041 |
 | web/vite.config.ts | UPS-001 |
 | .github/workflows/ | UPS-001 |
 | .gitignore | UPS-001 |
 | .env.example | UPS-020 |
 | app/schemas/ | UPS-002 |
-| app/models/__init__.py | UPS-037 |
+| app/models/__init__.py | UPS-041 |
 | app/models/academy.py | UPS-002 |
 | app/models/common.py | UPS-002 |
 | app/models/community.py | UPS-002 |
@@ -34,6 +34,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/migrations/versions/0002_password_changed_at.py | UPS-020 |
 | app/migrations/versions/0004_media_objects.py | UPS-030 |
 | app/migrations/versions/0005_activity_events.py | UPS-037 |
+| app/migrations/versions/0006_site_settings.py | UPS-041 |
 | app/security.py | UPS-020 |
 | app/pagination.py | UPS-002 |
 | app/sanitize.py | UPS-002 |

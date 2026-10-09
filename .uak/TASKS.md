@@ -740,7 +740,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 240 min
 - **Rubric / Spec:** human request 2026-10-09: the app looks odd on phones in many cases, above all the skeletons
-- **Depends on:** UPS-035, UPS-039
+- **Depends on:** UPS-035, UPS-039, UPS-041
 - **Uses contract:** UPS-033
 - **Related:** UPS-038
 - **Paths:** web/src/components/, web/src/layouts/, web/src/index.css, web/src/features/home/, web/src/features/academy/, web/src/features/auth/, web/src/features/account/, web/src/features/community/, web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, web/src/features/resources/, web/src/features/superadmin/, web/src/features/academy-admin/, e2e/test_mobile.py
@@ -751,3 +751,23 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - `e2e/test_mobile.py` visits each route per role at 390 px and asserts no horizontal scroll and stable skeleton→content boxes; screenshots of before/after kept for review.
 - **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
 - **Next step:** audit every route at 390 px, then fix the shared Skeleton set and each screen.
+
+## UPS-041 · Site brand editable in /admin: name, logo, mascot and colors without redeploying
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 180 min
+- **Rubric / Spec:** human request 2026-10-09: there is nowhere to change the UpiixSol logo / axolotl; name and logo must be easy to swap
+- **Depends on:** UPS-039
+- **Uses contract:** UPS-032
+- **Related:** UPS-040
+- **Paths:** app/models/site.py, app/models/__init__.py, app/migrations/versions/0006_site_settings.py, app/services/site.py, app/routers/site.py, app/tests/test_site.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/lib/brand.tsx, web/src/App.tsx, web/src/features/superadmin/, e2e/test_site_brand.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - A singleton `site_settings` row (migration 0006, reversible) holds the site name, logo URL, mascot URL and the three wordmark colors; defaults equal today's UpiixSol brand.
+  - `GET /api/site` is public (the login page needs it). Superadmins edit it with `PUT /api/admin/site` and upload the logo/mascot (PNG, WebP or safe SVG, same media rules as club logos), or remove them (no logo → three-color wordmark). Permissions matrix rows added.
+  - The web loads the site brand before first paint (short timeout, falls back to the built-in defaults), so the campus header, login screen, mascot spots, document title and wordmark all use it. A superadmin's change shows without a redeploy.
+  - `/admin` gets a "Marca del sitio" tab with live preview, upload/remove for the logo and the mascot, name and colors; errors use the reserved FormMessage.
+  - Tests: API (public read, superadmin-only writes, uploads, removal) and an e2e that changes the name and removes the logo, then sees the wordmark on the login page.
+- **Verify:** `uv run pytest -q app/tests/test_site.py app/tests/test_permissions_matrix.py && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** model + migration + API, then the web store and the admin tab.
