@@ -1,16 +1,15 @@
 # STATE
 
 Phase: execution
-Updated: 1791515250
+Updated: 1791515659
 AVAILABLE: UPS-031 UPS-038 UPS-040 UPS-041 
 CLAIMED: -
 BLOCKED: -
-REVIEW: UPS-035 UPS-039 
+REVIEW: UPS-039 
 INTEGRATED: UPS-001 UPS-002 UPS-003 UPS-004 UPS-005 UPS-006 UPS-007 UPS-008 UPS-009 UPS-010 UPS-011 UPS-012 UPS-013 UPS-014 UPS-015 
 CANCELLED: UPS-030 
 
 Claims (first 24; status --task ID shows detail):
-UPS-035 | REVIEW | joahan-claude | until 1791599396
 UPS-039 | REVIEW | joahan-claude | until 1791601110
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
