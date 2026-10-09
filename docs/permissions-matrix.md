@@ -65,3 +65,15 @@ Cobertura: **57/57 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/account/email` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
 | POST | `/api/account/password` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
 | POST | `/api/analytics/events` | 🔒 | ✅ | ✅ | ✅ | ✅ | usage analytics, 30/min per user (UPS-037) |
+
+## Lecturas sensibles
+
+`READ_MATRIX`: lecturas con borradores o datos personales (correo, boleta), verificadas igual que las escrituras.
+
+| Método | Ruta | Anónimo | Miembro | Admin (su club) | Admin (otro club) | Superadmin | Nota |
+|---|---|---|---|---|---|---|---|
+| GET | `/api/academies/{academy_id}/content` | 🔒 | ❌ | ✅ | ❌ | ✅ | drafts included |
+| GET | `/api/academies/{academy_id}/enrollments` | 🔒 | ❌ | ✅ | ❌ | ✅ | email and boleta of each enrollee |
+| GET | `/api/admin/academies` | 🔒 | ❌ | ❌ | ❌ | ✅ | inactive clubs included |
+| GET | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
