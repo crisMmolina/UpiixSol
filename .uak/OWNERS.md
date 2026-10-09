@@ -47,7 +47,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | web/src/lib/auth.tsx | UPS-033 |
 | web/src/lib/theme.tsx | UPS-032 |
 | web/src/lib/providers.tsx | UPS-021 |
-| web/src/components/ | UPS-039 |
-| web/src/layouts/ | UPS-032 |
-| web/src/index.css | UPS-032 |
+| web/src/components/ | UPS-040 |
+| web/src/layouts/ | UPS-040 |
+| web/src/index.css | UPS-040 |
 | app/fixtures/demo.json | UPS-027 |
