@@ -712,3 +712,24 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Next/previous lesson keeps the layout (no full-page skeleton flash); the sidebar search keeps its text across lessons; "Sin coincidencias" appears once for the whole search; the video area shows a placeholder until the iframe loads.
 - **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
 - **Next step:** keep the shell mounted between lessons, then the search state.
+
+## UPS-039 · Wave-1 follow-ups: plain wordmark, one site brand everywhere, privacy notice, rate-limit flag
+
+- **Type:** fix
+- **Priority:** P0
+- **Estimate:** 90 min
+- **Rubric / Spec:** human request 2026-10-08 (no dark outline around the wordmark letters) · review notes of UPS-032, UPS-033 and UPS-037
+- **Depends on:** UPS-032, UPS-033, UPS-037
+- **Uses contract:** UPS-032
+- **Related:** UPS-020
+- **Paths:** web/src/lib/brand.tsx, web/src/features/academy/, web/src/features/auth/, web/src/App.tsx, web/src/components/States.tsx, web/src/lib/notifications.tsx, web/DESIGN.md, app/ratelimit.py, app/tests/test_ratelimit.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The wordmark letters are drawn in the plain brand colors, with no outline or text-shadow around them.
+  - A club name that is one very long word does not overflow the club home greeting at 390 px.
+  - The login screen, `App.tsx` and `States.tsx` take the site name, logo and mascot from `SITE` (lib/brand.tsx); no hardcoded "UpiixSol" left in web/src outside lib/brand.tsx.
+  - The register privacy notice mentions usage analytics (docs/analytics.md).
+  - DESIGN.md and lib/notifications.tsx describe the current compact toast position.
+  - `RATELIMIT_ENABLED=false` really disables the limits (slowapi reads the env var as text and overrides the app setting today); test both values.
+- **Verify:** `uv run pytest -q app/tests/test_ratelimit.py && npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** remove the outline, then the brand leftovers, then the flag.
