@@ -1,5 +1,5 @@
 // Flow step 6 (UPS-009): superadmin panel — academies (with their channel), users, campus home page.
-import { ArrowSquareOut, Key, Plus, Power, UserPlus } from "@phosphor-icons/react";
+import { ArrowSquareOut, Info, Key, Plus, Power, UserPlus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams, type RouteObject } from "react-router";
 
@@ -7,11 +7,13 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { SelectField, TextArea, TextField, fieldErrors } from "@/components/Field";
+import { FormMessage } from "@/components/FormMessage";
 import { Modal } from "@/components/Overlay";
 import { PageSkeleton } from "@/components/Skeleton";
 import { ErrorState, Notice } from "@/components/States";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
+import { Wordmark } from "@/lib/brand";
 import { AcademyTheme, meetsAA, safeAssetPath } from "@/lib/theme";
 import type { AcademyOut, HomeContentOut, Page, PasswordResetOut, Role, UserAdminOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
@@ -43,6 +45,17 @@ function useAcademies() {
     void load();
   }, [load]);
   return { academies, error, reload: load };
+}
+
+/** Editing a field clears its error and the form's message (one message at a time, web/DESIGN.md). */
+function clearOnEdit(
+  event: FormEvent<HTMLFormElement>,
+  setErrors: (update: (errors: Record<string, string>) => Record<string, string>) => void,
+  setError: (error: string | null) => void,
+) {
+  const name = (event.target as HTMLInputElement).name;
+  setError(null);
+  if (name) setErrors((errors) => (name in errors ? Object.fromEntries(Object.entries(errors).filter(([key]) => key !== name)) : errors));
 }
 
 // ── Academies ────────────────────────────────────────────────
@@ -86,8 +99,8 @@ function NewAcademyForm({ onCreated, onClose }: { onCreated: (a: AcademyOut) => 
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <TextField label="Nombre" name="name" required maxLength={80} placeholder="UpiixRobótica" error={errors.name} />
+    <form onSubmit={submit} onChange={(e) => clearOnEdit(e, setErrors, setError)} className="grid gap-4" noValidate>
+      <TextField label="Nombre" name="name" required maxLength={80} placeholder="UpiixRobótica" reserve error={errors.name} />
       <TextField
         label="Identificador (slug)"
         name="slug"
@@ -97,7 +110,7 @@ function NewAcademyForm({ onCreated, onClose }: { onCreated: (a: AcademyOut) => 
         hint="Minúsculas, números y guiones. Será la URL /a/… y el canal #… de la comunidad."
         error={errors.slug}
       />
-      <TextField label="Descripción corta" name="short_description" maxLength={200} />
+      <TextField label="Descripción corta" name="short_description" maxLength={200} reserve error={errors.short_description} />
       <div className="grid gap-3 sm:grid-cols-3">
         {(["color_primary", "color_secondary", "color_accent"] as const).map((key) => (
           <label key={key} className="grid gap-1 text-sm font-semibold">
@@ -116,18 +129,16 @@ function NewAcademyForm({ onCreated, onClose }: { onCreated: (a: AcademyOut) => 
         Logo (opcional)
         <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="text-sm font-normal" />
       </label>
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" loading={busy}>
-          Crear club
-        </Button>
+      <div className="grid gap-2">
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={busy}>
+            Crear club
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -168,7 +179,11 @@ function AcademiesTab() {
             <AcademyTheme key={academy.id} branding={academy}>
               <Card stripe className={`grid gap-3 p-5 ${academy.is_active ? "" : "opacity-70"}`}>
                 <div className="flex items-start justify-between gap-2">
-                  {logo ? <img src={logo} alt="" className="h-9 w-auto" /> : <span className="font-display text-2xl font-bold">{academy.name}</span>}
+                  {logo ? (
+                    <img src={logo} alt="" className="h-9 w-auto" />
+                  ) : (
+                    <Wordmark name={academy.name} colors={academy} className="block min-w-0 truncate text-2xl" />
+                  )}
                   <Badge tone={academy.is_active ? "primary" : "alert"}>{academy.is_active ? "Activo" : "Inactivo"}</Badge>
                 </div>
                 <p className="text-sm">
@@ -241,7 +256,7 @@ function NewUserForm({ academies, onCreated, onClose }: { academies: AcademyOut[
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
+    <form onSubmit={submit} onChange={(e) => clearOnEdit(e, setErrors, setError)} className="grid gap-4" noValidate>
       <SelectField label="Rol" value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
         <option value="academy_admin">Admin de club</option>
         <option value="member">Miembro</option>
@@ -255,9 +270,9 @@ function NewUserForm({ academies, onCreated, onClose }: { academies: AcademyOut[
           ))}
         </SelectField>
       )}
-      <TextField label="Nombre completo" name="full_name" required error={errors.full_name} />
-      <TextField label="Correo" name="email" type="email" required error={errors.email} />
-      {role === "member" && <TextField label="Boleta (opcional)" name="boleta" inputMode="numeric" maxLength={10} error={errors.boleta} />}
+      <TextField label="Nombre completo" name="full_name" required reserve error={errors.full_name} />
+      <TextField label="Correo" name="email" type="email" required reserve error={errors.email} />
+      {role === "member" && <TextField label="Boleta (opcional)" name="boleta" inputMode="numeric" maxLength={10} reserve error={errors.boleta} />}
       <TextField
         label="Contraseña temporal"
         name="password"
@@ -268,18 +283,16 @@ function NewUserForm({ academies, onCreated, onClose }: { academies: AcademyOut[
         hint="Compártela en persona; se le pedirá cambiarla al entrar."
         error={errors.password}
       />
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" loading={busy}>
-          Crear usuario
-        </Button>
+      <div className="grid gap-2">
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={busy}>
+            Crear usuario
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -387,7 +400,18 @@ function UsersTab() {
                 <tr key={user.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3">
                     <span className="font-semibold">{user.full_name}</span>
+                    {user.id === me?.id && (
+                      <span className="ml-2 align-middle">
+                        <Badge tone="neutral">Tú</Badge>
+                      </span>
+                    )}
                     <span className="block text-xs text-muted">{user.email}</span>
+                    {user.id === me?.id && (
+                      <span className="mt-1 flex items-start gap-1 text-xs text-muted">
+                        <Info size={14} weight="bold" aria-hidden className="mt-px shrink-0" />
+                        No puedes desactivar tu propia cuenta; otro superadmin sí puede.
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">{ROLE_LABEL[user.role]}</td>
                   <td className="px-4 py-3">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
@@ -400,9 +424,14 @@ function UsersTab() {
                       <Button size="sm" variant="ghost" icon={<Key weight="bold" />} onClick={() => void resetPassword(user)}>
                         Restablecer
                       </Button>
-                      {user.id !== me?.id && (
+                      {user.id !== me?.id ? (
                         <Button size="sm" variant="ghost" icon={<Power weight="bold" />} onClick={() => void toggle(user)}>
                           {user.is_active ? "Desactivar" : "Activar"}
+                        </Button>
+                      ) : (
+                        // Keeps "Restablecer" aligned with the other rows; the reason is under the name.
+                        <Button size="sm" variant="ghost" icon={<Power weight="bold" />} className="invisible" aria-hidden tabIndex={-1}>
+                          Desactivar
                         </Button>
                       )}
                     </div>
@@ -483,17 +512,15 @@ function HomeTab() {
   if (!content) return message ? <ErrorState message={message.text} /> : <PageSkeleton />;
   return (
     <Card className="max-w-2xl p-5">
-      <form onSubmit={save} className="grid gap-4">
+      <form onSubmit={save} onChange={() => setMessage(null)} className="grid gap-4">
         <TextField label="Título principal" name="hero_title" defaultValue={content.hero_title} required maxLength={120} />
         <TextArea label="Texto de bienvenida" name="hero_text" defaultValue={content.hero_text} rows={4} />
-        {message && (
-          <p role="status" className={`text-sm font-semibold ${message.ok ? "text-link" : "text-accent-2"}`}>
-            {message.text}
-          </p>
-        )}
-        <Button type="submit" loading={busy} className="justify-self-start">
-          Guardar
-        </Button>
+        <div className="grid gap-2">
+          <FormMessage message={message?.text} tone={message?.ok ? "success" : "error"} lines={{ base: 2, sm: 1 }} />
+          <Button type="submit" loading={busy} className="justify-self-start">
+            Guardar
+          </Button>
+        </div>
       </form>
     </Card>
   );
