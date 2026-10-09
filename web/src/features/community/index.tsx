@@ -8,7 +8,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link, useSearchParams, type RouteObject } from "react-router";
 
-import { Button, DURATION, EASE_IN, ListSkeleton, Notice, Skeleton } from "@/components";
+import { Button, DURATION, EASE_IN, Notice } from "@/components";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
@@ -18,6 +18,7 @@ import { AcademyLayout, CampusLayout, useAcademy } from "@/layouts";
 import { Composer } from "./Composer";
 import { PostCard } from "./PostCard";
 import { canModerate, type CommunityChannel } from "./shared";
+import { ChannelHeadingSkeleton, ChannelNavSkeleton, ComposerSkeleton, PostListSkeleton } from "./Skeletons";
 
 export const order = 35;
 
@@ -211,6 +212,12 @@ function CommunityPage({ clubSlug }: { clubSlug?: string }) {
 
   const feed = (
     <section aria-label={`Canal ${shown?.slug ?? ""}`} aria-busy={switching || undefined} className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
+      {!shown && (
+        <>
+          {!clubSlug && <ChannelHeadingSkeleton />}
+          {slug !== "feed" && <ComposerSkeleton />}
+        </>
+      )}
       {shown && !clubSlug && (
         <div>
           <h2 className="text-xl">{shown.type === "feed" ? "Feed" : `#${shown.slug}`}</h2>
@@ -232,7 +239,7 @@ function CommunityPage({ clubSlug }: { clubSlug?: string }) {
       )}
       {error && <Notice tone="alert">{error}</Notice>}
       {!posts ? (
-        <ListSkeleton rows={3} />
+        <PostListSkeleton />
       ) : posts.length === 0 ? (
         <EmptyState title="Aún no hay publicaciones" description="Sé la primera persona en compartir algo aquí." />
       ) : (
@@ -301,11 +308,7 @@ function CommunityPage({ clubSlug }: { clubSlug?: string }) {
       <aside aria-label="Canales" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
         <h1 className="mb-3 text-3xl">Comunidad</h1>
         {!channels ? (
-          <div className="grid gap-2">
-            {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-10" />
-            ))}
-          </div>
+          <ChannelNavSkeleton />
         ) : (
           <nav className="flex gap-1 overflow-x-auto pb-1 lg:grid lg:overflow-visible">{channels.map(channelButton)}</nav>
         )}

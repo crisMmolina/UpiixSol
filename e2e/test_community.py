@@ -115,3 +115,24 @@ def test_hidden_post_image_is_no_longer_public(site: Site) -> None:
     expect(page.locator("article", has_text=text)).to_have_count(0)
     assert page.request.get(site.url(src)).status == 404
     site.shot("community-hidden")
+
+
+def test_skeletons_have_the_shape_of_the_content(site: Site) -> None:
+    """Channel row, heading and composer keep their place when the data arrives (390 and 1280 px)."""
+    page = site.page
+    page.add_init_script(
+        """(() => { const original = window.fetch; window.fetch = async (input, init) => {
+          const url = typeof input === "string" ? input : input.url;
+          if (/\\/api\\/(channels|posts)/.test(url)) await new Promise((r) => setTimeout(r, 1200));
+          return original(input, init); }; })()"""
+    )
+    page.goto(site.url("/comunidad?canal=upiixia"))
+    section = page.locator("section[aria-label^='Canal']")
+    measure = """(section) => [...section.children].slice(0, 2).map((c) => {
+      const r = c.getBoundingClientRect(); return [Math.round(r.y), Math.round(r.height)]; })"""
+    nav = page.locator("aside[aria-label='Canales'] > :last-child")
+    expect(section.locator(".skeleton").first).to_be_visible()
+    loading = (section.evaluate(measure), nav.bounding_box()["height"])
+    expect(page.get_by_role("heading", name="#upiixia")).to_be_visible()
+    expect(page.locator("article").first).to_be_visible()
+    assert (section.evaluate(measure), nav.bounding_box()["height"]) == loading

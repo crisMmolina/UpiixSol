@@ -4,11 +4,12 @@
 import { EyeSlash, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
-import { Avatar, Button, FormMessage, Markdown, Skeleton } from "@/components";
+import { Avatar, Button, FormMessage, Markdown } from "@/components";
 import { api, errorMessage } from "@/lib/api";
 import type { CommentOut, Page, PostOut } from "@/lib/types";
 
 import { timeAgo, WRAP } from "./shared";
+import { CommentSkeleton } from "./Skeletons";
 
 const PAGE = 20;
 
@@ -131,7 +132,7 @@ export function Comments({
   return (
     <div className="mt-3 grid gap-3 border-t border-line pt-3">
       {!items ? (
-        <Skeleton className="h-10" />
+        <CommentSkeleton />
       ) : (
         items.map((comment) =>
           comment.is_hidden ? (
