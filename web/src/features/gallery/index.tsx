@@ -1,5 +1,5 @@
 // UPS-017: project gallery.
-//   /galeria         → published projects (blog-style cards, tag filter); superadmins also see drafts
+//   /galeria         → published projects (blog-style cards, tag filter); superadmins switch to the drafts
 //   /galeria/:slug   → detail; superadmins create, edit, upload the cover and delete
 import { ArrowLeft, Cube, MagnifyingGlass, PencilSimple, Plus, Trash, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { SelectField, TextArea, TextField, fieldErrors } from "@/components/Field";
+import { FormMessage } from "@/components/FormMessage";
 import { Markdown } from "@/components/Markdown";
 import { Modal } from "@/components/Overlay";
 import { PageSkeleton, Skeleton } from "@/components/Skeleton";
@@ -77,18 +78,25 @@ function GalleryPage() {
   const [params, setParams] = useSearchParams();
   const tag = params.get("tag");
   const drafts = isSuper && params.get("borradores") === "1";
-  const [items, setItems] = useState<ProjectOut[] | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Results are tagged with the listing they belong to (drafts or published, tag): switching never
+  // leaves the previous projects on screen under the new filter (skeleton until the new ones arrive).
+  const listing = `${drafts ? "drafts" : "published"}|${tag ?? ""}`;
+  const [data, setData] = useState<{ key: string; items: ProjectOut[]; cursor: string | null } | null>(null);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const current = data?.key === listing ? data : null;
+  const items = current?.items ?? null;
+  const cursor = current?.cursor ?? null;
+  const error = failure?.key === listing ? failure.message : null;
   // Filter chips come from the projects already on screen, most used first.
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const p of items ?? []) for (const t of p.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+    for (const p of data?.items ?? []) for (const t of p.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
     return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
-  }, [items]);
+  }, [data]);
 
   // The API has no text search: it runs in the browser over the projects already loaded.
   const visible = useMemo(() => {
@@ -107,23 +115,23 @@ function GalleryPage() {
     fetchPage(null)
       .then((page) => {
         if (!alive) return;
-        setItems(page.items);
-        setCursor(page.next_cursor ?? null);
-        setError(null);
+        setData({ key: listing, items: page.items, cursor: page.next_cursor ?? null });
+        setFailure(null);
       })
-      .catch((err) => alive && setError(errorMessage(err)));
+      .catch((err) => alive && setFailure({ key: listing, message: errorMessage(err) }));
     return () => {
       alive = false;
     };
-  }, [fetchPage]);
+  }, [fetchPage, listing]);
 
   async function loadMore() {
     try {
       const page = await fetchPage(cursor);
-      setItems((prev) => [...(prev ?? []), ...page.items]);
-      setCursor(page.next_cursor ?? null);
+      setData((prev) =>
+        prev?.key === listing ? { key: listing, items: [...prev.items, ...page.items], cursor: page.next_cursor ?? null } : prev,
+      );
     } catch (err) {
-      setError(errorMessage(err));
+      setFailure({ key: listing, message: errorMessage(err) });
     }
   }
 
@@ -139,14 +147,20 @@ function GalleryPage() {
             <Button variant="secondary" onClick={() => setParams(drafts ? {} : { borradores: "1" })}>
               {drafts ? "Ver publicados" : "Ver borradores"}
             </Button>
-            <Button icon={<Plus weight="bold" />} onClick={() => setCreating(true)}>
+            <Button
+              icon={<Plus weight="bold" />}
+              onClick={() => {
+                setFormKey((k) => k + 1); // a fresh form each time it opens
+                setCreating(true);
+              }}
+            >
               Nuevo proyecto
             </Button>
           </div>
         )}
       </div>
 
-      {items && items.length > 0 && (
+      {data && data.items.length > 0 && (
         <label className="relative block max-w-xl">
           <span className="sr-only">Buscar proyectos</span>
           <MagnifyingGlass aria-hidden className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={20} />
@@ -201,6 +215,8 @@ function GalleryPage() {
             description="Prueba con otra etiqueta o quita el filtro."
             action={<Button variant="secondary" onClick={() => setParams(drafts ? { borradores: "1" } : {})}>Quitar filtro</Button>}
           />
+        ) : drafts ? (
+          <EmptyState title="No hay borradores" description="Los proyectos sin publicar aparecen aquí." />
         ) : (
           <EmptyState title="Aún no hay proyectos publicados" description="Pronto verás aquí lo que construye el club." />
         )
@@ -212,7 +228,7 @@ function GalleryPage() {
         />
       ) : (
         <>
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul key={listing} className="enter grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((project) => (
               <li key={project.id}>
                 <Link to={`/galeria/${project.slug}`} className="no-underline">
@@ -246,11 +262,9 @@ function GalleryPage() {
         </>
       )}
 
-      {creating && (
-        <Modal open onClose={() => setCreating(false)} title="Nuevo proyecto">
-          <ProjectForm onClose={() => setCreating(false)} onSaved={(p) => navigate(`/galeria/${p.slug}`)} />
-        </Modal>
-      )}
+      <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo proyecto">
+        <ProjectForm key={formKey} onClose={() => setCreating(false)} onSaved={(p) => navigate(`/galeria/${p.slug}`)} />
+      </Modal>
     </div>
   );
 }
@@ -264,6 +278,7 @@ function ProjectPage() {
   const [project, setProject] = useState<ProjectOut | null>(null);
   const [error, setError] = useState<ApiError | Error | null>(null);
   const [editing, setEditing] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -326,7 +341,14 @@ function ProjectPage() {
       <Markdown source={project.body} />
       {isSuper && (
         <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-          <Button variant="secondary" icon={<PencilSimple weight="bold" />} onClick={() => setEditing(true)}>
+          <Button
+            variant="secondary"
+            icon={<PencilSimple weight="bold" />}
+            onClick={() => {
+              setFormKey((k) => k + 1);
+              setEditing(true);
+            }}
+          >
             Editar
           </Button>
           <Button variant="danger" icon={<Trash weight="bold" />} onClick={() => void remove()}>
@@ -334,15 +356,14 @@ function ProjectPage() {
           </Button>
         </div>
       )}
-      {editing && (
-        <Modal open onClose={() => setEditing(false)} title="Editar proyecto">
-          <ProjectForm
-            project={project}
-            onClose={() => setEditing(false)}
-            onSaved={(p) => (p.slug === slug ? setProject(p) : navigate(`/galeria/${p.slug}`, { replace: true }))}
-          />
-        </Modal>
-      )}
+      <Modal open={editing} onClose={() => setEditing(false)} title="Editar proyecto">
+        <ProjectForm
+          key={formKey}
+          project={project}
+          onClose={() => setEditing(false)}
+          onSaved={(p) => (p.slug === slug ? setProject(p) : navigate(`/galeria/${p.slug}`, { replace: true }))}
+        />
+      </Modal>
     </article>
   );
 }
@@ -403,6 +424,7 @@ function ProjectForm({ project, onClose, onSaved }: { project?: ProjectOut; onCl
         defaultValue={project?.title}
         required
         maxLength={120}
+        reserve
         error={errors.title}
         onChange={(e) => !slugTouched && setSlug(slugify(e.target.value))}
       />
@@ -417,27 +439,25 @@ function ProjectForm({ project, onClose, onSaved }: { project?: ProjectOut; onCl
         hint="Minúsculas, números y guiones."
         error={errors.slug}
       />
-      <TextField label="Resumen" name="summary" defaultValue={project?.summary} maxLength={300} error={errors.summary} />
+      <TextField label="Resumen" name="summary" defaultValue={project?.summary} maxLength={300} reserve error={errors.summary} />
       <TextField label="Autores" name="authors" defaultValue={project?.authors} maxLength={300} />
-      <TextField label="Etiquetas (separadas por coma)" name="tags" defaultValue={project?.tags.join(", ")} error={errors.tags} />
-      <TextArea label="Descripción (markdown)" name="body" defaultValue={project?.body} rows={6} error={errors.body} />
+      <TextField label="Etiquetas (separadas por coma)" name="tags" defaultValue={project?.tags.join(", ")} reserve error={errors.tags} />
+      <TextArea label="Descripción (markdown)" name="body" defaultValue={project?.body} rows={6} reserve error={errors.body} />
       <SelectField label="Estado" name="status" defaultValue={project?.status ?? "draft"}>
         <option value="draft">Borrador (solo superadmins)</option>
         <option value="published">Publicado</option>
       </SelectField>
       <TextField label={project?.cover_url ? "Reemplazar portada" : "Portada (opcional)"} name="cover" type="file" accept="image/png,image/jpeg,image/webp" hint="PNG, JPG o WebP de hasta 5 MB." />
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" loading={busy}>
-          {project ? "Guardar cambios" : "Crear proyecto"}
-        </Button>
+      <div className="grid gap-2">
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={busy}>
+            {project ? "Guardar cambios" : "Crear proyecto"}
+          </Button>
+        </div>
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
       </div>
     </form>
   );

@@ -1,5 +1,5 @@
 // UPS-017: blog.
-//   /blog         → published posts, newest first; superadmins also see drafts and create posts
+//   /blog         → published posts, newest first; superadmins switch to the drafts and create posts
 //   /blog/:slug   → post; superadmins edit, upload the cover and delete
 import { ArrowLeft, MagnifyingGlass, Newspaper, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { TextArea, TextField, fieldErrors } from "@/components/Field";
+import { FormMessage } from "@/components/FormMessage";
 import { Markdown } from "@/components/Markdown";
 import { Modal } from "@/components/Overlay";
 import { PageSkeleton, Skeleton } from "@/components/Skeleton";
@@ -94,10 +95,13 @@ function BlogPage() {
   const drafts = isSuper && params.get("borradores") === "1";
   const author = params.get("autor");
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<BlogPostOut[] | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Results are tagged with the listing they belong to: after "Ver borradores" the published posts
+  // never stay on screen under the new button (skeleton until the drafts arrive).
+  const listing = drafts ? "drafts" : "published";
+  const [data, setData] = useState<{ key: string; items: BlogPostOut[]; cursor: string | null } | null>(null);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const navigate = useNavigate();
 
   const fetchPage = useCallback(
@@ -110,23 +114,28 @@ function BlogPage() {
     fetchPage(null)
       .then((page) => {
         if (!alive) return;
-        setItems(page.items);
-        setCursor(page.next_cursor ?? null);
-        setError(null);
+        setData({ key: listing, items: page.items, cursor: page.next_cursor ?? null });
+        setFailure(null);
       })
-      .catch((err) => alive && setError(errorMessage(err)));
+      .catch((err) => alive && setFailure({ key: listing, message: errorMessage(err) }));
     return () => {
       alive = false;
     };
-  }, [fetchPage]);
+  }, [fetchPage, listing]);
+
+  const current = data?.key === listing ? data : null;
+  const items = current?.items ?? null;
+  const cursor = current?.cursor ?? null;
+  const error = failure?.key === listing ? failure.message : null;
 
   async function loadMore() {
     try {
       const page = await fetchPage(cursor);
-      setItems((prev) => [...(prev ?? []), ...page.items]);
-      setCursor(page.next_cursor ?? null);
+      setData((prev) =>
+        prev?.key === listing ? { key: listing, items: [...prev.items, ...page.items], cursor: page.next_cursor ?? null } : prev,
+      );
     } catch (err) {
-      setError(errorMessage(err));
+      setFailure({ key: listing, message: errorMessage(err) });
     }
   }
 
@@ -149,10 +158,12 @@ function BlogPage() {
       ),
     [items, author, term],
   );
-  const [featured, ...rest] = visible;
-  // "Trending" = the most recent posts after the featured one. There are no view or like counts.
-  const trending = filtering ? [] : rest.slice(0, 3);
-  const grid = filtering ? rest : rest.slice(3);
+  // Published: a featured post, then the next three newest ("Más recientes": there are no view or like
+  // counts to rank by). Drafts and filtered results are a plain grid.
+  const showcase = !drafts;
+  const [featured, ...rest] = showcase ? visible : [];
+  const latest = showcase && !filtering ? rest.slice(0, 3) : [];
+  const grid = !showcase ? visible : filtering ? rest : rest.slice(3);
 
   function pickAuthor(nick: string | null) {
     const next = new URLSearchParams(params);
@@ -173,7 +184,13 @@ function BlogPage() {
             <Button variant="secondary" onClick={() => setParams(drafts ? {} : { borradores: "1" })}>
               {drafts ? "Ver publicadas" : "Ver borradores"}
             </Button>
-            <Button icon={<Plus weight="bold" />} onClick={() => setCreating(true)}>
+            <Button
+              icon={<Plus weight="bold" />}
+              onClick={() => {
+                setFormKey((k) => k + 1); // a fresh form each time it opens
+                setCreating(true);
+              }}
+            >
               Nueva entrada
             </Button>
           </div>
@@ -185,7 +202,11 @@ function BlogPage() {
       ) : items === null ? (
         <BlogSkeleton />
       ) : items.length === 0 ? (
-        <EmptyState title="Aún no hay entradas" description="Vuelve pronto para ver las novedades del club." />
+        drafts ? (
+          <EmptyState title="No hay borradores" description="Las entradas sin publicar aparecen aquí." />
+        ) : (
+          <EmptyState title="Aún no hay entradas" description="Vuelve pronto para ver las novedades del club." />
+        )
       ) : (
         <>
           <div className="grid gap-3">
@@ -219,7 +240,7 @@ function BlogPage() {
             )}
           </div>
 
-          {!featured ? (
+          {visible.length === 0 ? (
             <EmptyState
               title="No encontramos artículos"
               description="Prueba con otras palabras o quita los filtros."
@@ -236,44 +257,41 @@ function BlogPage() {
               }
             />
           ) : (
-            <>
-              <Link to={`/blog/${featured.slug}`} className="no-underline">
-                <Card interactive className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.2fr_1fr] lg:items-center">
-                  <Cover post={featured} className="aspect-[16/9]" />
-                  <div className="grid content-center gap-3">
-                    <Badge>Destacado</Badge>
-                    <h2 className="text-2xl text-balance sm:text-3xl">{featured.title}</h2>
-                    <p className="text-muted">{excerpt(featured.body, 220)}</p>
-                    <Byline post={featured} />
-                  </div>
-                </Card>
-              </Link>
+            <div key={listing} className="enter grid gap-8">
+              {featured && (
+                <Link to={`/blog/${featured.slug}`} className="no-underline">
+                  <Card interactive className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+                    <Cover post={featured} className="aspect-[16/9]" />
+                    <div className="grid content-center gap-3">
+                      <Badge>Destacado</Badge>
+                      <h2 className="text-2xl text-balance sm:text-3xl">{featured.title}</h2>
+                      <p className="text-muted">{excerpt(featured.body, 220)}</p>
+                      <Byline post={featured} />
+                    </div>
+                  </Card>
+                </Link>
+              )}
 
-              {trending.length > 0 && (
-                <section aria-labelledby="trending" className="grid gap-3">
-                  <div>
-                    <h2 id="trending" className="text-xl">
-                      Artículos en tendencia
-                    </h2>
-                    <p className="text-sm text-muted">Los más recientes del blog.</p>
-                  </div>
-                  <ol className="grid gap-3 md:grid-cols-3">
-                    {trending.map((post, i) => (
+              {latest.length > 0 && (
+                <section aria-labelledby="latest" className="grid gap-3">
+                  <h2 id="latest" className="text-xl">
+                    Más recientes
+                  </h2>
+                  <ul className="grid gap-3 md:grid-cols-3">
+                    {latest.map((post) => (
                       <li key={post.id}>
                         <Link to={`/blog/${post.slug}`} className="no-underline">
-                          <Card interactive className="flex h-full items-start gap-3 p-4">
-                            <span aria-hidden className="text-3xl font-bold text-secondary/60">
-                              {i + 1}
-                            </span>
-                            <div className="grid gap-1">
-                              <h3 className="text-base text-balance">{post.title}</h3>
-                              <p className="text-sm text-muted">{readMinutes(post.body)} min de lectura</p>
-                            </div>
+                          <Card interactive className="grid h-full content-start gap-1 p-4">
+                            <h3 className="text-base text-balance">{post.title}</h3>
+                            <p className="text-sm text-muted">
+                              {post.published_at && <>{dateFormat.format(new Date(post.published_at))} · </>}
+                              {readMinutes(post.body)} min de lectura
+                            </p>
                           </Card>
                         </Link>
                       </li>
                     ))}
-                  </ol>
+                  </ul>
                 </section>
               )}
 
@@ -295,7 +313,7 @@ function BlogPage() {
                   ))}
                 </ul>
               )}
-            </>
+            </div>
           )}
           {cursor && (
             <div className="text-center">
@@ -307,11 +325,9 @@ function BlogPage() {
         </>
       )}
 
-      {creating && (
-        <Modal open onClose={() => setCreating(false)} title="Nueva entrada">
-          <PostForm onClose={() => setCreating(false)} onSaved={(p) => navigate(`/blog/${p.slug}`)} />
-        </Modal>
-      )}
+      <Modal open={creating} onClose={() => setCreating(false)} title="Nueva entrada">
+        <PostForm key={formKey} onClose={() => setCreating(false)} onSaved={(p) => navigate(`/blog/${p.slug}`)} />
+      </Modal>
     </div>
   );
 }
@@ -323,6 +339,7 @@ function PostPage() {
   const [post, setPost] = useState<BlogPostOut | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [editing, setEditing] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -366,7 +383,14 @@ function PostPage() {
       <Markdown source={post.body} />
       {isSuper && (
         <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-          <Button variant="secondary" icon={<PencilSimple weight="bold" />} onClick={() => setEditing(true)}>
+          <Button
+            variant="secondary"
+            icon={<PencilSimple weight="bold" />}
+            onClick={() => {
+              setFormKey((k) => k + 1);
+              setEditing(true);
+            }}
+          >
             Editar
           </Button>
           <Button variant="danger" icon={<Trash weight="bold" />} onClick={() => void remove()}>
@@ -374,15 +398,14 @@ function PostPage() {
           </Button>
         </div>
       )}
-      {editing && (
-        <Modal open onClose={() => setEditing(false)} title="Editar entrada">
-          <PostForm
-            post={post}
-            onClose={() => setEditing(false)}
-            onSaved={(p) => (p.slug === slug ? setPost(p) : navigate(`/blog/${p.slug}`, { replace: true }))}
-          />
-        </Modal>
-      )}
+      <Modal open={editing} onClose={() => setEditing(false)} title="Editar entrada">
+        <PostForm
+          key={formKey}
+          post={post}
+          onClose={() => setEditing(false)}
+          onSaved={(p) => (p.slug === slug ? setPost(p) : navigate(`/blog/${p.slug}`, { replace: true }))}
+        />
+      </Modal>
     </article>
   );
 }
@@ -434,6 +457,7 @@ function PostForm({ post, onClose, onSaved }: { post?: BlogPostOut; onClose: () 
         defaultValue={post?.title}
         required
         maxLength={120}
+        reserve
         error={errors.title}
         onChange={(e) => !slugTouched && setSlug(slugify(e.target.value))}
       />
@@ -448,24 +472,22 @@ function PostForm({ post, onClose, onSaved }: { post?: BlogPostOut; onClose: () 
         hint="Minúsculas, números y guiones."
         error={errors.slug}
       />
-      <TextArea label="Contenido (markdown)" name="body" defaultValue={post?.body} rows={10} error={errors.body} />
+      <TextArea label="Contenido (markdown)" name="body" defaultValue={post?.body} rows={10} reserve error={errors.body} />
       <TextField label={post?.cover_url ? "Reemplazar portada" : "Portada (opcional)"} name="cover" type="file" accept="image/png,image/jpeg,image/webp" hint="PNG, JPG o WebP de hasta 5 MB." />
       <label className="flex min-h-11 items-center gap-2 text-sm font-semibold">
         <input type="checkbox" name="published" defaultChecked={Boolean(post?.published_at)} className="size-4" />
         Publicada (visible para todos)
       </label>
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" loading={busy}>
-          {post ? "Guardar cambios" : "Crear entrada"}
-        </Button>
+      <div className="grid gap-2">
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={busy}>
+            {post ? "Guardar cambios" : "Crear entrada"}
+          </Button>
+        </div>
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
       </div>
     </form>
   );
