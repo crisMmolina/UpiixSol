@@ -371,6 +371,54 @@ def test_matrix(rule: Rule, clients: dict[str, TestClient], world: World, db: Se
     assert actual == expected, f"{rule.method} {url}: {results}"
 
 
+# ── Sensitive reads (UPS-036): club content and enrollees ───
+# Kept apart from MATRIX (writes): these GETs return drafts and the enrollees' email and boleta, so an
+# admin of another club or a member must get 403 like on the writes.
+
+READ_MATRIX: list[Rule] = [
+    Rule("GET", "/api/academies/{academy_id}/content", OWN, note="drafts included"),
+    Rule("GET", "/api/academies/{academy_id}/enrollments", OWN, note="email and boleta of each enrollee"),
+    Rule("GET", "/api/admin/academies", SUPER, note="inactive clubs included"),
+    Rule("GET", "/api/admin/users", SUPER),
+    Rule("GET", "/api/admin/home", SUPER),
+]
+
+
+def app_read_endpoints() -> set[tuple[str, str]]:
+    return {("GET", path) for path, operations in app.openapi()["paths"].items() if "get" in operations}
+
+
+def test_read_matrix_endpoints_exist() -> None:
+    missing = sorted({(rule.method, rule.path) for rule in READ_MATRIX} - app_read_endpoints())
+    assert not missing, f"READ_MATRIX rules without an endpoint: {missing}"
+
+
+@pytest.mark.parametrize("rule", READ_MATRIX, ids=lambda r: f"{r.method} {r.path}")
+def test_read_matrix(rule: Rule, clients: dict[str, TestClient], world: World, db: Session) -> None:
+    url = _path(rule, world, db)
+    results = {role: clients[role].get(url).status_code for role in ROLES}
+    expected = {role: (200 if role in rule.allowed else 403) for role in ROLES}
+    expected["anon"] = 401
+    assert results == expected, f"GET {url}: {results}"
+
+
+def render_reads_markdown() -> str:
+    lines = [
+        "",
+        "## Lecturas sensibles",
+        "",
+        "`READ_MATRIX`: lecturas con borradores o datos personales (correo, boleta), "
+        "verificadas igual que las escrituras.",
+        "",
+        "| Método | Ruta | " + " | ".join(LABELS[r] for r in ROLES) + " | Nota |",
+        "|---|---|" + "---|" * len(ROLES) + "---|",
+    ]
+    for rule in READ_MATRIX:
+        cells = ["🔒" if r == "anon" else ("✅" if r in rule.allowed else "❌") for r in ROLES]
+        lines.append(f"| {rule.method} | `{rule.path}` | " + " | ".join(cells) + f" | {rule.note} |")
+    return "\n".join(lines) + "\n"
+
+
 # ── docs/permissions-matrix.md ──────────────────────────────
 
 LABELS = {"anon": "Anónimo", "member": "Miembro", "admin_own": "Admin (su club)",
@@ -400,7 +448,7 @@ def render_markdown() -> str:
         else:
             cells = ["🔒" if r == "anon" else ("✅" if r in rule.allowed else "❌") for r in ROLES]
         lines.append(f"| {rule.method} | `{rule.path}` | " + " | ".join(cells) + f" | {rule.note} |")
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n" + render_reads_markdown()
 
 
 DOC = Path(__file__).resolve().parents[2] / "docs" / "permissions-matrix.md"

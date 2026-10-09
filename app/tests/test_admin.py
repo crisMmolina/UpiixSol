@@ -156,6 +156,27 @@ def test_create_academy_admin_and_member(as_superadmin: TestClient, client: Test
     assert member.status_code == 201 and member.json()["boleta"] == "2026000321"
 
 
+def test_default_nickname_is_unique(as_superadmin: TestClient, seeded: dict) -> None:
+    def create(email: str, full_name: str, nickname: str | None = None) -> str:
+        payload = {"role": "member", "email": email, "full_name": full_name, "password": "temporal-123"}
+        if nickname:
+            payload["nickname"] = nickname
+        response = as_superadmin.post("/api/admin/users", json=payload)
+        assert response.status_code == 201
+        return response.json()["nickname"]
+
+    assert create("aud1@ipn.mx", "AUD Uno") == "aud"
+    assert create("aud2@ipn.mx", "AUD Dos") == "aud2"
+    assert create("aud3@ipn.mx", "Aud Tres") == "aud3"
+    # A chosen nickname is kept as is (nicknames are not unique, only the defaults avoid repeats).
+    assert create("aud4@ipn.mx", "AUD Cuatro", nickname="aud") == "aud"
+    assert create("audaz@ipn.mx", "Audaz Persona") == "audaz"
+    long_name = "A" * 45 + " Largo"
+    assert create("largo1@ipn.mx", long_name) == "a" * 40
+    second = create("largo2@ipn.mx", long_name)
+    assert second == "a" * 36 + "2" and len(second) <= 40
+
+
 def test_create_user_errors(as_superadmin: TestClient, seeded: dict) -> None:
     base = {"email": "x@upiixsol.dev", "full_name": "Equis Persona", "password": "temporal-123"}
     no_academy = as_superadmin.post("/api/admin/users", json={**base, "role": "academy_admin"})
@@ -286,9 +307,7 @@ def test_reset_password(as_superadmin: TestClient, client: TestClient, seeded: d
 
 
 def test_home_content_get_and_put(as_superadmin: TestClient, as_member: TestClient, seeded: dict) -> None:
-    assert (
-        as_superadmin.get("/api/admin/home").json()["hero_title"] == "Tus clubs en un solo campus"
-    )
+    assert as_superadmin.get("/api/admin/home").json()["hero_title"] == "Tus clubs en un solo campus"
     body = {
         "hero_title": "Semestre 2026-2",
         "hero_text": "Bienvenidos <script>x</script>",
