@@ -84,7 +84,7 @@ export function SiteBrandTab() {
     const result: Message = { tone: "success", text, where };
     handOff({ message: result, draft: keepDraft && dirty ? draft : null });
     setMessage(result);
-    applySite(next);
+    applySite(next, { remount: true });
     void reloadSite().catch(() => undefined); // refresh the browser's cached GET /api/site
   }
 
