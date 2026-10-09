@@ -41,7 +41,7 @@ Un solo gris (frío, neutral). Nada de beige.
 - **Sin footer.** Es una app.
 
 ## Notificaciones
-`useNotifications().notify({...})`. Tarjetas que entran arriba a la derecha y se van solas (6 s); la campana muestra el número sin leer y abre un panel lateral derecho con todas. La contraseña provisional vive aquí (una vez por sesión como tarjeta, siempre en la campana).
+`useNotifications().notify({...})`. El aviso aparece como **una tarjeta compacta encima de la barra superior** (solo el más reciente: título + acción en una línea; el texto completo queda en la campana) y se va solo (6 s). En escritorio va centrado en la barra (26 rem); en teléfono va del borde izquierdo hasta antes de la campana y el menú de usuario, que siguen al alcance. Nunca tapa la página ni sus acciones (`layouts/Notifications.tsx`). La campana muestra el número sin leer y abre un panel lateral derecho con todas. La contraseña provisional vive aquí (una vez por sesión como tarjeta, siempre en la campana).
 
 ## Tipografía
 - Títulos: **Fredoka** 600 (marca, redondeada). Cuerpo y UI: **Inter Variable** 400/500/600. Números con `tabular-nums`.

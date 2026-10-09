@@ -1,14 +1,16 @@
 import { WarningCircle } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
+import { SITE } from "@/lib/brand";
+
 import { Button } from "./Button";
 
-/** Empty state with the mascot of the current club (or UpiixSol's) and an optional action. */
+/** Empty state with the mascot of the current club (or the site's, SITE.mascotUrl) and an optional action. */
 export function EmptyState({
   title,
   description,
   action,
-  mascotUrl = "/brand/upiixsol/mascot.png",
+  mascotUrl = SITE.mascotUrl,
 }: {
   title: string;
   description?: string;

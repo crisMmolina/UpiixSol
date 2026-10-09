@@ -1,4 +1,7 @@
-// In-app notifications (owner UPS-021): transient cards top-right + a right-side panel behind the bell.
+// In-app notifications (owner UPS-021): a transient compact card laid over the top bar + a right-side panel
+// behind the bell. The card (layouts/Notifications.tsx) shows only the newest toast, title + action in one
+// line: centered in the bar from `sm` up, and on phones from the left edge to just before the bell and the
+// user menu, so both stay reachable. The body is read in the bell's panel.
 //
 //   const { notify } = useNotifications();
 //   notify({ id: "welcome", title: "Hola", body: "…", action: { label: "Ver", to: "/x" } });

@@ -5,7 +5,7 @@ import { Link, Outlet, useParams } from "react-router";
 import { PageSkeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { ApiError, errorMessage } from "@/lib/api";
-import { SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, safeAssetPath, useAcademyBranding } from "@/lib/theme";
 import type { AcademyBranding } from "@/lib/types";
 
@@ -80,9 +80,9 @@ export function AcademyLayout({ children }: { children?: ReactNode }) {
           headerSlot={<ClubSwitcher current={branding.slug} />}
           brand={
             safeAssetPath(branding.logo_url) ? (
-              <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className="h-7 w-auto sm:h-8" />
+              <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.header}`} />
             ) : (
-              <Wordmark name={branding.name} colors={branding} className="block min-w-0 truncate text-xl sm:text-2xl" surface="#F5F6F7" />
+              <Wordmark name={branding.name} colors={branding} className={`block min-w-0 truncate ${LOGO_HEIGHT.header}`} />
             )
           }
         >

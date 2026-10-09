@@ -3,6 +3,7 @@ import { createBrowserRouter, matchRoutes, Outlet, RouterProvider, useLocation, 
 
 import { setAnalyticsUser, track } from "./lib/analytics";
 import { useAuth } from "./lib/auth";
+import { SITE } from "./lib/brand";
 
 // Contract (owner UPS-001, nobody edits this file after setup):
 // - Each feature is web/src/features/<name>/index.tsx and exports `routes: RouteObject[]`
@@ -28,7 +29,7 @@ const Providers =
 function Placeholder() {
   return (
     <main className="grid min-h-dvh place-items-center bg-[#FBF8EF] p-4 text-[#1F2A24]">
-      <h1 className="text-3xl font-bold">UpiixSol Campus</h1>
+      <h1 className="text-3xl font-bold">{SITE.title}</h1>
     </main>
   );
 }
