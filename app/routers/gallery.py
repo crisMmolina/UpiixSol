@@ -27,7 +27,7 @@ def list_projects(
     user: User | None = Depends(optional_user),
     db: Session = Depends(get_db),
 ) -> Page[ProjectOut]:
-    drafts = drafts and service.is_superadmin(user)  # only superadmins ever see drafts
+    drafts = drafts and service.is_superadmin(user)  # drafts only (superadmins); others get published
     order = [Project.created_at, Project.id] if drafts else [Project.published_at, Project.id]
     return paginate(
         db,

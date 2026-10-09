@@ -67,3 +67,15 @@ Cobertura: **59/59 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/analytics/events` | 🔒 | ✅ | ✅ | ✅ | ✅ | usage analytics, 30/min per user (UPS-037) |
 | DELETE | `/api/posts/{post_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
 | DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
+
+## Lecturas sensibles
+
+`READ_MATRIX`: lecturas con borradores o datos personales (correo, boleta), verificadas igual que las escrituras.
+
+| Método | Ruta | Anónimo | Miembro | Admin (su club) | Admin (otro club) | Superadmin | Nota |
+|---|---|---|---|---|---|---|---|
+| GET | `/api/academies/{academy_id}/content` | 🔒 | ❌ | ✅ | ❌ | ✅ | drafts included |
+| GET | `/api/academies/{academy_id}/enrollments` | 🔒 | ❌ | ✅ | ❌ | ✅ | email and boleta of each enrollee |
+| GET | `/api/admin/academies` | 🔒 | ❌ | ❌ | ❌ | ✅ | inactive clubs included |
+| GET | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |

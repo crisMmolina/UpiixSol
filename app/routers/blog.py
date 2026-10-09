@@ -27,7 +27,7 @@ def list_posts(
     user: User | None = Depends(optional_user),
     db: Session = Depends(get_db),
 ) -> Page[BlogPostOut]:
-    drafts = drafts and is_superadmin(user)  # only superadmins ever see drafts
+    drafts = drafts and is_superadmin(user)  # drafts only (superadmins); others get published
     order = [BlogPost.created_at, BlogPost.id] if drafts else [BlogPost.published_at, BlogPost.id]
     page = paginate(db, service.list_stmt(drafts), order, cursor=cursor, limit=limit)
     return Page[BlogPostOut](items=service.outs(db, page.items), next_cursor=page.next_cursor)
