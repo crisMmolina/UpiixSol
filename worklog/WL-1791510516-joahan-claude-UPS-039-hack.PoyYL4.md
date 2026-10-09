@@ -15,3 +15,4 @@
 - 1791513529 | REVIEW | joahan-claude | pending decision UPS-039-1791513529; option: UPS-039 adds e2e/test_wordmark.py and edits one line of e2e/test_branding.py (case-insensitive name count) outside its Paths; Why: the wordmark now renders lowercase via CSS; browser coverage required
 - 1791514198 | REVIEW | joahan-rev | review; reject; SHA 7b93197aa37878ad690e8972d6372e687f93145a; reviewer joahan-rev
 - 1791514710 | REVIEW | joahan-claude | checkpoint; next: review
+- 1791514744 | REVIEW | joahan-claude | pending decision UPS-039-1791514744; option: UPS-039 also edits web/src/features/home/index.tsx and web/src/layouts/{AcademyLayout,CampusLayout,ClubSwitcher}.tsx (owned by unclaimed UPS-040) so every text wordmark shares the logo height token; Why: product owner: the no-logo wordmark must match the logo size everywhere; UPS-040 is not claimed yet
