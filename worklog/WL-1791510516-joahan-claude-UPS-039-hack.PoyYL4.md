@@ -16,3 +16,4 @@
 - 1791514198 | REVIEW | joahan-rev | review; reject; SHA 7b93197aa37878ad690e8972d6372e687f93145a; reviewer joahan-rev
 - 1791514710 | REVIEW | joahan-claude | checkpoint; next: review
 - 1791514744 | REVIEW | joahan-claude | pending decision UPS-039-1791514744; option: UPS-039 also edits web/src/features/home/index.tsx and web/src/layouts/{AcademyLayout,CampusLayout,ClubSwitcher}.tsx (owned by unclaimed UPS-040) so every text wordmark shares the logo height token; Why: product owner: the no-logo wordmark must match the logo size everywhere; UPS-040 is not claimed yet
+- 1791515250 | REVIEW | joahan-rev | review; approve; SHA 9a7c788e7e26fe51da2a258837e97a1a7192c76c; reviewer joahan-rev
