@@ -81,7 +81,8 @@ def test_club_without_logo_uses_its_three_colors(site: Site) -> None:
     card = page.get_by_role("link", name=f"Entrar a {CLUB['name']}")
     expect(card).to_be_visible()
     expect(card.get_by_role("heading")).to_have_count(1)
-    assert card.inner_text().count(CLUB["name"]) == 1  # noqa: S101 · the wordmark only, no second copy
+    # The wordmark only, no second copy (it shows "upiix" lowercase, like the logos: UPS-039).
+    assert card.inner_text().lower().count(CLUB["name"].lower()) == 1  # noqa: S101
     stripe = card.locator("div.h-1.bg-primary")
     assert stripe.evaluate("(el) => getComputedStyle(el).backgroundColor") == rgb(CLUB["color_primary"])  # noqa: S101
     site.shot("branding-clubs")
