@@ -38,9 +38,9 @@ def is_superadmin(user: User | None) -> bool:
 
 
 def list_stmt(tag: str | None, drafts: bool) -> Select:
-    stmt = select(Project)
-    if not drafts:
-        stmt = stmt.where(Project.status == ProjectStatus.published)
+    """Published projects, or only the drafts (`drafts=True`, superadmins): never both mixed."""
+    status = ProjectStatus.draft if drafts else ProjectStatus.published
+    stmt = select(Project).where(Project.status == status)
     if tag:
         # JSON list column: portable filter on its serialized text (SQLite and Postgres), wildcards escaped.
         stmt = stmt.where(cast(Project.tags, String).contains(f'"{normalize_tag(tag)}"', autoescape=True))

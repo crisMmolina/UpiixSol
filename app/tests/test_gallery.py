@@ -68,6 +68,13 @@ def test_drafts_listed_only_for_superadmin(
     assert "secreto" in super_slugs and "secreto" not in member_slugs
 
 
+def test_drafts_filter_lists_only_drafts(as_superadmin: TestClient, draft: Project) -> None:
+    items = as_superadmin.get("/api/projects", params={"drafts": True}).json()["items"]
+    assert [p["slug"] for p in items] == ["secreto"]  # no published project mixed in
+    tagged = as_superadmin.get("/api/projects", params={"drafts": True, "tag": "vision"}).json()["items"]
+    assert tagged == []  # the tag filter combines with drafts-only
+
+
 def test_superadmin_creates_publishes_and_unpublishes(as_superadmin: TestClient, client: TestClient) -> None:
     created = as_superadmin.post("/api/projects", json={**NEW, "body": "<script>x</script>**ok**"})
     assert created.status_code == 201
