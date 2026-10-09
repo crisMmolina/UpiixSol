@@ -1,4 +1,5 @@
-// Flow step 6 (UPS-009): superadmin panel — academies (with their channel), users, campus home page.
+// Flow step 6 (UPS-009): superadmin panel — academies (with their channel), users, campus home page and the
+// site brand (UPS-041, SiteBrandTab.tsx).
 import { ArrowSquareOut, Info, Key, Plus, Power, UserPlus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams, type RouteObject } from "react-router";
@@ -18,9 +19,11 @@ import { AcademyTheme, meetsAA, safeAssetPath } from "@/lib/theme";
 import type { AcademyOut, HomeContentOut, Page, PasswordResetOut, Role, UserAdminOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
 
+import { SiteBrandTab } from "./SiteBrandTab";
+
 export const order = 60;
 
-type Tab = "academias" | "usuarios" | "inicio";
+type Tab = "academias" | "usuarios" | "inicio" | "marca";
 
 const ROLE_LABEL: Record<Role, string> = {
   superadmin: "Superadmin",
@@ -530,11 +533,12 @@ function HomeTab() {
 
 function SuperadminPage() {
   const [search, setSearch] = useSearchParams();
-  const tab: Tab = (["academias", "usuarios", "inicio"] as const).find((t) => t === search.get("tab")) ?? "academias";
+  const tab: Tab = (["academias", "usuarios", "inicio", "marca"] as const).find((t) => t === search.get("tab")) ?? "academias";
   const tabs: { id: Tab; label: string }[] = [
     { id: "academias", label: "Clubes" },
     { id: "usuarios", label: "Usuarios" },
     { id: "inicio", label: "Página principal" },
+    { id: "marca", label: "Marca del sitio" },
   ];
   return (
     <div className="grid gap-6">
@@ -542,7 +546,7 @@ function SuperadminPage() {
         <p className="text-sm font-semibold text-link">Mesa directiva</p>
         <h1 className="text-3xl sm:text-4xl">Panel de superadmin</h1>
       </div>
-      <div role="tablist" aria-label="Secciones" className="flex w-full max-w-lg gap-1 rounded-full bg-line/50 p-1">
+      <div role="tablist" aria-label="Secciones" className="grid w-full max-w-2xl grid-cols-2 gap-1 rounded-3xl bg-line/50 p-1 sm:flex sm:rounded-full">
         {tabs.map(({ id, label }) => (
           <button
             key={id}
@@ -550,7 +554,7 @@ function SuperadminPage() {
             type="button"
             aria-selected={tab === id}
             onClick={() => setSearch({ tab: id }, { replace: true })}
-            className={`min-h-11 flex-1 rounded-full text-sm font-semibold ${tab === id ? "bg-surface text-ink shadow-soft" : "text-muted hover:text-ink"}`}
+            className={`min-h-11 flex-1 rounded-full px-3 text-sm font-semibold whitespace-nowrap ${tab === id ? "bg-surface text-ink shadow-soft" : "text-muted hover:text-ink"}`}
           >
             {label}
           </button>
@@ -560,6 +564,7 @@ function SuperadminPage() {
         {tab === "academias" && <AcademiesTab />}
         {tab === "usuarios" && <UsersTab />}
         {tab === "inicio" && <HomeTab />}
+        {tab === "marca" && <SiteBrandTab />}
       </section>
     </div>
   );
