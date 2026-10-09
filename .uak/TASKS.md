@@ -733,3 +733,21 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - `RATELIMIT_ENABLED=false` really disables the limits (slowapi reads the env var as text and overrides the app setting today); test both values.
 - **Verify:** `uv run pytest -q app/tests/test_ratelimit.py && npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
 - **Next step:** remove the outline, then the brand leftovers, then the flag.
+
+## UPS-040 · Mobile pass: skeletons that match the content and phone layouts on every screen
+
+- **Type:** ux
+- **Priority:** P0
+- **Estimate:** 240 min
+- **Rubric / Spec:** human request 2026-10-09: the app looks odd on phones in many cases, above all the skeletons
+- **Depends on:** UPS-035, UPS-039
+- **Uses contract:** UPS-033
+- **Related:** UPS-038
+- **Paths:** web/src/components/, web/src/layouts/, web/src/index.css, web/src/features/home/, web/src/features/academy/, web/src/features/auth/, web/src/features/account/, web/src/features/community/, web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, web/src/features/resources/, web/src/features/superadmin/, web/src/features/academy-admin/, e2e/test_mobile.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - Every loading state at 390 px uses a skeleton with the same shape, count and size as the content it replaces (cards, lists, headers, tabs): no jump when data arrives (measured box before/after ≤ 4 px) and no skeleton wider than the screen.
+  - Every screen of the three roles at 390×844 and 360×740 (including tabs and modals): no horizontal scroll, no clipped text or buttons, touch targets ≥ 44 px, nothing hidden behind the bottom tab bar, spacing consistent with web/DESIGN.md.
+  - `e2e/test_mobile.py` visits each route per role at 390 px and asserts no horizontal scroll and stable skeleton→content boxes; screenshots of before/after kept for review.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** audit every route at 390 px, then fix the shared Skeleton set and each screen.
