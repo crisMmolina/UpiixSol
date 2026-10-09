@@ -43,6 +43,18 @@ def test_draft_hidden_except_for_superadmin(
     assert "taller-git" in [p["slug"] for p in drafts]
 
 
+def test_drafts_filter_lists_only_drafts(
+    as_superadmin: TestClient, as_member: TestClient, seeded: dict
+) -> None:
+    as_superadmin.post("/api/blog", json=NEW)
+    drafts = as_superadmin.get("/api/blog", params={"drafts": True}).json()["items"]
+    assert [p["slug"] for p in drafts] == ["taller-git"]
+    assert all(p["published_at"] is None for p in drafts)
+    # Anyone else asking for drafts gets the published listing, never a draft.
+    member = as_member.get("/api/blog", params={"drafts": True}).json()["items"]
+    assert SLUG in [p["slug"] for p in member] and "taller-git" not in [p["slug"] for p in member]
+
+
 def test_publish_keeps_date_and_unpublish_hides(
     as_superadmin: TestClient, client: TestClient, seeded: dict
 ) -> None:
