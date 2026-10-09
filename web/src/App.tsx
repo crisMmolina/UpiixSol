@@ -3,7 +3,8 @@ import { createBrowserRouter, matchRoutes, Outlet, RouterProvider, useLocation, 
 
 import { setAnalyticsUser, track } from "./lib/analytics";
 import { useAuth } from "./lib/auth";
-import { SITE } from "./lib/brand";
+import { SITE, subscribeSite, useSiteVersion } from "./lib/brand";
+import { CAMPUS_BRANDING } from "./lib/theme";
 
 // Contract (owner UPS-001, nobody edits this file after setup):
 // - Each feature is web/src/features/<name>/index.tsx and exports `routes: RouteObject[]`
@@ -13,6 +14,10 @@ import { SITE } from "./lib/brand";
 // - Every route renders inside <PageViews>, which records a `page.view` usage event per navigation with the
 //   route template ("/a/:slug/clases/:lessonId"), never the raw URL (UPS-037, web/src/lib/analytics.ts).
 //   It reads the session from AuthProvider (web/src/lib/providers.tsx).
+// - Site brand (UPS-041): lib/brand.tsx has already loaded GET /api/site before this module runs (top-level
+//   await, ≤ 800 ms, build defaults on failure), so the first paint uses it. When it changes later (a
+//   superadmin saves "Marca del sitio" in /admin, or a slow first answer), CAMPUS_BRANDING follows and the
+//   routes remount under the new brand; the providers (session, notifications) stay mounted.
 type FeatureModule = { routes?: RouteObject[]; order?: number };
 type ProvidersModule = { default: ComponentType<{ children: ReactNode }> };
 
@@ -80,12 +85,26 @@ function PageViews() {
   return <Outlet />;
 }
 
+// lib/theme.tsx copies SITE into CAMPUS_BRANDING when it loads: keep that copy in step with later changes.
+subscribeSite(() =>
+  Object.assign(CAMPUS_BRANDING, {
+    name: SITE.name,
+    logo_url: SITE.logoUrl,
+    mascot_url: SITE.hasMascot ? SITE.mascotUrl : null,
+    color_primary: SITE.colors.primary,
+    color_secondary: SITE.colors.secondary,
+    color_accent: SITE.colors.accent,
+  }),
+);
+
 const router = createBrowserRouter([{ element: <PageViews />, children: appRoutes }]);
 
 export default function App() {
+  // Screens read SITE while rendering: a new key re-renders all of them with the new brand (same URL).
+  const brand = useSiteVersion();
   return (
     <Providers>
-      <RouterProvider router={router} />
+      <RouterProvider key={brand} router={router} />
     </Providers>
   );
 }

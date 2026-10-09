@@ -1,17 +1,26 @@
-// Site brand (UPS-032): the campus name, logo, mascot and palette live here and nowhere else.
+// Site brand (UPS-032, editable since UPS-041): the campus name, logo, mascot and palette live here and nowhere else.
 //
-//   SITE.name / SITE.logoUrl / SITE.mascotUrl / SITE.colors   // VITE_SITE_NAME, VITE_SITE_LOGO override them
+//   SITE.name / SITE.logoUrl / SITE.mascotUrl / SITE.colors   // read during render; always the current brand
+//   const site = useSite();                                    // same values, re-renders when they change
 //   <Wordmark name={club.name} colors={club} className={LOGO_HEIGHT.header} />  // a name drawn like the logos
+//
+// Runtime store: SITE starts from the build (VITE_SITE_NAME, VITE_SITE_LOGO, the UpiixSol files in
+// public/brand/) and is overwritten by GET /api/site, which superadmins edit in /admin → "Marca del sitio".
+// This module waits for that read (top-level await, at most LOAD_TIMEOUT_MS; on failure the build defaults
+// stay) before any importer runs, so the copies other modules take when they load (CAMPUS_BRANDING in
+// lib/theme.tsx, the login wordmark colors) already hold the site brand. A later change (applySite) mutates
+// SITE in place and notifies subscribers: App.tsx keeps CAMPUS_BRANDING in step and remounts the routes so
+// every screen renders it without a reload.
 //
 // Leaf module: lib/theme.tsx builds CAMPUS_BRANDING from SITE, so this file must not import theme.tsx.
 
-import type { CSSProperties } from "react";
+import { useSyncExternalStore, type CSSProperties } from "react";
 
 declare global {
   interface ImportMetaEnv {
-    /** Campus name shown in the header, the switcher and the tab title (default "UpiixSol"). */
+    /** Default campus name until GET /api/site answers (default "UpiixSol"). */
     readonly VITE_SITE_NAME?: string;
-    /** Same-origin path of the campus logo (e.g. /brand/x/logo.png). Empty = no logo: the name as a wordmark. */
+    /** Default same-origin logo path until GET /api/site answers. Empty = no logo: the name as a wordmark. */
     readonly VITE_SITE_LOGO?: string;
   }
 }
@@ -20,39 +29,197 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const SAME_ORIGIN_ASSET = /^\/(?!\/)[\w\-./%]+$/;
 
 const DEFAULT_LOGO = "/brand/upiixsol/wordmark.png";
+const DEFAULT_MASCOT = "/brand/upiixsol/mascot.png";
+/** Stand-in for "no mascot": a 0×0 image, so `<img src={SITE.mascotUrl}>` draws nothing and takes no width. */
+const NO_MASCOT = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='0'%20height='0'/%3E";
+const DEFAULT_COLORS = { primary: "#00BF63", secondary: "#04944F", accent: "#F28034" } as const;
+/** How long the first paint waits for GET /api/site before using the build defaults. */
+const LOAD_TIMEOUT_MS = 800;
 
-function siteLogo(value: string | undefined): string | null {
-  if (value === undefined) return DEFAULT_LOGO;
-  const path = value.trim();
+/** GET /api/site, PUT /api/admin/site (name and colors) and the upload/remove responses. */
+export interface SiteSettings {
+  name: string;
+  /** null → the name drawn as a three-color wordmark. */
+  logo_url: string | null;
+  /** null → no mascot anywhere. */
+  mascot_url: string | null;
+  color_primary: string;
+  color_secondary: string;
+  color_accent: string;
+}
+
+export interface Site {
+  name: string;
+  /** Browser tab title; index.html keeps the default name as its static title. */
+  title: string;
+  logoUrl: string | null;
+  /** Intrinsic size of the logo when known (the default one), so its box is reserved before it loads. */
+  logoSize?: { width: number; height: number };
+  /** Always an image URL (a blank 0×0 one when the site has no mascot): check `hasMascot` to leave it out. */
+  mascotUrl: string;
+  hasMascot: boolean;
+  mascotSize?: { width: number; height: number };
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    accent2: string;
+    /** AA link shades of the primary on white and on the dark course surfaces (web/DESIGN.md). */
+    link: string;
+    linkDark: string;
+  };
+}
+
+function safeAsset(value: string | null | undefined): string | null {
+  const path = value?.trim() ?? "";
   return SAME_ORIGIN_ASSET.test(path) ? path : null;
 }
 
-const siteName = import.meta.env.VITE_SITE_NAME?.trim() || "UpiixSol";
-const logoUrl = siteLogo(import.meta.env.VITE_SITE_LOGO);
+function buildLogo(value: string | undefined): string | null {
+  return value === undefined ? DEFAULT_LOGO : safeAsset(value);
+}
 
-// The site config is read once at load (env vars are build-time), so fast refresh of it is irrelevant.
+/** The brand the web ships with (and keeps when GET /api/site fails or is slow). */
 // oxlint-disable-next-line react/only-export-components
-export const SITE = {
-  name: siteName,
-  /** Browser tab title; index.html keeps the default name as its static title. */
-  title: `${siteName} Campus`,
-  logoUrl,
-  /** Intrinsic size of the logo when known (the default one), so its box is reserved before it loads. */
-  logoSize: logoUrl === DEFAULT_LOGO ? { width: 787, height: 211 } : undefined,
-  mascotUrl: "/brand/upiixsol/mascot.png",
-  mascotSize: { width: 670, height: 492 },
-  colors: {
-    primary: "#00BF63",
-    secondary: "#04944F",
-    accent: "#F28034",
-    accent2: "#B4422F",
-    /** AA link shades of the primary on white and on the dark course surfaces (web/DESIGN.md). */
-    link: "#037A41",
-    linkDark: "#3DD68C",
-  },
-} as const;
+export const BUILT_IN_SITE: Readonly<SiteSettings> = {
+  name: import.meta.env.VITE_SITE_NAME?.trim() || "UpiixSol",
+  logo_url: buildLogo(import.meta.env.VITE_SITE_LOGO),
+  mascot_url: DEFAULT_MASCOT,
+  color_primary: DEFAULT_COLORS.primary,
+  color_secondary: DEFAULT_COLORS.secondary,
+  color_accent: DEFAULT_COLORS.accent,
+};
 
-if (typeof document !== "undefined") document.title = SITE.title;
+function mix(hex: string, toward: number, amount: number): string {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(1 + i, 3 + i), 16);
+    return Math.round(c + (toward - c) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(2)}${channel(4)}`;
+}
+
+/** The primary, darkened (light surface) or lightened (dark surface) until text on that surface reaches AA. */
+function linkShade(primary: string, surface: string, toward: number): string {
+  for (let step = 0; step <= 20; step += 1) {
+    const shade = mix(primary, toward, step / 20);
+    if (contrastRatio(shade, surface) >= 4.5) return shade;
+  }
+  return toward === 0 ? "#000000" : "#FFFFFF";
+}
+
+function siteFrom(settings: SiteSettings): Site {
+  const name = settings.name?.trim() || BUILT_IN_SITE.name;
+  const logoUrl = safeAsset(settings.logo_url);
+  const mascot = safeAsset(settings.mascot_url);
+  const hex = (value: string, fallback: string) => (HEX.test(value ?? "") ? value.toUpperCase() : fallback);
+  const primary = hex(settings.color_primary, DEFAULT_COLORS.primary);
+  const builtInPrimary = primary === DEFAULT_COLORS.primary;
+  return {
+    name,
+    title: `${name} Campus`,
+    logoUrl,
+    logoSize: logoUrl === DEFAULT_LOGO ? { width: 787, height: 211 } : undefined,
+    mascotUrl: mascot ?? NO_MASCOT,
+    hasMascot: mascot !== null,
+    mascotSize: mascot === DEFAULT_MASCOT ? { width: 670, height: 492 } : undefined,
+    colors: {
+      primary,
+      secondary: hex(settings.color_secondary, DEFAULT_COLORS.secondary),
+      accent: hex(settings.color_accent, DEFAULT_COLORS.accent),
+      accent2: "#B4422F",
+      link: builtInPrimary ? "#037A41" : linkShade(primary, "#F5F6F7", 0),
+      linkDark: builtInPrimary ? "#3DD68C" : linkShade(primary, "#1B1E22", 255),
+    },
+  };
+}
+
+/** The current site brand. Mutated in place by applySite, so read it during render, not at module load. */
+// oxlint-disable-next-line react/only-export-components
+export const SITE: Site = siteFrom(BUILT_IN_SITE);
+
+function settingsOf(site: Site): SiteSettings {
+  return {
+    name: site.name,
+    logo_url: site.logoUrl,
+    mascot_url: site.hasMascot ? site.mascotUrl : null,
+    color_primary: site.colors.primary,
+    color_secondary: site.colors.secondary,
+    color_accent: site.colors.accent,
+  };
+}
+
+let current: SiteSettings = settingsOf(SITE);
+let snapshot: Readonly<Site> = { ...SITE, colors: { ...SITE.colors } };
+let version = 0;
+const listeners = new Set<() => void>();
+
+/** Make `settings` the site brand everywhere (no-op when nothing changed). */
+// oxlint-disable-next-line react/only-export-components
+export function applySite(settings: SiteSettings): void {
+  const next = siteFrom(settings);
+  const normalized = settingsOf(next);
+  if (JSON.stringify(normalized) === JSON.stringify(current)) return;
+  current = normalized;
+  const { colors, ...rest } = next;
+  Object.assign(SITE, rest);
+  if (!next.logoSize) delete SITE.logoSize;
+  if (!next.mascotSize) delete SITE.mascotSize;
+  Object.assign(SITE.colors, colors);
+  snapshot = { ...SITE, colors: { ...SITE.colors } };
+  version += 1;
+  if (typeof document !== "undefined") document.title = SITE.title;
+  for (const listener of listeners) listener();
+}
+
+/** The site brand in the API's shape (what the /admin editor starts from). */
+// oxlint-disable-next-line react/only-export-components
+export function siteSettings(): SiteSettings {
+  return { ...current };
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function subscribeSite(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** The site brand; the component re-renders when a superadmin changes it. */
+// oxlint-disable-next-line react/only-export-components
+export function useSite(): Readonly<Site> {
+  return useSyncExternalStore(subscribeSite, () => snapshot);
+}
+
+/** A number that changes with every brand change (App.tsx keys the routes with it). */
+// oxlint-disable-next-line react/only-export-components
+export function useSiteVersion(): number {
+  return useSyncExternalStore(subscribeSite, () => version);
+}
+
+async function fetchSite(cache: RequestCache): Promise<SiteSettings> {
+  const response = await fetch("/api/site", { cache, headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`GET /api/site: ${response.status}`);
+  return (await response.json()) as SiteSettings;
+}
+
+/**
+ * Re-reads the brand past the browser cache (GET /api/site is cached for a minute), so a reload right after
+ * a superadmin's change does not bring the old one back.
+ */
+// oxlint-disable-next-line react/only-export-components
+export async function reloadSite(): Promise<void> {
+  applySite(await fetchSite("reload"));
+}
+
+if (typeof document !== "undefined") {
+  // A late answer still applies (App.tsx remounts the routes); a failed one keeps the build defaults.
+  const loading = fetchSite("default")
+    .then(applySite)
+    .catch(() => undefined);
+  await Promise.race([loading, new Promise((resolve) => setTimeout(resolve, LOAD_TIMEOUT_MS))]);
+  document.title = SITE.title;
+}
 
 function luminance(hex: string): number {
   const value = hex.replace("#", "");

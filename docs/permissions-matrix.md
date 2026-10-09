@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **59/59 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -37,6 +37,11 @@ Cobertura: **59/59 endpoints de escritura (100 %)** × 5 roles.
 | PATCH | `/api/admin/users/{user_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | POST | `/api/admin/users/{user_id}/reset-password` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | PUT | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| PUT | `/api/admin/site` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/admin/site/logo` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| POST | `/api/admin/site/mascot` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| DELETE | `/api/admin/site/logo` | 🔒 | ❌ | ❌ | ❌ | ✅ | no logo → the name as a three-color wordmark |
+| DELETE | `/api/admin/site/mascot` | 🔒 | ❌ | ❌ | ❌ | ✅ | no mascot anywhere |
 | POST | `/api/channels/{channel_id}/posts` | 🔒 | ✅ | ✅ | ❌ | ✅ | club channel: its members and admins (UPS-035); General: anyone |
 | POST | `/api/posts/{post_id}/comments` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/posts/{post_id}/hide` | 🔒 | ❌ | ✅ | ❌ | ✅ | moderation: academy channel |
