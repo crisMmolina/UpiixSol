@@ -1,8 +1,8 @@
 # STATE
 
 Phase: execution
-Updated: 1791512409
-AVAILABLE: UPS-031 UPS-038 
+Updated: 1791512959
+AVAILABLE: UPS-031 UPS-038 UPS-040 
 CLAIMED: UPS-035 UPS-039 
 BLOCKED: -
 REVIEW: UPS-034 UPS-036 
@@ -11,17 +11,17 @@ CANCELLED: UPS-030
 
 Claims (first 24; status --task ID shows detail):
 UPS-034 | REVIEW | joahan-claude | until 1791595941
-UPS-035 | CLAIMED | joahan-claude | until 1791524889
+UPS-035 | CLAIMED | joahan-claude | until 1791527359
 UPS-036 | REVIEW | joahan-claude | until 1791596237
 UPS-039 | CLAIMED | joahan-claude | until 1791524916
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1791444003 | UPS-028 | Routes, models, API paths and academy_id unchanged | Why: Task scope: only user-visible copy
 - 1791445250 | deadline decision/UPS-025-1791444332/1791445232 | REVERSIBLE_AND_LOG | Option: Edit app/schemas/community.py, app/models/community.py, migration 0003, web/src/lib/ty
 - 1791492852 | deadline decision/UPS-030-1791485270/1791486170 | REVERSIBLE_AND_LOG | Option: Treat UPS-030 as integrated: merged in #48 (362e588), approved c95309d by joahan-rev, 
 - 1791507960 | deadline decision/UPS-037-1791495188/1791496088 | REVERSIBLE_AND_LOG | Option: UPS-037 also edits app/tests/test_permissions_matrix.py and docs/permissions-matrix.md
 - 1791510450 | deadline decision/UPS-034-1791509548/1791510448 | REVERSIBLE_AND_LOG | Option: UPS-034 adds a new file e2e/test_content.py outside its Paths; Why: acceptance asks fo
+- 1791512959 | UPS-035 | posting in a club channel requires enrollment, its admin or superadmin; General open; reading/comments/reactions open to signed-in users; authors cannot de
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
