@@ -8,7 +8,7 @@ import { api, errorMessage } from "@/lib/api";
 import type { PostOut } from "@/lib/types";
 
 import { Reveal } from "./Reveal";
-import type { CommunityChannel } from "./shared";
+import { COMPOSER_TEXTAREA, type CommunityChannel } from "./shared";
 
 const POST_MAX_CHARS = 512; // same limit as the API (app/schemas/community.py)
 
@@ -76,7 +76,7 @@ export function Composer({ channel, onPosted }: { channel: CommunityChannel; onP
             setError(null);
           }}
           placeholder={`Comparte un hallazgo en #${channel.slug}…`}
-          className="w-full resize-y rounded-[var(--radius-field)] border border-line bg-surface px-3.5 py-2.5 focus:border-secondary focus:outline-none focus:ring-3 focus:ring-primary/25"
+          className={`resize-y ${COMPOSER_TEXTAREA}`}
         />
         <Reveal show={showLink}>
           <div className="pt-3 pb-1">
