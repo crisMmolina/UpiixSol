@@ -3,20 +3,34 @@
 Only nickname + avatar of authors are exposed (PublicUser). Hidden posts/comments stay in place as
 "Mensaje oculto": the API sends the flag and nothing of the content (redacted here, server-side), and
 nobody can comment or react on them. Who hid them and when is recorded (repudiation, plan 001 STRIDE).
+The image of a hidden post leaves `/media` (UPS-035): only moderators of its channel can still read it.
+
+Who may post (UPS-035, decision): General is open to every signed-in user (spec: "conversación abierta para
+todo el campus"); a club channel takes posts from that club's members (enrolled), its admins and
+superadmins. Every active channel stays readable by any signed-in user (IDEA §2.1: all active academies
+are visible), and comments/reactions stay open to them. Authors can delete their own visible posts and
+comments; moderators hide (the hidden record stays as audit trail and cannot be deleted by its author).
 """
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, delete, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.errors import AppError
-from app.models import Academy, Channel, ChannelType, Comment, Post, Role, User
+from app.models import Academy, Channel, ChannelType, Comment, Enrollment, MediaObject, Post, Role, User
 from app.models.common import utcnow
 from app.pagination import paginate
 from app.sanitize import clean_markdown
 from app.schemas.common import Page
 from app.schemas.community import ChannelOut, CommentOut, PostOut
 from app.schemas.users import PublicUser
+from app.services import media
 from app.services.academies import posts_out
+
+
+class ChannelAccessOut(ChannelOut):
+    """A channel plus whether the caller may post in it (the composer is shown only then)."""
+
+    can_post: bool = False
 
 
 def _not_found() -> AppError:
@@ -31,13 +45,32 @@ def _visible_channels_stmt() -> Select:
     )
 
 
-def list_channels(db: Session) -> list[ChannelOut]:
+def _enrolled(db: Session, user: User) -> set[int]:
+    return set(db.scalars(select(Enrollment.academy_id).where(Enrollment.user_id == user.id)))
+
+
+def _may_post(user: User, channel: Channel, enrolled: set[int]) -> bool:
+    if channel.type == ChannelType.feed:
+        return False
+    if channel.academy_id is None or user.role == Role.superadmin:
+        return True
+    is_club_admin = user.role == Role.academy_admin and user.academy_id == channel.academy_id
+    return is_club_admin or channel.academy_id in enrolled
+
+
+def list_channels(db: Session, user: User) -> list[ChannelAccessOut]:
     order = {ChannelType.feed: 0, ChannelType.general: 1, ChannelType.academy: 2}
     rows = db.execute(
         _visible_channels_stmt().add_columns(Academy.position).order_by(Academy.position, Channel.id)
     ).all()
     channels = sorted(rows, key=lambda row: (order[row[0].type], row[1] or 0, row[0].id))
-    return [ChannelOut.model_validate(row[0]) for row in channels]
+    enrolled = _enrolled(db, user)
+    return [
+        ChannelAccessOut.model_validate(row[0]).model_copy(
+            update={"can_post": _may_post(user, row[0], enrolled)}
+        )
+        for row in channels
+    ]
 
 
 def get_channel(db: Session, channel_id: int) -> Channel:
@@ -77,15 +110,17 @@ def list_posts(db: Session, channel: Channel, cursor: str | None, limit: int) ->
     return Page[PostOut](items=items, next_cursor=page.next_cursor)
 
 
-def ensure_postable(channel: Channel) -> None:
+def ensure_postable(db: Session, channel: Channel, author: User) -> None:
     if channel.type == ChannelType.feed:
         raise AppError(422, "El Feed reúne los canales: publica en General o en el canal de un club.")
+    if not _may_post(author, channel, _enrolled(db, author)):
+        raise AppError(403, f"Únete a {channel.name} para publicar en su canal.", code="not_a_member")
 
 
 def create_post(
     db: Session, channel: Channel, author: User, body: str, link_url: str | None, image_url: str | None
 ) -> PostOut:
-    ensure_postable(channel)
+    ensure_postable(db, channel, author)
     post = Post(
         channel_id=channel.id,
         author_id=author.id,
@@ -155,16 +190,48 @@ def _can_moderate(user: User, channel: Channel) -> bool:
     )
 
 
-def hide_post(db: Session, post_id: int, moderator: User) -> dict:
+def hide_post(db: Session, post_id: int, moderator: User) -> tuple[dict, str | None]:
+    """Hides the post; returns the response and the image URL the caller removes after committing."""
     post, channel = _visible_post(db, post_id)
     if not _can_moderate(moderator, channel):
         raise AppError(403)
     post.is_hidden, post.hidden_by_id, post.hidden_at = True, moderator.id, utcnow()
+    media.withdraw_media(db, post.image_url)  # moderator-only copy, out of /media
     db.flush()
-    return {"id": post.id, "is_hidden": True}
+    return {"id": post.id, "is_hidden": True}, post.image_url
 
 
-def hide_comment(db: Session, comment_id: int, moderator: User) -> dict:
+def hidden_image(db: Session, post_id: int, moderator: User) -> MediaObject:
+    """The image of a hidden post, for moderators of its channel only."""
+    row = db.execute(
+        select(Post, Channel).join(Channel, Channel.id == Post.channel_id).where(Post.id == post_id)
+    ).first()
+    if row is None or not row[0].is_hidden:
+        raise _not_found()
+    post, channel = row
+    get_channel(db, channel.id)
+    if not _can_moderate(moderator, channel):
+        raise AppError(403)
+    stored = media.load_withdrawn(db, post.image_url)
+    if stored is None:
+        raise _not_found()
+    return stored
+
+
+def delete_post(db: Session, post_id: int, author: User) -> str | None:
+    """Authors delete their own visible post (comments and reactions go with it, ON DELETE CASCADE).
+
+    Returns the image URL the caller removes after committing."""
+    post, _channel = _visible_post(db, post_id)
+    if post.author_id != author.id:
+        raise AppError(403, "Solo quien publicó puede borrar esta publicación.")
+    image_url = post.image_url
+    db.execute(delete(Post).where(Post.id == post.id))
+    db.flush()
+    return image_url
+
+
+def _visible_comment(db: Session, comment_id: int) -> tuple[Comment, Channel]:
     row = db.execute(
         select(Comment, Channel)
         .join(Post, Post.id == Comment.post_id)
@@ -175,6 +242,19 @@ def hide_comment(db: Session, comment_id: int, moderator: User) -> dict:
         raise _not_found()
     comment, channel = row
     get_channel(db, channel.id)  # channel of an inactive academy → 404
+    return comment, channel
+
+
+def delete_comment(db: Session, comment_id: int, author: User) -> None:
+    comment, _channel = _visible_comment(db, comment_id)
+    if comment.author_id != author.id:
+        raise AppError(403, "Solo quien comentó puede borrar este comentario.")
+    db.execute(delete(Comment).where(Comment.id == comment.id))
+    db.flush()
+
+
+def hide_comment(db: Session, comment_id: int, moderator: User) -> dict:
+    comment, channel = _visible_comment(db, comment_id)
     if not _can_moderate(moderator, channel):
         raise AppError(403)
     comment.is_hidden, comment.hidden_by_id, comment.hidden_at = True, moderator.id, utcnow()

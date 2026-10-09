@@ -1,9 +1,11 @@
 // UPS-018: reactions under each post. Counts come with the post listing; which ones are mine come from
 // GET /api/reactions/mine, batched: every PostCard rendered in the same tick shares one request.
 // Only reactions somebody used are shown; the rest live behind "Agregar reacción" so an unreacted post
-// does not carry a row of five empty circles.
+// does not carry a row of five empty circles. UPS-035: the row keeps its width while you use it (a kind
+// you toggled stays, at 0, until the next refresh; the "+" keeps its slot) and the picker floats above
+// the row instead of pushing the footer.
 import { Smiley } from "@phosphor-icons/react";
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { api, errorMessage } from "@/lib/api";
 import type { PostOut } from "@/lib/types";
@@ -57,8 +59,11 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
   const [latest, setLatest] = useState<{ base: PostOut["reactions"]; counts: Record<string, number> } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  // Kinds I toggled since the listing last refreshed this post: they keep their button even at 0.
+  const [kept, setKept] = useState<{ base: PostOut["reactions"]; kinds: string[] } | null>(null);
   const counts = latest && latest.base === post.reactions ? latest.counts : post.reactions;
-  const shown = KINDS.filter(({ id }) => (counts[id] ?? 0) > 0 || mine?.includes(id));
+  const keptKinds = kept && kept.base === post.reactions ? kept.kinds : [];
+  const shown = KINDS.filter(({ id }) => (counts[id] ?? 0) > 0 || mine?.includes(id) || keptKinds.includes(id));
   const available = KINDS.filter((kind) => !shown.includes(kind));
   const disabled = mine === null || busy !== null;
 
@@ -74,6 +79,7 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
     const pressed = mine?.includes(kind) ?? false;
     setPicking(false);
     setBusy(kind);
+    setKept({ base: post.reactions, kinds: [...keptKinds, kind] });
     try {
       const result = await api<ReactionsOut>(`/posts/${post.id}/reactions/${kind}`, { method: pressed ? "DELETE" : "PUT" });
       setMine(result.mine);
@@ -92,8 +98,12 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
     }
   }
 
+  function closeOnLeave(event: FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPicking(false);
+  }
+
   return (
-    <div role="group" aria-label="Reacciones" className="flex flex-wrap items-center gap-1.5" onKeyDown={closeOnEscape}>
+    <div role="group" aria-label="Reacciones" className="relative flex flex-wrap items-center gap-1.5" onKeyDown={closeOnEscape} onBlur={closeOnLeave}>
       {shown.map(({ id, emoji, label }) => {
         const total = counts[id] ?? 0;
         const pressed = mine?.includes(id) ?? false;
@@ -115,24 +125,25 @@ export function Reactions({ post, onError }: { post: PostOut; onError: (message:
           </button>
         );
       })}
-      {available.length > 0 && (
-        <button
-          type="button"
-          aria-expanded={picking}
-          aria-label="Agregar reacción"
-          title="Agregar reacción"
-          disabled={disabled}
-          onClick={() => setPicking((open) => !open)}
-          className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-0.5 rounded-full px-2.5 text-muted transition hover:bg-line/50 hover:text-ink disabled:opacity-60 ${
-            picking ? "bg-line/50 text-ink" : ""
-          }`}
-        >
-          <Smiley size={20} weight="bold" aria-hidden />
-          <span aria-hidden className="text-sm font-bold">+</span>
-        </button>
-      )}
-      {picking && (
-        <div className="flex gap-0.5 rounded-full border border-line bg-surface p-0.5 shadow-soft">
+      {/* Always rendered: when every kind is shown it only turns invisible, so the row keeps its width. */}
+      <button
+        type="button"
+        aria-expanded={picking}
+        aria-label="Agregar reacción"
+        title="Agregar reacción"
+        aria-hidden={available.length === 0 || undefined}
+        tabIndex={available.length === 0 ? -1 : undefined}
+        disabled={disabled}
+        onClick={() => setPicking((open) => !open)}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-0.5 rounded-full px-2.5 text-muted transition hover:bg-line/50 hover:text-ink disabled:opacity-60 ${
+          picking ? "bg-line/50 text-ink" : ""
+        } ${available.length === 0 ? "invisible" : ""}`}
+      >
+        <Smiley size={20} weight="bold" aria-hidden />
+        <span aria-hidden className="text-sm font-bold">+</span>
+      </button>
+      {picking && available.length > 0 && (
+        <div className="absolute bottom-full left-0 z-10 mb-1 flex gap-0.5 rounded-full border border-line bg-surface p-0.5 shadow-soft">
           {available.map(({ id, emoji, label }) => (
             <button
               key={id}

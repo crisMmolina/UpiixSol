@@ -114,3 +114,25 @@ def test_delete_media_only_inside_media_dir(tmp_path: Path) -> None:
     delete_media("https://evil.com/x.png")
     delete_media(None)
     assert outside.exists()
+
+
+def broken_png(*, bad_crc: bool) -> bytes:
+    """1x1 PNG with a valid header and a broken IDAT: bad checksum (verify() raises SyntaxError, not
+    OSError: was a 500) or a valid checksum over bytes that are not zlib (fails only when decoding)."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, data: bytes, crc: int | None = None) -> bytes:
+        checksum = zlib.crc32(kind + data) & 0xFFFFFFFF if crc is None else crc
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", checksum)
+
+    header = chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+    idat = chunk(b"IDAT", b"garbage-not-zlib", 0 if bad_crc else None)
+    return b"\x89PNG\r\n\x1a\n" + header + idat + chunk(b"IEND", b"")
+
+
+@pytest.mark.parametrize("bad_crc", [True, False])
+def test_malformed_png_is_422_not_500(bad_crc: bool) -> None:
+    with pytest.raises(AppError) as error:
+        save_image_bytes(broken_png(bad_crc=bad_crc), "post")
+    assert error.value.status == 422 and error.value.code == "invalid_image"

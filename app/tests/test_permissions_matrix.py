@@ -39,6 +39,8 @@ ANY = {"member", "admin_own", "admin_other", "superadmin"}
 OWN = {"admin_own", "superadmin"}
 SUPER = {"superadmin"}
 PUBLIC = set(ROLES)
+CLUB = {"member", "admin_own", "superadmin"}  # UPS-035: the club's members (enrolled) and admins
+AUTHOR = {"member"}  # UPS-035: only the author (the seeded member wrote the target post and comment)
 
 
 @dataclass
@@ -153,7 +155,13 @@ MATRIX: list[Rule] = [
     Rule("POST", "/api/admin/users/{user_id}/reset-password", SUPER),
     Rule("PUT", "/api/admin/home", SUPER, _json(lambda _w: {"hero_title": "UpiixSol Campus"})),
     # ── Community ────────────────────────────────────────────
-    Rule("POST", "/api/channels/{channel_id}/posts", ANY, lambda _w: {"data": {"body": "Hola"}}),
+    Rule(
+        "POST",
+        "/api/channels/{channel_id}/posts",
+        CLUB,
+        lambda _w: {"data": {"body": "Hola"}},
+        note="club channel: its members and admins (UPS-035); General: anyone",
+    ),
     Rule("POST", "/api/posts/{post_id}/comments", ANY, _json(lambda _w: {"body": "Comentario"})),
     Rule("POST", "/api/posts/{post_id}/hide", OWN, note="moderation: academy channel"),
     Rule("POST", "/api/comments/{comment_id}/hide", OWN, note="moderation: academy channel"),
@@ -223,6 +231,9 @@ MATRIX: list[Rule] = [
         _json(lambda _w: {"session_id": "matrix-0001", "events": [{"name": "page.view"}]}),
         note="usage analytics, 30/min per user (UPS-037)",
     ),
+    # ── Community: authors delete their own (UPS-035) ────────
+    Rule("DELETE", "/api/posts/{post_id}", AUTHOR, note="author only; moderators hide instead"),
+    Rule("DELETE", "/api/comments/{comment_id}", AUTHOR, note="author only; moderators hide instead"),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}
