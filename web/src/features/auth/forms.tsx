@@ -154,7 +154,8 @@ export function RegisterForm({ onDone, play }: FormProps) {
             />
             <span>
               Acepto el <strong>aviso de privacidad</strong>: mi boleta y mi correo solo los ven la mesa directiva y yo; en la
-              comunidad solo se muestran mi apodo y mi foto.
+              comunidad solo se muestran mi apodo y mi foto. Registramos cómo se usa la plataforma (páginas y acciones)
+              para mejorarla.
             </span>
           </label>
           <FormMessage id={privacyId} size="xs" live={false} message={errors.accept_privacy} />

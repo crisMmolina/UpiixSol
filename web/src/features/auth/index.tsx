@@ -5,6 +5,7 @@ import { Navigate, useNavigate, useSearchParams, type RouteObject } from "react-
 import { AnimatedHeight } from "@/components/Motion";
 import { PageSkeleton } from "@/components/Skeleton";
 import { homeFor, useAuth } from "@/lib/auth";
+import { SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 import type { UserMe } from "@/lib/types";
 
@@ -13,6 +14,12 @@ import { LoginForm, RegisterForm } from "./forms";
 export const order = 10;
 
 type Tab = "login" | "register";
+
+const SITE_WORDMARK = {
+  color_primary: SITE.colors.primary,
+  color_secondary: SITE.colors.secondary,
+  color_accent: SITE.colors.accent,
+};
 
 /** Only same-origin app paths; rejects //host, /\host and absolute URLs (open redirect). */
 export function safeNext(next: string | null): string | null {
@@ -58,16 +65,20 @@ function LoginPage() {
           the tab or a message changes its height. */}
       <main className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          <img src="/brand/upiixsol/wordmark.png" alt="UpiixSol" width={787} height={211} className="h-12 w-auto sm:h-14" />
+          {SITE.logoUrl ? (
+            <img src={SITE.logoUrl} alt={SITE.name} {...SITE.logoSize} className="h-12 w-auto sm:h-14" />
+          ) : (
+            // Same letter size as an h-12 / sm:h-14 logo image (see Wordmark in lib/brand.tsx).
+            <Wordmark name={SITE.name} colors={SITE_WORDMARK} className="block max-w-full break-words text-[2.15rem] sm:text-[2.625rem]" />
+          )}
           <h1 className="mt-6 text-3xl sm:text-4xl">Tus clubs en un solo campus</h1>
           <p className="mt-3 max-w-md text-muted">
             Retoma tus clases donde te quedaste y conversa con tu comunidad.
           </p>
           <img
-            src="/brand/upiixsol/mascot.png"
-            alt="Ajolote de UpiixSol"
-            width={670}
-            height={492}
+            src={SITE.mascotUrl}
+            alt={`Mascota de ${SITE.name}`}
+            {...SITE.mascotSize}
             className="mt-6 hidden w-full max-w-xs sm:block"
           />
         </section>

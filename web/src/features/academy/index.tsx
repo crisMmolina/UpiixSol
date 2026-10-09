@@ -138,9 +138,10 @@ function AcademyHome() {
   return (
     <div className="grid gap-8">
       <section className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-8 md:grid-cols-[1fr_auto]">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-link">Bienvenida al club</p>
-          <h1 className="mt-1 text-3xl sm:text-4xl">{data.academy.name}</h1>
+          {/* A name that is one long word wraps inside the card instead of pushing the page sideways. */}
+          <h1 className="mt-1 break-words text-3xl sm:text-4xl">{data.academy.name}</h1>
           {data.academy.welcome_text && <Markdown source={data.academy.welcome_text} className="mt-3 max-w-2xl text-lg" />}
         </div>
         {mascot && <img src={mascot} alt={`Mascota de ${data.academy.name}`} className="mx-auto w-48 rounded-card sm:w-56" />}
