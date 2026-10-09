@@ -154,6 +154,24 @@ MATRIX: list[Rule] = [
     Rule("PATCH", "/api/admin/users/{user_id}", SUPER, _json(lambda _w: {"nickname": "nuevo"})),
     Rule("POST", "/api/admin/users/{user_id}/reset-password", SUPER),
     Rule("PUT", "/api/admin/home", SUPER, _json(lambda _w: {"hero_title": "UpiixSol Campus"})),
+    # ── Site brand (UPS-041); its read, GET /api/site, is public ──
+    Rule(
+        "PUT",
+        "/api/admin/site",
+        SUPER,
+        _json(
+            lambda _w: {
+                "name": "UpiixSol",
+                "color_primary": "#00BF63",
+                "color_secondary": "#04944F",
+                "color_accent": "#F28034",
+            }
+        ),
+    ),
+    Rule("POST", "/api/admin/site/logo", SUPER, _file()),
+    Rule("POST", "/api/admin/site/mascot", SUPER, _file()),
+    Rule("DELETE", "/api/admin/site/logo", SUPER, note="no logo → the name as a three-color wordmark"),
+    Rule("DELETE", "/api/admin/site/mascot", SUPER, note="no mascot anywhere"),
     # ── Community ────────────────────────────────────────────
     Rule(
         "POST",
