@@ -9,7 +9,7 @@
 | Event / challenge | `<name, number, official URL>` |
 | Start | `<YYYY-MM-DD HH:MM IANA zone>` |
 | Official deadline | `<YYYY-MM-DD HH:MM IANA zone>` · platforms: `<platform, form, repo>` |
-| Freeze | `<deadline − 6 h>` → `Freeze-Epoch` |
+| Freeze | `uak clock START DEADLINE ZONE --write` (15% of the event, 30 min to 6 h) → `Freeze-Epoch` |
 | Clean rehearsal / plan B | `<deadline − 2 h>` |
 | Internal submission | `<deadline − 1 h>` |
 | Humans | `<name: role>` · submission owner: `<name>` (starts at T−8 h) |
@@ -49,6 +49,17 @@ Events-Per-Session: 100
 Checkpoint-Percent: 60
 Merge-Lease-Seconds: 1800
 Merge-Wait-Seconds: 180
+Merge-Adopt-Seconds: 300
 Max-Parallel-Subagents: 4
 Opus-Subagents-Per-Session: 2
+Pace: auto
+Subagent-Hard-Cap: 6
+Strong-Hard-Cap: 3
+Subagents-Per-Session: 40
+Subagents-Per-Machine: 8
+Subagent-Burst-Per-Minute: 6
+Max-Worktree-Agents: 6
+Blackbox: on
+Additive-Paths: -
+Test-First: yes
 ```

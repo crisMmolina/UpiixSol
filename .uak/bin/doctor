@@ -10,10 +10,23 @@ fails=0 warns=0
 ok()   { printf 'OK    %s\n' "$*"; }
 warn() { printf 'WARN  %s\n' "$*"; warns=$((warns + 1)); }
 bad()  { printf 'FAIL  %s\n' "$*"; fails=$((fails + 1)); }
-field() { sed -n "s/^[-* ]*$1:[* ]*//p" "$project" 2>/dev/null | head -n 1 | tr -d '\r`'; }
+self_d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)  # before the cd to the top level: $0 may be relative
+. "$self_d/lib/config.sh"
+field() { uak_cfg "$project" "$1"; }
 
+# A checkout's .git marked bare: uak-mcp 5.4.5-5.5.0, started through its git alias in a task worktree, re-initialized
+# the main repository (core.bare=true) and git then refused every command there ("must be run in a work tree").
+common=$(git rev-parse --git-common-dir 2>/dev/null) && common=$(cd "$common" 2>/dev/null && pwd -P)
+if [ "$(git rev-parse --is-bare-repository 2>/dev/null)" = true ] && [ "$(basename "${common:-x}")" = .git ]; then
+  if [ "$fix" = yes ] && git --git-dir="$common" config core.bare false; then ok "core.bare=false restored on $common"
+  else bad "core.bare=true on a checkout ($common): fix with git --git-dir=\"$common\" config core.bare false (or uak doctor --fix)"; exit 1; fi
+fi
 root=$(git rev-parse --show-toplevel 2>/dev/null) || { bad "not a Git repository"; exit 1; }
 cd "$root" || exit 1
+# Why (v6.0 review): a fresh laptop could not commit, and wt answered about a flag it never passed.
+if [ -z "$(git config user.name 2>/dev/null)" ] || [ -z "$(git config user.email 2>/dev/null)" ]; then
+  bad "git has no user.name or user.email: git config --global user.name \"Your Name\" && git config --global user.email you@example.com"
+else ok "git identity: $(git config user.name)"; fi
 project=.uak/PROJECT.md
 remote=${UAK_REMOTE:-origin}
 
@@ -21,11 +34,14 @@ remote=${UAK_REMOTE:-origin}
 bash_major=${BASH_VERSINFO[0]:-0}
 [ "$bash_major" -ge 3 ] && ok "bash $BASH_VERSION" || bad "bash 3.2+ required"
 git_v=$(git --version | awk '{print $3}'); ok "git $git_v"
-command -v python3 >/dev/null 2>&1 && ok "python3 $(python3 -c 'import sys;print(sys.version.split()[0])') (kit tests only)" ||
-  warn "no python3: uak works, but the kit test suite cannot run"
+# Run each candidate: on Windows python3 is often the Store alias, found by command -v but exiting 49 with a message.
+py_v=; for c in python3 python py; do py_v=$("$c" -c 'import sys;print(sys.version.split()[0])' 2>/dev/null) && [ -n "$py_v" ] && { py_c=$c; break; }; py_v=; done
+[ -n "$py_v" ] && ok "$py_c $py_v (kit tests and the MCP server only)" ||
+  warn "no Python that runs (python3, python or py; a Windows Store alias does not count): uak works, but the kit tests and the MCP server cannot run"
 if printf 'AKIA%s\n' ZZZZZZZZZZZZZZZZ | grep -Eq 'AKIA[A-Z0-9]{16}'; then ok "grep -E supports intervals (secret scanner active)"
 else bad "grep -E lacks intervals: the secret scanner would miss keys"; fi
-awk_name=$(awk -W version 2>&1 | head -n 1 | awk '{print $1}')
+# </dev/null: BSD awk (macOS) ignores -W, takes "version" as the program and would wait on the terminal.
+awk_name=$(awk -W version </dev/null 2>&1 | head -n 1 | awk '{print $1}')
 case "$awk_name" in mawk) warn "awk is mawk: uak avoids awk {n} intervals; do not add rules that use them";; esac
 
 # Claude Code orchestration needs Haiku 5.5 (v2.1.293+) and the advisor tool (Anthropic API).
@@ -42,16 +58,46 @@ if [ -f "$project" ]; then
   [ "$(field Backlog-Approved)" = yes ] && ok "Backlog-Approved: yes" || warn "Backlog-Approved is not yes: only P0 after 10 min, with Autonomy"
   freeze=$(field Freeze-Epoch)
   if [ "$mode" = sprint ]; then
-    case "$freeze" in ''|0|*[!0-9]*) bad "sprint without Freeze-Epoch: set it (date -d 'YYYY-MM-DD HH:MM TZ' +%s)";;
+    case "$freeze" in ''|0|*[!0-9]*) bad "sprint without Freeze-Epoch: uak clock \"START\" \"DEADLINE\" [ZONE] --write sets it (dates as YYYY-MM-DD HH:MM)";;
       *) left=$(( (freeze - $(date +%s)) / 60 )); [ "$left" -gt 0 ] && ok "freeze in ${left} min" || warn "freeze passed: demo fixes only";; esac
   fi
 else
   bad "missing $project (bash install.sh --mode sprint|marathon)"
 fi
 [ -f .uak/TASKS.md ] && ok ".uak/TASKS.md exists" || warn "no .uak/TASKS.md yet: run /uak-plan"
-[ "$(git config --get core.hooksPath)" = .githooks ] && ok "pre-commit secret scanner active" || {
-  if [ "$fix" = yes ]; then git config core.hooksPath .githooks && ok "core.hooksPath=.githooks (fixed)"
-  else bad "core.hooksPath is not .githooks: commits skip the scanner (doctor --fix)"; fi; }
+hooks_dir=.uak/githooks; [ -d "$hooks_dir" ] || hooks_dir=.githooks   # v5.2 moved them under .uak
+cur_hooks=$(git config --get core.hooksPath 2>/dev/null || true)
+case "$cur_hooks" in
+  "$hooks_dir"|"$hooks_dir/") ok "pre-commit secret scanner active ($hooks_dir)";;
+  ?*) if grep -Eqs 'uak/githooks/pre-commit' "$cur_hooks/pre-commit" "$cur_hooks/../pre-commit"; then
+        ok "the kit's pre-commit runs (through your $cur_hooks): scanner and main-checkout guard"
+      elif grep -Eqs 'secret-scan' "$cur_hooks/pre-commit" "$cur_hooks/../pre-commit"; then
+        ok "pre-commit secret scanner active (through your $cur_hooks)"
+        warn "your $cur_hooks pre-commit does not run the kit's: commits on main in the main checkout are not stopped. Add 'bash .uak/githooks/pre-commit' to it"
+      else
+        warn "core.hooksPath is $cur_hooks (yours or another hook manager), so the kit's pre-commit does not run (secret scan, main-checkout guard): add 'bash .uak/githooks/pre-commit' to its pre-commit"
+      fi;;
+  *)
+    if [ "$fix" = yes ]; then git config core.hooksPath "$hooks_dir" && ok "core.hooksPath=$hooks_dir (fixed)"
+    else bad "core.hooksPath is not set: commits skip the scanner (doctor --fix)"; fi;;
+esac
+# Kit files an update could not replace because the team edited them.
+newfiles=$(git ls-files --others --exclude-standard 2>/dev/null | grep '\.uak-new$' | head -n 6 | tr '\n' ' ')
+[ -z "$newfiles" ] || warn "kit files to merge by hand (yours differ from the kit's): ${newfiles% } — merge each into its file, then delete the .uak-new"
+# Hooks must be executable where git checks the bit (macOS/Linux). Why (MLB hackathon, Codex): the pre-commit
+# scanner was silently skipped because .githooks/pre-commit lost its executable bit.
+for h in "$hooks_dir"/*; do
+  [ -f "$h" ] || continue
+  case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) break;; esac
+  if [ ! -x "$h" ]; then
+    if [ "$fix" = yes ]; then chmod +x "$h" && git update-index --chmod=+x "$h" 2>/dev/null; ok "$h made executable (fixed; commit it)"
+    else bad "$h is not executable: git skips it (doctor --fix)"; fi
+  fi
+done
+# Synced folders lock files while git writes them. Why (MLB hackathon): the repo and worktrees lived in
+# OneDrive\Escritorio and Windows showed sporadic "git init failed" and lock errors.
+case "$root" in *OneDrive*|*Dropbox*|*iCloud*|*"Google Drive"*)
+  warn "the repo is in a synced folder ($root): sync locks files git is writing; move it outside OneDrive/Dropbox/iCloud";; esac
 grep -qx '.env' .gitignore 2>/dev/null && ok ".env is git-ignored" || bad ".gitignore does not ignore .env"
 grep -qx '.uak-env' .gitignore 2>/dev/null || warn ".gitignore does not ignore .uak-env"
 
@@ -72,6 +118,12 @@ if url=$(git config --get "remote.$remote.url"); then
       scopes=$(gh auth status 2>&1 | sed -n "s/.*Token scopes: //p" | head -n 1)
       if [ -n "$scopes" ]; then ok "gh classic token ($scopes)"
       else warn "fine-grained token: ensure 'Pull requests: Read and write' and 'Contents: Read and write', or humans will open every PR by hand"; fi
+      # GitHub never lets a PR's author approve it: alone on the repo, Review-Mode gh blocks every merge.
+      # Why (a solo marathon project, Oct 2026): two hours in, "it asks for the approval of another GitHub account".
+      case "$(field Review-Mode)" in gh|auto|'')
+        people=$(gh api "repos/$repo/collaborators?per_page=2" --jq 'length' 2>/dev/null)
+        [ "$people" != 1 ] || bad "Review-Mode $(field Review-Mode) needs a GitHub approval from someone else, and you are the only collaborator of $repo: set Review-Mode: claims in .uak/PROJECT.md and push it to main (agent identities review each other; you still merge)";;
+      esac
     else warn "gh not authenticated: agents cannot open PRs (gh auth login)"; fi;;
   esac
 else
@@ -90,6 +142,65 @@ if [ -n "$used" ]; then
   done
   [ -z "$busy" ] && ok "common ports free" || warn "busy ports: $busy— wt assigns UAK_PORT per worktree (base $base)"
 fi
+
+# MCP server (optional): the harness as native tools. Needs Python 3.8+ (standard library only).
+if [ -f .mcp.json ] || [ -f .cursor/mcp.json ]; then
+  py=  # python3 can be the Windows Store alias: found by command -v, but it does not run
+  for c in python3 python py; do "$c" -c 'import sys; sys.exit(sys.version_info < (3, 8))' 2>/dev/null && { py=$c; break; }; done
+  if [ -n "$py" ] && "$py" .uak/bin/uak-mcp --version >/dev/null 2>&1; then ok "MCP server: $("$py" .uak/bin/uak-mcp --version) (Claude Code asks once to approve the project server)"
+  else warn "MCP server configured but no Python 3.8+ to run it: the uak CLI still works; install Python or remove .mcp.json"; fi
+fi
+# The tools the plan's Verify commands run, on this machine. Why (HackADA, Windows): uv was not on PATH and rg was
+# missing; agents found out task by task, and a Verify that negated rg passed for any code.
+if [ -s .uak/TASKS.md ]; then
+  { cat .uak/TASKS.md; git show "$remote/claims:backlog/TASKS.md" 2>/dev/null; } | grep -E '^[-* ]*Verify:' | tr -d '\r' > "${TMPDIR:-/tmp}/uak-doctor-verify.$$"
+  lacking=
+  for t in uv npm npx pnpm yarn bun node rg go mvn cargo docker make java; do
+    grep -Eq "(^|[;&|(\`'\"!:[:space:]])$t([[:space:]]|\$)" "${TMPDIR:-/tmp}/uak-doctor-verify.$$" || continue
+    command -v "$t" >/dev/null 2>&1 || lacking="$lacking $t"
+  done
+  rm -f "${TMPDIR:-/tmp}/uak-doctor-verify.$$"
+  if [ -z "$lacking" ]; then ok "the tools the plan's Verify commands run are on PATH"
+  else
+    warn "Verify commands run$lacking, missing on this machine: install them before claiming$(case " $lacking " in (*" uv "*) printf ' (uv on Windows: winget install astral-sh.uv, then open a new terminal)';; esac)$(case " $lacking " in (*" rg "*) printf '; a negated rg (! rg) passes when rg is missing';; esac)"
+  fi
+fi
+# The product's own setup, which install.sh --update never touches. Why (Windows audit of HackADA, Oct 2026): the
+# stack's fixes reached the template, not the copied project. No tzdata (every test failed to import on Windows), Vite
+# without envDir, and Node 20.16 under Vite 8's engines (npm skipped the native rolldown binding; the build failed).
+on_windows=; case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) on_windows=yes;; esac
+for pp in $(git ls-files 'pyproject.toml' '*/pyproject.toml' 2>/dev/null); do
+  d=$(dirname "$pp")
+  git grep -qE '(^|[^A-Za-z_])(ZoneInfo\(|zoneinfo)' -- "$d/*.py" 2>/dev/null || continue
+  grep -qi tzdata "$pp" "$d/uv.lock" 2>/dev/null && continue
+  msg="$pp: the code uses zoneinfo but tzdata is no dependency; Windows has no time zone database, so imports fail with ZoneInfoNotFoundError. Fix: uv add tzdata"
+  if [ -n "$on_windows" ]; then bad "$msg"; else warn "$msg"; fi
+done
+for vc in $(git ls-files '*/vite.config.ts' '*/vite.config.js' '*/vite.config.mjs' '*/vite.config.mts' 2>/dev/null); do
+  d=$(dirname "$vc")
+  case "$d" in */*) continue;; esac  # web/, frontend/: the root .env is one level up
+  grep -q envDir "$vc" && continue
+  { [ -e "$d/.env" ] || [ -e "$d/.env.example" ]; } && continue
+  grep -qs '^VITE_' .env.example .env || continue  # names only: nothing is printed
+  warn "$vc reads $d/.env only, but the VITE_ keys live in the root .env: add envDir: \"..\" to its defineConfig"
+done
+if node_v=$(node --version 2>/dev/null | tr -d 'v\r') && [ -n "$node_v" ]; then
+  for pj in $(git ls-files 'package.json' '*/package.json' 2>/dev/null); do
+    d=$(dirname "$pj")
+    lock=; [ ! -f "$d/package-lock.json" ] || lock=$d/package-lock.json
+    short=$(awk -v node="$node_v" -f "$self_d/lib/engines.awk" "$pj" ${lock:+"$lock"} 2>/dev/null |
+            head -n 3 | awk -F '\t' '{printf "%s%s wants %s", (NR > 1 ? "; " : ""), $1, $2}')
+    [ -z "$short" ] || bad "Node $node_v is too old for $d: $short. npm skips native packages a Node excludes, so the build fails (\"Cannot find module @rolldown/binding-…\"). Fix: winget install OpenJS.NodeJS.LTS (Windows), brew upgrade node, or nvm install --lts; then rm -rf $d/node_modules and npm ci"
+  done
+fi
+# Harnesses, pacing and black box (v4.1)
+here_d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+top_d=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+hs=; for h in .claude/settings.json .codex/config.toml .cursor/hooks.json .gemini/agents; do [ -e "$top_d/$h" ] && hs="$hs${hs:+ · }${h%%/*}"; done
+[ -n "$hs" ] && ok "harness configs: $hs" || warn "no harness config found (run install.sh)"
+[ ! -e "$top_d/.codex/config.toml" ] || ok "Codex: trust this project once so .codex/config.toml and hooks load (/hooks to review)"
+ok "$(bash "$here_d/pace" 2>/dev/null | cut -c 1-160)"
+ok "$(bash "$here_d/bb" status 2>/dev/null)"
 
 printf '\nDOCTOR %s · fails=%s warnings=%s\n' "$([ "$fails" -eq 0 ] && printf PASS || printf FAIL)" "$fails" "$warns"
 [ "$fails" -eq 0 ]
