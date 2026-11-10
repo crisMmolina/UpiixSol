@@ -2,11 +2,11 @@
 
 ## Live summary
 - Done: review fixes: auth/home useSite; late brand no remount until next navigation; page.view dedupe; no mascot img when none; bidi controls rejected; compare-and-swap logo/mascot; e2e late-brand + logout + page view count
-- Decision: -
-- Why: -
+- Decision: Review fix for UPS-041 edits web/src/features/auth/index.tsx and web/src/features/home/index.tsx (in UPS-040's Paths, not claimed) so the login and home read the live site brand
+- Why: 8aabe37 was merged (#66) before review; reviewer rejected: login keeps module-load colors
 - Failing: -
 - Commands: ruff OK; pytest --cov=app 100%; web lint 0 new; build OK; pytest e2e 69 passed 1 skipped
-- Next: review
+- Next: Recover lease with token; then apply option: Review fix for UPS-041 edits web/src/features/auth/index.tsx and web/src/features/home/index.tsx (in UPS-040's Paths, not claimed) so the login and home read the live site brand
 
 ## History
 - 1791515798 | CLAIMED | joahan-claude | claim; next: model + migration + API, then the web store and the admin tab.
@@ -17,3 +17,4 @@
 - 1791530155 | REVIEW | joahan-claude | pending decision UPS-041-1791530155; option: Review fix for UPS-041 edits web/src/features/auth/index.tsx and web/src/features/home/index.tsx (in UPS-040's Paths, not claimed) so the login and home read the live site brand; Why: 8aabe37 was merged (#66) before review; reviewer rejected: login keeps module-load colors
 - 1791531123 | REVIEW | joahan-claude | checkpoint; next: review
 - 1791531748 | REVIEW | joahan-rev | review; approve; SHA 2bd97c5daf98baff406dd23e48663d02f187b541; reviewer joahan-rev
+- 1794354344 | REVIEW | scheduler | deadline decision UPS-041-1791530155; option: Review fix for UPS-041 edits web/src/features/auth/index.tsx and web/src/features/home/index.tsx (in UPS-040's Paths, not claimed) so the login and home read the live site brand; Why: 8aabe37 was merged (#66) before review; reviewer rejected: login keeps module-load colors
