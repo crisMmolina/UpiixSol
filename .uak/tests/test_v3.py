@@ -112,7 +112,8 @@ def guard_commands(r):
     s = run("uv add requests")
     expect(m.returncode == 2 and s.returncode == 2, "marathon blocks direct merges and undecided dependencies")
     marathon.write_text("Mode: sprint\n", encoding="utf-8")
-    expect(run("gh pr merge 12 --squash").returncode == 0, "sprint allows merge with gates")
+    # v5.7: sprint too (Hacktoberfest: 5 of 33 merges were an agent's gh pr merge, around the gate).
+    expect(run("gh pr merge 12 --squash").returncode == 2, "sprint merges only through uak merge")
     return {"blocked": len(GUARD_BLOCK), "allowed": len(GUARD_ALLOW), "marathon_rules": 2}
 
 
@@ -154,7 +155,11 @@ def loop_bounded(r):
     ok = r.run([r.bash, ".uak/bin/uak", "loop", "--verify", check, "--agent", fixer], cwd=w)
     expect("LOOP_PASS iteration=3" in ok.stdout, "loop converges: " + ok.stdout)
     stuck = r.run([r.bash, ".uak/bin/uak", "loop", "--verify", "echo broken; exit 1", "--agent", "true"], cwd=w, allowed=None)
-    expect(stuck.returncode == 3 and "stuck" in stuck.stdout and stuck.stdout.count("LOOP_FAIL") == 2, "stuck stop: " + stuck.stdout)
+    expect(stuck.returncode == 3 and "no progress" in stuck.stdout and stuck.stdout.count("LOOP_FAIL") == 1,
+           "an agent that changes nothing stops the loop at once (v5): " + stuck.stdout)
+    toggler = 'if [ -f t.txt ]; then rm t.txt; else echo x > t.txt; fi'
+    same = r.run([r.bash, ".uak/bin/uak", "loop", "--verify", "echo broken; exit 1", "--agent", toggler], cwd=w, allowed=None)
+    expect(same.returncode == 3 and "stuck" in same.stdout and same.stdout.count("LOOP_FAIL") == 2, "stuck stop: " + same.stdout)
     none = r.run([r.bash, ".uak/bin/uak", "loop", "--agent", "true"], cwd=w, allowed=None)
     expect(none.returncode == 2 and "verifier" in none.stderr, "no verifier, no loop")
     return {"converged": 3, "stuck_exit": 3}
