@@ -261,12 +261,17 @@ export function SiteBrandTab() {
             <h2 className="text-lg">Logo y mascota</h2>
             <p className="mt-1 text-sm text-muted">Se aplican al subirlos. PNG, JPG, WebP o SVG · máx. 2 MB.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* Plain rows split by a divider, not boxes inside the card (DESIGN.md: no card inside a card). */}
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-line">
             {(["logo", "mascot"] as const).map((kind) => {
               const current = images[kind];
               const { label, builtIn } = IMAGE[kind];
               return (
-                <div key={kind} className="grid gap-3 rounded-2xl border border-line p-4" data-testid={`site-${kind}`}>
+                <div
+                  key={kind}
+                  className="grid content-start gap-3 border-t border-line pt-4 first:border-t-0 first:pt-0 sm:border-t-0 sm:pt-0 sm:first:pr-5 sm:last:pl-5"
+                  data-testid={`site-${kind}`}
+                >
                   <span className="text-sm font-semibold">{label}</span>
                   <div className="grid h-24 place-items-center overflow-hidden rounded-xl bg-subtle px-3">
                     {current ? (
@@ -350,7 +355,7 @@ export function SiteBrandTab() {
                 <span className="text-xs text-muted">Sin mascota</span>
               )}
             </div>
-            <div className="grid w-full gap-2 rounded-xl border border-line p-3 text-left" aria-hidden>
+            <div className="grid w-full gap-2 text-left" aria-hidden>
               <span className="h-9 rounded-lg border border-line bg-bg" />
               <span className={`${buttonClasses("primary", "sm")} pointer-events-none`}>Entrar</span>
             </div>
