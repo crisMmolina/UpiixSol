@@ -1,5 +1,5 @@
 // Flow step 1 (UPS-005): single login for every role + member self-registration.
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, useNavigate, useSearchParams, type RouteObject } from "react-router";
 
 import { AnimatedHeight } from "@/components/Motion";
@@ -14,6 +14,39 @@ import { LoginForm, RegisterForm } from "./forms";
 export const order = 10;
 
 type Tab = "login" | "register";
+
+/** Top padding of the login on large screens: the default lg:pt-16, or more to center the block when it fits. */
+const MIN_TOP_PX = 64;
+
+/**
+ * Ref for the login <main> (UPS-042): from 1024 px it centers the block (brand column + card) in the viewport
+ * by setting its top padding before the first paint. The block's height is measured then (and once more when
+ * the fonts finish loading); a window resize recenters with that same height. Never with the current content,
+ * so the card keeps its top edge when a tab or a message makes it taller (UPS-033). Short windows and phones
+ * keep the fixed top padding and scroll.
+ */
+function useCenteredTop() {
+  return useCallback((main: HTMLElement | null) => {
+    if (!main) return;
+    const large = window.matchMedia("(min-width: 1024px)");
+    const measure = () => Math.max(...[...main.children].map((child) => child.getBoundingClientRect().height));
+    let height = measure();
+    const update = () => {
+      if (!large.matches) {
+        main.style.paddingTop = "";
+        return;
+      }
+      main.style.paddingTop = `${Math.max(MIN_TOP_PX, Math.round((window.innerHeight - height) / 2))}px`;
+    };
+    update();
+    void document.fonts?.ready.then(() => {
+      height = measure();
+      update();
+    });
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+}
 
 const SITE_WORDMARK = {
   color_primary: SITE.colors.primary,
@@ -40,6 +73,7 @@ function LoginPage() {
   const navigate = useNavigate();
   // First paint shows the form in place; switching tabs staggers the new fields in.
   const [switched, setSwitched] = useState(false);
+  const centeredTop = useCenteredTop();
   const tab: Tab = params.get("tab") === "registro" ? "register" : "login";
 
   if (status === "loading") return <PageSkeleton />;
@@ -61,9 +95,9 @@ function LoginPage() {
 
   return (
     <AcademyTheme branding={CAMPUS_BRANDING} className="min-h-dvh bg-bg">
-      {/* Anchored to the top with fixed padding (not centered): the card's top edge never moves when
-          the tab or a message changes its height. */}
-      <main className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
+      {/* Anchored by its top padding, never by flex centering: the card's top edge never moves when the tab
+          or a message changes its height. From lg, useCenteredTop picks that padding so the block is centered. */}
+      <main ref={centeredTop} className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
           {SITE.logoUrl ? (
             <img src={SITE.logoUrl} alt={SITE.name} {...SITE.logoSize} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.login}`} />
