@@ -42,3 +42,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794376050 | UPS-041 | e2e color check retried with to_have_css | Why: getComputedStyle returns the old value until the next frame even at 0.01ms transitions
 - 1794381328 | UPS-043 | dialog overflow-clip; panel exits before the backdrop; dialog closes on backdrop exit | Why: overflow-hidden dialog scrolled sideways when showModal focused the off-screen close button (scrollLeft 343)
 - 1794381451 | UPS-043 | dialog overflow-clip; panel exits before backdrop; close on backdrop exit | Why: overflow-hidden dialog scrolled sideways on showModal focus (scrollLeft 343)
+- 1794382168 | UPS-042 | top padding computed once with the mount-time block height; resize recenters with it | Why: flex centering would move the card top on tab/message changes; full-page screenshots fire resize
