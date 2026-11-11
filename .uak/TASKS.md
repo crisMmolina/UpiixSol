@@ -740,7 +740,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 240 min
 - **Rubric / Spec:** human request 2026-10-09: the app looks odd on phones in many cases, above all the skeletons
-- **Depends on:** UPS-035, UPS-039, UPS-041
+- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043
 - **Uses contract:** UPS-033
 - **Related:** UPS-038
 - **Paths:** web/src/components/, web/src/layouts/, web/src/index.css, web/src/features/home/, web/src/features/academy/, web/src/features/auth/, web/src/features/account/, web/src/features/community/, web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, web/src/features/resources/, web/src/features/superadmin/, web/src/features/academy-admin/, e2e/test_mobile.py
@@ -771,6 +771,64 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Tests: API (public read, superadmin-only writes, uploads, removal) and an e2e that changes the name and removes the logo, then sees the wordmark on the login page.
 - **Verify:** `uv run pytest -q app/tests/test_site.py app/tests/test_permissions_matrix.py && npm --prefix web run build && uv run pytest -q e2e`
 - **Next step:** model + migration + API, then the web store and the admin tab.
+
+## UPS-042 · Login centered in the viewport on desktop
+
+- **Type:** ux
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** human request 2026-11-11 with a screenshot at 1913×1000: the login block (brand column + card) sits at the top of the page and leaves the lower half empty.
+- **Depends on:** -
+- **Uses contract:** UPS-033
+- **Related:** UPS-040, UPS-044
+- **Paths:** web/src/features/auth/index.tsx, e2e/test_login_layout.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - From 1024 px wide, when the login block fits the viewport, it is centered vertically: the space above and below it differs by ≤ 16 px at 1280×800 and 1920×1000. It stays centered horizontally.
+  - When the block is taller than the viewport (short windows, phones), it starts at the top with the current padding and scrolls; nothing is clipped and there is no horizontal scroll at 390 and 360 px.
+  - The card keeps its top edge while messages appear (`e2e/test_layout_stability.py::test_login_card_keeps_top_and_size` stays green), on "Entrar" and "Crear cuenta".
+  - `e2e/test_login_layout.py` measures the block at 1280×800, 1920×1000 and 390×844, and keeps screenshots.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_login_layout.py e2e/test_layout_stability.py`
+- **Next step:** center the main grid with min-h-dvh + content-center only from lg, then the e2e.
+
+## UPS-043 · Phone drawers slide in from their own side with the backdrop
+
+- **Type:** bug
+- **Priority:** P0
+- **Estimate:** 60 min
+- **Rubric / Spec:** human video 2026-11-10 on production (onrender.com, iPhone, 390 px): opening "Más" in the bottom tab bar, the panel is first painted against the LEFT edge without the dark backdrop, then jumps to its place on the right with the backdrop; closing slides it out without the backdrop. Same Drawer (web/src/components/Overlay.tsx) serves "Más" (side right, web/src/layouts/Shell.tsx) and the player's "Contenido" (side left).
+- **Depends on:** -
+- **Uses contract:** UPS-033
+- **Related:** UPS-040, UPS-038
+- **Paths:** web/src/components/Overlay.tsx, web/src/layouts/Shell.tsx, e2e/test_drawer_motion.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - At 390×844 and 360×740, opening "Más": on every animation frame the panel is anchored to the right edge or entering from it (its left edge never left of its final position), and the backdrop is visible from the first frame the panel shows until it is gone. Closing exits to the same side, never across the screen.
+  - The same holds for a left drawer (the player's "Contenido"): it enters and exits on the left.
+  - With reduced motion the panel appears and disappears in its final place, with the backdrop, in one frame.
+  - Focus behavior from UPS-033 is unchanged (`test_drawer_does_not_focus_a_text_field_on_phones` stays green); Esc and the close button still close it.
+  - `e2e/test_drawer_motion.py` samples the panel box and the backdrop opacity on each requestAnimationFrame while opening and closing (motion enabled), for both sides, plus one reduced-motion case.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_drawer_motion.py e2e/test_layout_stability.py`
+- **Next step:** reproduce with a frame-sampling e2e (red), then fix the dialog's initial position/animation in Overlay.tsx.
+
+## UPS-044 · Sign in with boleta or email; a boleta is never registered twice
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** human request 2026-11-11: members sign in with their boleta number. Decision (human, same day): one field "Boleta o correo", because seeded superadmins and club admins have no boleta and must keep signing in with their email.
+- **Depends on:** UPS-042
+- **Uses contract:** -
+- **Related:** UPS-020
+- **Paths:** app/schemas/users.py, app/services/auth.py, app/routers/auth.py, app/tests/test_auth.py, web/src/features/auth/index.tsx, web/src/lib/auth.tsx, e2e/test_flow.py, e2e/test_login_boleta.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - `POST /api/auth/login` takes `identifier` + `password`: exactly 10 digits → the account with that boleta; otherwise → the account with that email (lower-cased). Wrong boleta, wrong email and wrong password give the same error and status (no account enumeration); the 5/min/IP rate limit and the provisional-password rule (UPS-020) apply the same. The old `email` key keeps working during the transition.
+  - The login form has one field "Boleta o correo" (autocomplete username) with a hint; a member signs in with boleta, and a superadmin or club admin with email.
+  - Registration requires a 10-digit boleta that no other account uses: a second account with the same boleta and another email gets 409 and the message shows on the boleta field; two concurrent registrations with the same boleta create one account. Same rule when a superadmin creates a user.
+  - Tests: API (boleta login, email login, enumeration-safe errors, rate limit, duplicate boleta 409 incl. concurrent) and an e2e that registers, signs out and signs in with the boleta; `e2e/test_flow.py::sign_in` uses the new field.
+- **Verify:** `uv run pytest -q app/tests/test_auth.py && npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** schema + service with tests, then the form and the e2e helper.
 
 ## UPS-045 · Lesson video segments in the API: start/end seconds, parse ?t=, embed with start/end
 
