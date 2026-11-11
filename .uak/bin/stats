@@ -3,6 +3,7 @@
 #   stats [--dir CLAIMS_CHECKOUT]
 # Messages by kind and agent, review load, lease recoveries, human-queue reasons, throughput.
 set -u
+MSYS2_ARG_CONV_EXCL="refs/;origin/;HEAD;FETCH_HEAD;:"; export MSYS2_ARG_CONV_EXCL  # Git Bash: keep ref:path arguments
 LC_ALL=C; export LC_ALL
 dir=
 [ "${1:-}" != --dir ] || dir=${2:-}
@@ -40,11 +41,35 @@ if [ -f "$log" ]; then
       if (kind["integrated"] > 0 && n > 0) printf "noise: %d%% of messages were integrated notices\n", 100 * kind["integrated"] / n
     }' "$log"
 fi
+# Commits on the base branch that no task merge brought in. Why (deus-ex-machina): 120 of 155 first-parent commits on
+# main were agents committing in the main checkout; no task, review or tokens behind them. A task merge has two parents.
+sroot=$(git rev-parse --show-toplevel 2>/dev/null) || sroot=
+if [ -n "$sroot" ]; then
+  bref=refs/remotes/${UAK_REMOTE:-origin}/${UAK_BASE:-main}
+  git -C "$sroot" rev-parse -q --verify "$bref" >/dev/null 2>&1 || bref=refs/heads/${UAK_BASE:-main}
+  if git -C "$sroot" rev-parse -q --verify "$bref" >/dev/null 2>&1; then
+    fp_all=$(git -C "$sroot" rev-list --first-parent --count "$bref" 2>/dev/null || printf 0)
+    # Not direct: merges, the root commit, and a squash-merged task PR (subject starts with a task ID or ends with (#N)).
+    fp_direct=$(git -C "$sroot" log --first-parent --format='%P|%s' "$bref" 2>/dev/null | awk -F'|' '{
+      n = split($1, p, " "); s = substr($0, length($1) + 2)
+      if (n == 1 && s !~ /^[A-Z][A-Z0-9]*-[0-9][0-9][0-9]+/ && s !~ /\(#[0-9]+\)$/) d++ } END { print d + 0 }')
+    [ "${fp_all:-0}" -eq 0 ] || printf 'Direct to main: %s of %s first-parent commits\n' "$fp_direct" "$fp_all"
+  fi
+fi
 rec=$(grep -c 'REQUIRES_RECOVERY' "$dir/DECISIONS.md" 2>/dev/null || true)
 printf 'lease recoveries: %s\n' "${rec:-0}"
 if ls "$dir"/queue/*.md >/dev/null 2>&1; then
-  q=$(cat "$dir"/queue/*.md | sed -n 's/^Reason: //p' | sed 's/: .*//' | sort | uniq -c | sort -rn | head -n 3 | awk '{c=$1; $1=""; printf "%s ×%d ·", substr($0,2), c}')
+  q=$(cat "$dir"/queue/*.md | sed -n 's/^Reason: //p' | sed 's/: .*//' | sort | uniq -c | sort -rn | head -n 3 | awk '{c=$1; $1=""; printf "%s%s ×%d", (NR > 1 ? " · " : ""), substr($0,2), c}')
   printf 'human-queue reasons: %s\n' "${q:-none}"
+fi
+# Token spend published by every machine (uak tokens): the real bill, by harness and lead vs subagent.
+if ls "$dir"/tokens/*.md >/dev/null 2>&1; then
+  sed -n 's/^- //p' "$dir"/tokens/*.md | awk -F' [|] ' '{t = $6 + $7 + $8 + $9; T += t; R += $8; h[$2] += t; s[$4] += t; k[$1] += t}
+    function M(n) { return n >= 1e6 ? sprintf("%.1fM", n / 1e6) : sprintf("%.0fk", n / 1e3) }
+    END { if (!T) exit; printf "tokens: %s · cache hit %d%%", M(T), 100 * R / T
+      printf " · by harness:"; for (x in h) printf " %s %s", x, M(h[x]); printf " · by scope:"; for (x in s) printf " %s %s", x, M(s[x])
+      best = ""; for (x in k) if (x != "main" && (best == "" || k[x] > k[best])) best = x
+      if (best != "") printf " · top task %s %s", best, M(k[best]); printf "\n" }'
 fi
 # Local subagent usage (written by guard agent): tiers decide the bill.
 gd=$(git rev-parse --git-dir 2>/dev/null || true)
@@ -53,4 +78,18 @@ if [ -n "$gd" ] && [ -s "$gd/uak-agents.log" ]; then
     s = ""; for (k in t) s = s sprintf("%s %d · ", k, t[k]); printf "subagents (this clone): %d · %s\n", n, substr(s, 1, length(s) - 3)
     s = ""; for (k in a) s = s sprintf("%s %d · ", k, a[k]); printf "  by type: %s\n", substr(s, 1, length(s) - 3)
   }' "$gd/uak-agents.log"
+fi
+# Harness adoption: what agents called themselves (hook-* calls are the harness's own) per claimed task, from the
+# black box usage lines. Why (MLB hackathon): availability is not adoption; 9 map calls for 67 Claude Code tasks
+# only showed up after recounting the raw files by hand.
+if ls "$dir"/blackbox/*.md >/dev/null 2>&1; then
+  printf 'harness adoption (agent calls per task; lens = map lines the hooks pushed):\n'
+  grep -h '^- ' "$dir"/blackbox/*.md | awk -F' [|] ' '$6 == "usage" {
+      n = split($8, kv, " "); for (i = 1; i <= n; i++) { c = index(kv[i], ":"); if (!c) continue
+        k = substr(kv[i], 1, c - 1); v = substr(kv[i], c + 1) + 0; u[$3, k] += v; H[$3] = 1 } }
+    function r(x, y) { return y ? sprintf("%.1f", x / y) : "-" }
+    END { for (h in H) { t = u[h, "claim"]; d = u[h, "done"]
+        polls = u[h, "status"] + u[h, "inbox"] + u[h, "board"] + u[h, "digest"]
+        printf "  %s: %d claims · %d done · map %s/task · lens %s/task · wait %s/done · polls %s/done · checkpoint %s/task · learn %d · recall %d\n",
+          h, t, d, r(u[h, "map"], t), r(u[h, "lens"], t), r(u[h, "wait"], d), r(polls, d), r(u[h, "checkpoint"], t), u[h, "learn"], u[h, "recall"] } }'
 fi
