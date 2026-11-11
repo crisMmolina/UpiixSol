@@ -1,0 +1,10 @@
+# cris-dev
+Agent: cris-dev
+Started: 1794374944
+Events: 1
+Events-Since-Checkpoint: 1
+Checkpoints: 0
+Sessions: 1
+Last-Checkpoint: 0
+Last-Session: stable
+Updated: 1794374944
