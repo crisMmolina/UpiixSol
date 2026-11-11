@@ -10,3 +10,4 @@
 
 ## History
 - 1794371079 | CLAIMED | cris-claude | claim; next: keep the shell mounted between lessons, then the search state.
+- 1794371177 | CLAIMED | cris-claude | pending decision UPS-038-1794371177; option: UPS-038 adds a new file e2e/test_player.py outside its Paths; Why: acceptance asks for browser coverage of the player; a new e2e file touches no shared resource; no money, accounts, publishing or scope expansion
