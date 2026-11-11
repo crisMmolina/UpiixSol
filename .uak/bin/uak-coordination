@@ -94,22 +94,10 @@ coord_init() {
     sleep $((coord_try * 2))
   done
   COORD_BASE_FROM=$TX
-  git -C "$TX" show refs/uak/config:.uak/TASKS.md > "$TXROOT/canonical-TASKS.md" 2>/dev/null || : > "$TXROOT/canonical-TASKS.md"
+  # One builder for the transaction and every read path (lib/backlog.sh). Why (UAK-053): two copies drifted once already.
+  backlog_canonical "$TXROOT/canonical-TASKS.md"
   git -C "$TX" show refs/uak/config:.uak/OWNERS.md > "$TXROOT/canonical-OWNERS.md" 2>/dev/null || : > "$TXROOT/canonical-OWNERS.md"
-  # Backlog published with `uak plan` on claims is appended to main's, no PR.
-  # Why: at Hack-Nation 8 PRs only added tasks and 3 merges fell to the human queue over TASKS.md.
-  [ ! -f "$TX/backlog/TASKS.md" ] || { printf '\n'; cat "$TX/backlog/TASKS.md"; } >> "$TXROOT/canonical-TASKS.md"
-  # `plan --amend`: the last amended section of an ID replaces its section, in place.
-  if [ -f "$TX/backlog/AMEND.md" ]; then
-    awk 'FNR == NR { if ($0 ~ /^## [A-Z][A-Z0-9]*-[0-9]/) { id = $2; sec[id] = "" } else if ($0 ~ /^# /) id = ""
-                     if (id != "") sec[id] = sec[id] $0 "\n"; next }
-         /^## [A-Z][A-Z0-9]*-[0-9]/ { skip = 0; if ($2 in sec) { if (!($2 in done)) { printf "%s", sec[$2]; done[$2] = 1 }; skip = 1; next } }
-         /^# / { skip = 0 }
-         !skip { print }' "$TX/backlog/AMEND.md" "$TXROOT/canonical-TASKS.md" > "$TXROOT/canonical-TASKS.amended" &&
-      mv "$TXROOT/canonical-TASKS.amended" "$TXROOT/canonical-TASKS.md"
-  fi
   [ ! -f "$TX/backlog/OWNERS.md" ] || { printf '\n'; cat "$TX/backlog/OWNERS.md"; } >> "$TXROOT/canonical-OWNERS.md"
-  coord_fold_backlog "$TXROOT/canonical-TASKS.md"
   BACKLOG="$TXROOT/canonical-TASKS.md"; OWNERS="$TXROOT/canonical-OWNERS.md"
   coord_source=$(git -C "$TX" rev-parse --verify 'refs/uak/config:.uak/PROJECT.md' 2>/dev/null || printf '%s' '-')
   git -C "$TX" show refs/uak/config:.uak/PROJECT.md > "$TXROOT/coord-source" 2>/dev/null || : > "$TXROOT/coord-source"
@@ -656,6 +644,18 @@ coord_next() {
     coord_status_budget
     [ -z "${CLOCK_NOTE:-}" ] || say "$CLOCK_NOTE"
     return 0
+  fi
+  # A registered reviewer with nothing claimed reviews what waits before it starts coding: a REVIEW task nobody has a
+  # verdict on or is reviewing. Plain file tests and the loop coord_review_candidate already is: no process added.
+  # Why (DevDay): a review-only Codex agent was offered coding work while a REVIEW task waited, and missed it.
+  if [ -n "$AGENT" ] && [ -f "$TX/roles/reviewers/$AGENT.md" ] && [ ! -f "$TX/meta/retired/$AGENT.md" ]; then
+    coord_review_candidate
+    if [ -n "$coord_rc" ]; then
+      msg_orphans
+      say "Review first (registered reviewer): ${coord_rc#* } of ${coord_rc%% *}: /uak-review ${coord_rc%% *}"
+      say "Coding work comes after: uak next again once no review waits for you."
+      coord_status_budget; [ -z "${CLOCK_NOTE:-}" ] || say "$CLOCK_NOTE"; return 0
+    fi
   fi
   if [ -f "$BACKLOG" ]; then
     # Cheap prefilter before the full gates: skip tasks that are taken or done, and tasks whose dependencies are
