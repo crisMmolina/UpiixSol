@@ -1,12 +1,12 @@
 # worklog/WL-1791515798-joahan-claude-UPS-041-hack.2tpJ8F.md · UPS-041
 
 ## Live summary
-- Done: Verify exit 0 (full e2e); smoke PRODUCT_PASS; design-critic SHIP 81cc1e5
-- Decision: Review fix for UPS-041 edits web/src/features/auth/index.tsx and web/src/features/home/index.tsx (in UPS-040's Paths, not claimed) so the login and home read the live site brand
-- Why: 8aabe37 was merged (#66) before review; reviewer rejected: login keeps module-load colors
-- Failing: -
-- Commands: ruff OK; pytest --cov=app 100%; web lint 0 new; build OK; pytest e2e 69 passed 1 skipped
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/72; run .uak/bin/smoke
+- Done: PR #72 with approved fixes + test race fix + critic P1s
+- Decision: e2e color check retried with to_have_css
+- Why: getComputedStyle returns the old value until the next frame even at 0.01ms transitions
+- Failing: none
+- Commands: Verify; bash .uak/bin/smoke
+- Next: Wait for re-review of SHA 81cc1e5
 
 ## History
 - 1791515798 | CLAIMED | joahan-claude | claim; next: model + migration + API, then the web store and the admin tab.
@@ -21,3 +21,4 @@
 - 1794374944 | AVAILABLE | cris-dev | release; claim released by cris-dev; reason: -; summary kept
 - 1794374954 | CLAIMED | cris-dev | claim; next: Recover lease with token; then apply option: Review fix for UPS-041 edits web/src/features/auth/index.tsx and web/src/features/home/index.tsx (in UPS-040's Paths, not claimed) so the login and home read the live site brand
 - 1794376046 | REVIEW | cris-dev | done; PR https://github.com/crisMmolina/UpiixSol/pull/72; evidence: Verify exit 0 (full e2e); smoke PRODUCT_PASS; design-critic SHIP 81cc1e5; reviewer: -
+- 1794376050 | REVIEW | cris-dev | checkpoint; next: Wait for re-review of SHA 81cc1e5

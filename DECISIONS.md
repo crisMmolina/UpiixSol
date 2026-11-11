@@ -39,3 +39,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794369953 | allow | NOMBRE | test change: DSK-049 | Why: Autorizo invertir InicioV5Test:81 y exentar el campo Nombre en ScreensTourTest (quitar el texto de ejemplo)
 - 1794371892 | UPS-038 | search state lifted to Player; previous lesson dims instead of skeleton | Why: audit learning.md items 1-7
 - 1794374132 | deadline decision/UPS-038-1794371177/1794372077 | REVERSIBLE_AND_LOG | Option: UPS-038 adds a new file e2e/test_player.py outside its Paths; Why: acceptance asks for browser coverage of the player; a new e2e file touches no shared resource; no money, accounts, publishing or scope expansion; no money, accounts, publishing or scope expansion.
+- 1794376050 | UPS-041 | e2e color check retried with to_have_css | Why: getComputedStyle returns the old value until the next frame even at 0.01ms transitions
