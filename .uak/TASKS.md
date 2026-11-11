@@ -952,3 +952,25 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Bugs found become new tasks or `uak followup`.
 - **Verify:** `uv run alembic upgrade head && uv run alembic downgrade base && uv run alembic upgrade head`
 - **Next step:** run P0-06 and P0-07 locally, then ask the human to trigger the staging deploy.
+
+## UPS-051 · QA load: how many concurrent users the campus supports
+
+- **Type:** integration
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** docs/deploy-render.md §Lo que implica el plan gratis (512 MB RAM, 0.1 CPU, Neon free); docs/PRUEBAS-CAMPUS.md §15
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-050
+- **Paths:** perf/locustfile.py, perf/run_local.sh, docs/qa/load-report.md
+- **Freeze-Allowed:** yes
+- **Acceptance:**
+  - `perf/locustfile.py` models a realistic student mix with seed accounts: login and refresh, home, academy page, Player and marking a lesson done, community feed with infinite scroll, posting and reacting, calendar; plus a small share of academy admins. Locust runs through `uvx locust`, so pyproject.toml and uv.lock are not touched.
+  - `perf/run_local.sh USERS DURATION` starts the app on `$UAK_PORT` with Postgres, runs Locust headless and exits non-zero if the error rate is over 1 % or p95 is over 1500 ms.
+  - Rate limits (AUTH-02, COM-10) are not counted as capacity errors: test users are spread out, or the limit is raised only in the load environment and that is noted in the report.
+  - A step ramp locally (10, 25, 50, 100, 200 users) is run, limited to 0.1 CPU and 512 MB with `docker run --cpus 0.1 --memory 512m`, to approximate Render free; the breaking point is the first step where p95 > 1500 ms or errors > 1 %.
+  - docs/qa/load-report.md records, per step: users, RPS, p50, p95, error rate, RAM, slowest endpoints, and the conclusion "supports about N concurrent users on Render free + Neon free" with how it was measured. Numbers come only from real runs, never estimates.
+  - The same ramp against staging runs only with a human's explicit authorization (it spends Neon quota and may wake or saturate Render); never against production.
+  - Bottlenecks found (N+1 queries, missing indexes, images served from the database) become new tasks or `uak followup`, not fixes in this task.
+- **Verify:** `bash perf/run_local.sh 20 60s`
+- **Next step:** write the locustfile with seed accounts, then the local ramp with docker CPU/RAM limits.
