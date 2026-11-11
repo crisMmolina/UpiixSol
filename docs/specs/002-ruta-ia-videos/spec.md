@@ -1,6 +1,6 @@
 # Spec 002 · UpiixIA route "De cero a LLMs" with sequential video segments
 - Status: approved (human, 2026-11-10) · Owner: @crisMmolina · PROJECT principles: 1, 3, 4, 5
-- Source: human brief `ruta-ia-videos.md` (2026-11-10). Content catalog (§5 of the brief) is copied into `docs/spikes/ruta-ia-catalog.md` by UPS-043 and becomes the source of truth for links.
+- Source: human brief `ruta-ia-videos.md` (2026-11-10). Content catalog (§5 of the brief) is copied into `docs/spikes/ruta-ia-catalog.md` by UPS-046 and becomes the source of truth for links.
 
 ## Problem
 UpiixIA only has the demo route "Fundamentos de IA con Python" (`app/fixtures/demo.json`): 2 modules, 4 standalone freeCodeCamp videos that overlap and do not form a sequence. The club needs a real route **from zero to building and using an LLM**, where each lesson picks up exactly where the previous one ended and no lesson is a 10-hour video. Today the player cannot do this: `embed_url()` drops any timestamp, `Lesson` has no start/end, and the admin save path canonicalizes the URL to `watch?v=ID`, discarding `t=`.
@@ -48,5 +48,5 @@ All answered by the human on 2026-11-10 ("OK con tus propuestas").
 - [x] 1. Old demo route "Fundamentos de IA con Python": **stays as it is**. The seed does not touch it (tests and e2e depend on it). When the new route is complete, an admin unpublishes the demo route from the panel, which is reversible and needs no code. No `demo_data` DB column is added.
 - [x] 2. Route publication: **the route is published from the start**, and only its `ok` lessons are visible. Lessons marked `verificar` or `buscar` stay unpublished, and members already never see unpublished lessons. This replaces the brief's "published only if all lessons are `ok`".
 - [x] 3. Re-running the seed: **it creates what is missing** (route, module, lesson, matched by title) and updates the seed-owned fields only of lessons that are still unpublished. It never edits a published lesson and never deletes anything.
-- [x] 4. Module 9 (Jetson): **its intro lesson uses an official NVIDIA Jetson video found in UPS-043**, with the tutorials as links. It stays a draft until that video is verified.
+- [x] 4. Module 9 (Jetson): **its intro lesson uses an official NVIDIA Jetson video found in UPS-046**, with the tutorials as links. It stays a draft until that video is verified.
 - [x] 5. Production: **the content step runs as part of `python -m app.seed`**, which is idempotent. In prod it runs only when a human runs that command (runbook). It creates no accounts beyond what the seed already creates.

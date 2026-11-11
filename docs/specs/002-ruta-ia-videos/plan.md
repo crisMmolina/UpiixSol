@@ -1,5 +1,5 @@
 # Plan 002 · UpiixIA route "De cero a LLMs" with sequential video segments
-Spec: [`spec.md`](spec.md) (approved 2026-11-10) · Spike for links: `docs/spikes/ruta-ia-catalog.md` (UPS-043).
+Spec: [`spec.md`](spec.md) (approved 2026-11-10) · Spike for links: `docs/spikes/ruta-ia-catalog.md` (UPS-046).
 
 ## Design
 There are two independent parts, joined by one contract (the lesson fields `start_s` and `end_s`).
@@ -30,7 +30,7 @@ There are two independent parts, joined by one contract (the lesson fields `star
    - Matching is by title: route (academy, title), then module (route, title), then lesson (module, title).
    - Create: the route is published. A lesson is published when `status == ok`, otherwise it is a draft. `duration_min` is derived from the segment. The language suffix is appended to the description, which then goes through `clean_markdown`.
    - Update: only lessons that are still unpublished get the seed-owned fields refreshed (url, id, segment, description, links, position, published flag from status). Published lessons are left alone. Nothing is deleted.
-   - `buscar` rows have no URL yet, so they are **not** created. They live in the spike document until UPS-043 fills them in, because `youtube_url` is required.
+   - `buscar` rows have no URL yet, so they are **not** created. They live in the spike document until UPS-046 fills them in, because `youtube_url` is required.
 
    **Why a JSON fixture plus the seed** rather than an admin import endpoint: it needs no new write surface (no new permission-matrix rows, no upload parsing), and the human brief asks for it. Admins edit afterwards in the existing panel.
 
@@ -62,7 +62,7 @@ Consumers:
 - `web/src/features/academy-admin/index.tsx`, the form.
 - `e2e/`.
 
-UPS-042 sends `uak msg impact:UPS-042 --kind contract` before it pushes.
+UPS-045 sends `uak msg impact:UPS-045 --kind contract` before it pushes.
 
 ## Threat model (STRIDE)
 This touches user-supplied URLs that end up in an iframe `src`, an area the spike already treats as sensitive.
@@ -83,8 +83,8 @@ This touches user-supplied URLs that end up in an iframe `src`, an area the spik
 ## Rollout and rollback
 - No flag. Segments are inert until a lesson has `start_s` or `end_s`.
 - Order:
-  1. UPS-042 (API) merges first.
-  2. UPS-045 (web) follows. Until it lands, the old `playerSrc` would break segmented embeds, so **no lesson gets a segment in prod before UPS-045 merges**. The seed task UPS-044 depends on both.
+  1. UPS-045 (API) merges first.
+  2. UPS-048 (web) follows. Until it lands, the old `playerSrc` would break segmented embeds, so **no lesson gets a segment in prod before UPS-048 merges**. The seed task UPS-047 depends on both.
 - Promotion: the e2e for lesson 1.2 passes and a human opens 3 segmented lessons on a phone.
 - Rollback:
   - Content: unpublish the route from the panel (instant).
@@ -94,15 +94,15 @@ This touches user-supplied URLs that end up in an iframe `src`, an area the spik
 Zero infrastructure or API cost: no YouTube API, no new services. About 55 more `lessons` rows.
 
 ## Risks
-- **Completion on segment end:** completion relies on the iframe's `ended` state (UPS-024). The `end` parameter should stop playback with state 0, but this is **unverified**. UPS-045 checks it in a real browser and records the result. If `ended` does not fire, the fallback is to treat `paused` within 2 s of `end_s` as ended, which is a decision for that task.
-- **Link rot:** catalog rows are checked once in UPS-043. Lessons that are not `ok` stay drafts.
+- **Completion on segment end:** completion relies on the iframe's `ended` state (UPS-024). The `end` parameter should stop playback with state 0, but this is **unverified**. UPS-048 checks it in a real browser and records the result. If `ended` does not fire, the fallback is to treat `paused` within 2 s of `end_s` as ended, which is a decision for that task.
+- **Link rot:** catalog rows are checked once in UPS-046. Lessons that are not `ok` stay drafts.
 
 ## Tasks
 Each task starts with a failing test (`uak red`).
 
 | ID | What | Depends on | Uses contract |
 |---|---|---|---|
-| UPS-042 | API: segments in model, migration 0007, youtube helpers, admin save, lesson output | None | None |
-| UPS-043 | Spike: verify and complete the catalog (`verificar`/`buscar`), chapter timestamps for modules 5 and 7 | None | None |
-| UPS-045 | Web: player merges embed params, Inicio/Fin in the admin form, prefill from `?t=`, check `ended` at `end` | UPS-042 | UPS-042 |
-| UPS-044 | Seed "De cero a LLMs" from `ruta-ia.json` (idempotent, drafts for non-`ok`), e2e lesson 1.2 | UPS-042, UPS-045 | UPS-043 |
+| UPS-045 | API: segments in model, migration 0007, youtube helpers, admin save, lesson output | None | None |
+| UPS-046 | Spike: verify and complete the catalog (`verificar`/`buscar`), chapter timestamps for modules 5 and 7 | None | None |
+| UPS-048 | Web: player merges embed params, Inicio/Fin in the admin form, prefill from `?t=`, check `ended` at `end` | UPS-045 | UPS-045 |
+| UPS-047 | Seed "De cero a LLMs" from `ruta-ia.json` (idempotent, drafts for non-`ok`), e2e lesson 1.2 | UPS-045, UPS-048 | UPS-046 |
