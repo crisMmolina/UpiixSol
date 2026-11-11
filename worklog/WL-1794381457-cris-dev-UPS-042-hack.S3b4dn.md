@@ -10,3 +10,4 @@
 
 ## History
 - 1794381457 | CLAIMED | cris-dev | claim; next: center the main grid with min-h-dvh + content-center only from lg, then the e2e.
+- 1794382115 | CLAIMED | cris-dev | pending decision UPS-042-1794382115; option: UPS-042 edits one rule in web/DESIGN.md (owned by integrated UPS-039): the login is centered from lg by a top padding set once, the card top still never moves; Why: design-critic P1: DESIGN.md:72 says the login is never centered, contradicting the change the human asked for; docs only; no money, accounts, publishing or scope expansion
