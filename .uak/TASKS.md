@@ -771,3 +771,91 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Tests: API (public read, superadmin-only writes, uploads, removal) and an e2e that changes the name and removes the logo, then sees the wordmark on the login page.
 - **Verify:** `uv run pytest -q app/tests/test_site.py app/tests/test_permissions_matrix.py && npm --prefix web run build && uv run pytest -q e2e`
 - **Next step:** model + migration + API, then the web store and the admin tab.
+
+## UPS-042 · Lesson video segments in the API: start/end seconds, parse ?t=, embed with start/end
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 150 min
+- **Rubric / Spec:** human brief 2026-11-10 (long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-043, UPS-044, UPS-045
+- **Paths:** app/models/learning.py, app/migrations/versions/0007_lesson_segments.py, app/services/youtube.py, app/services/academy_admin.py, app/services/learning.py, app/schemas/learning.py, app/tests/test_youtube.py, app/tests/test_academy_admin.py, app/tests/test_learning.py, app/tests/test_permissions_matrix.py, docs/spikes/youtube.md
+- **Freeze-Allowed:** no
+- **Tests:** test_parse_start_formats, test_parse_start_rejects_hostile, test_embed_url_with_segment, test_embed_url_without_segment_unchanged, test_lesson_segment_end_must_exceed_start, test_lesson_patch_segment_checks_stored_value, test_lesson_prefills_start_from_url, test_lesson_duration_from_segment, test_lesson_out_exposes_segment, test_segment_write_respects_academy_scope
+- **Acceptance:**
+  - Nullable `start_s` and `end_s` on `lessons`, from migration 0007 (reversible, `batch_alter_table`, CHECKs `start_s >= 0` and `end_s > COALESCE(start_s, 0)`), mirrored in the model.
+  - `parse_start()` understands `t=850`, `t=850s`, `t=14m10s`, `t=1h2m3s` and `start=850`, in the query or the fragment. Anything else gives `None`. `extract_video_id` is unchanged.
+  - `embed_url(id, start_s, end_s)` adds `start` and `end` only from validated ints. With no segment the URL is exactly the same as today.
+  - Lesson create and PATCH accept `start_s`/`end_s` (bounds 0–86 400). `end_s ≤ start_s` returns 422 `invalid_segment` with a Spanish message, and a PATCH is checked against the stored value. When `start_s` is not sent and the pasted URL has `t=`, it is prefilled before the URL is canonicalized. `duration_min = ceil((end_s − start_s)/60)` when both exist.
+  - `LessonOut` and `LessonAdminOut` expose `start_s` and `end_s`. No new permission rows; the matrix covers a scoped write with the new fields. Coverage stays at 100 %.
+  - Before pushing, send `uak msg impact:UPS-042 --kind contract` (consumers: UPS-045, UPS-044).
+- **Verify:** `uv run pytest -q app/tests/test_youtube.py app/tests/test_academy_admin.py app/tests/test_learning.py app/tests/test_permissions_matrix.py && uv run ruff check app && uv run alembic upgrade head && uv run alembic downgrade base`
+- **Next step:** red tests for `parse_start` and `embed_url`, then migration and model, then admin save and lesson output.
+
+## UPS-043 · Spike: verify and complete the UpiixIA video catalog
+
+- **Type:** spike
+- **Priority:** P0
+- **Estimate:** 120 min
+- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `ruta-ia-videos.md` §5 (catalog)
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-044
+- **Paths:** docs/spikes/ruta-ia-catalog.md
+- **Freeze-Allowed:** no
+- **Test-First:** no (research: the output is a verified document, not behavior)
+- **Acceptance:**
+  - `docs/spikes/ruta-ia-catalog.md` holds the brief's §5 catalog as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
+  - Every `verificar` row is opened: its title, channel and availability are confirmed, or it is replaced and the reason noted. The "3Blue1Brown Español" dubbed URL is preferred when it exists (then `lang: es`).
+  - Every `buscar` row gets a real YouTube URL (NumPy/pandas ES, Hugging Face course videos, RAG ES parts 1–2, Ollama ES) or a documented substitute.
+  - Chapter timestamps are copied from the YouTube descriptions to split the Karpathy videos (module 5, 2–3 segments each) and "Deep Dive into LLMs" (module 7, 4 segments).
+  - Module 9: an official NVIDIA Jetson video for the intro lesson, with the tutorials as links (spec open question 4).
+  - Nothing unverified is marked `ok`. Every row records the date it was checked.
+  - A human reviews the document in the PR (every link opened at least once).
+- **Verify:** `test -s docs/spikes/ruta-ia-catalog.md && ! grep -nE '[|] *(verificar|buscar) *[|]' docs/spikes/ruta-ia-catalog.md`
+- **Next step:** copy the §5 catalog, then go module by module starting with modules 2, 4 and 8.
+
+## UPS-045 · Web: segmented embeds in the player and start/end in the lesson form
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 150 min
+- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
+- **Depends on:** UPS-042
+- **Uses contract:** UPS-042
+- **Related:** UPS-044
+- **Paths:** web/src/lib/types.ts, web/src/features/learning/youtube.ts, web/src/features/learning/Player.tsx, web/src/features/academy-admin/index.tsx, web/src/features/academy-admin/clock.ts, e2e/test_segments.py, docs/specs/002-ruta-ia-videos/plan.md
+- **Freeze-Allowed:** no
+- **Tests:** test_player_src_keeps_segment_params, test_admin_form_prefills_start_from_url, test_admin_form_rejects_end_before_start
+- **Acceptance:**
+  - `playerSrc()` merges its parameters into `embed_url` with `new URL()`, so a URL that already has `?start=&end=` keeps them and gets a single `?`.
+  - "Ver en YouTube" adds `&t=<start_s>` when there is a start.
+  - The admin lesson form has Inicio and Fin fields (`mm:ss` or `h:mm:ss`, labeled, with a hint). A pure helper (`clock.ts`) converts between that text and seconds. Pasting a URL with `t=` prefills an empty Inicio. API and client errors show in the reserved `FormMessage` without layout shift.
+  - The lesson list in the panel shows the segment (for example `14:10–48:58`) next to the duration.
+  - In a real browser, check whether the embed reports `ended` (state 0) when playback reaches `end`, and record the result in `docs/specs/002-ruta-ia-videos/plan.md` §Risks. If it does not, apply the fallback written there (record it with `uak decision`).
+  - e2e at 1280 and 390 px: the admin saves a segment from a pasted `?t=` URL, the member's embed `src` carries `start` and `end` plus `enablejsapi`, and a simulated `ended` marks the lesson complete. `.uak-shots/UPS-045/` gets a `design-critic` SHIP.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_segments.py`
+- **Next step:** red e2e for the embed `src`, fix `playerSrc`, then the form fields and `clock.ts`.
+
+## UPS-044 · Seed the "De cero a LLMs" route for UpiixIA
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 120 min
+- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
+- **Depends on:** UPS-042, UPS-045, UPS-002, UPS-027, UPS-031 (earlier writers of app/seed.py, all integrated)
+- **Uses contract:** UPS-043
+- **Related:** None
+- **Paths:** app/fixtures/ruta-ia.json, app/seed.py, app/tests/test_seed_ruta_ia.py, e2e/test_ruta_ia.py, docs/runbook.md
+- **Freeze-Allowed:** no
+- **Tests:** test_ruta_ia_fixture_valid, test_ruta_ia_seed_creates_nine_modules, test_ruta_ia_seed_idempotent, test_ruta_ia_drafts_unless_ok, test_ruta_ia_never_edits_published_lesson, test_ruta_ia_language_suffix, test_ruta_ia_segment_duration, test_ruta_ia_keeps_demo_route
+- **Acceptance:**
+  - `app/fixtures/ruta-ia.json` holds the 9 modules from the UPS-043 catalog (whatever is verified at merge time), with `start_s`, `end_s`, `lang`, `status` and links per lesson. Every URL passes `extract_video_id`. `buscar` rows are left out.
+  - `seed_ruta_ia(db)` runs inside `seed()`, outside the `has_content` guard. It matches route, module and lesson by title, creates what is missing, refreshes only still-unpublished lessons, never edits published lessons and never deletes. Two runs give the same counts.
+  - The route is published. Lessons are published only when `status: ok`. Each description ends with the language suffix. `duration_min` comes from the segment. The old demo route is not touched (spec open question 1).
+  - The seed prints a one-line summary. `docs/runbook.md` says how to run the content step in prod (human only).
+  - e2e: a member opens lesson 1.2 "Variables"; the embed carries `start=2938&end=5665`; a simulated `ended` moves the route's progress bar.
+- **Verify:** `uv run pytest -q app/tests/test_seed_ruta_ia.py app/tests/test_seed.py && uv run pytest -q e2e/test_ruta_ia.py`
+- **Next step:** red fixture and idempotency tests, then the fixture from the spike, then `seed_ruta_ia`.
