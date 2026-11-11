@@ -170,7 +170,8 @@ def test_a_late_brand_updates_the_login_in_place(site: Site) -> None:
         expect(page).to_have_title(f"{BRAND['name']} Campus")
         expect(email).to_have_value("alumno.demo@upiixsol.dev")  # nothing remounted under the visitor
         enter = page.get_by_role("button", name="Entrar", exact=True)
-        assert enter.evaluate("(el) => getComputedStyle(el).backgroundColor") == rgb(BRAND["color_primary"])  # noqa: S101
+        # Retried: even a 0.01 ms transition (reduced motion) reports the old color until the next frame.
+        expect(enter).to_have_css("background-color", rgb(BRAND["color_primary"]))
     finally:
         visitor.close()
         restore_brand(site, token)
