@@ -10,7 +10,7 @@ from collections.abc import Iterator
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
-from e2e.conftest import VIEWPORTS, Site
+from e2e.conftest import VIEWPORTS, Site, _start_server
 from e2e.test_flow import MEMBER, sign_in
 
 TOLERANCE = 1  # px
@@ -41,7 +41,19 @@ SAMPLE = """
 """
 
 
-def phone_page(browser: Browser, site: Site, size: tuple[int, int], reduced: bool) -> Page:
+@pytest.fixture(scope="module")
+def server() -> Iterator[str]:
+    """Its own seeded server: the phone viewports come from PHONES, not from the desktop/mobile `site`."""
+    url, process, workdir = _start_server()
+    try:
+        yield url
+    finally:
+        process.terminate()
+        process.wait(timeout=10)
+        workdir.cleanup()
+
+
+def phone_page(browser: Browser, size: tuple[int, int], reduced: bool) -> Page:
     context = browser.new_context(
         viewport={"width": size[0], "height": size[1]},
         reduced_motion="reduce" if reduced else "no-preference",
@@ -52,12 +64,10 @@ def phone_page(browser: Browser, site: Site, size: tuple[int, int], reduced: boo
 
 
 @pytest.fixture(params=list(PHONES))
-def phone(request: pytest.FixtureRequest, browser: Browser, site: Site) -> Iterator[Site]:
-    if site.name != "desktop":  # one server is enough: the viewports come from PHONES
-        pytest.skip("runs once, on the desktop server")
-    page = phone_page(browser, site, PHONES[request.param], reduced=False)
+def phone(request: pytest.FixtureRequest, browser: Browser, server: str) -> Iterator[Site]:
+    page = phone_page(browser, PHONES[request.param], reduced=False)
     try:
-        yield Site(base_url=site.base_url, name=f"phone{request.param}", page=page)
+        yield Site(base_url=server, name=f"phone{request.param}", page=page)
     finally:
         page.context.close()
 
@@ -121,11 +131,9 @@ def test_contents_drawer_enters_and_leaves_on_the_left(phone: Site) -> None:
     assert_on_its_side(closing, settled, "left", "closing")
 
 
-def test_reduced_motion_drawer_appears_in_place_with_the_backdrop(browser: Browser, site: Site) -> None:
-    if site.name != "desktop":
-        pytest.skip("runs once, on the desktop server")
-    page = phone_page(browser, site, VIEWPORTS["mobile"], reduced=True)
-    phone = Site(base_url=site.base_url, name="phone-reduced", page=page)
+def test_reduced_motion_drawer_appears_in_place_with_the_backdrop(browser: Browser, server: str) -> None:
+    page = phone_page(browser, VIEWPORTS["mobile"], reduced=True)
+    phone = Site(base_url=server, name="phone-reduced", page=page)
     try:
         sign_in(phone, MEMBER, "/a/upiixia")
         opening, closing, settled = drawer_samples(page, "Más", "Más", ms=300)
