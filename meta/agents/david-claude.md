@@ -1,0 +1,11 @@
+# david-claude
+Agent: david-claude
+Started: 1794501627
+Events: 1
+Events-Since-Checkpoint: 1
+Checkpoints: 0
+Sessions: 1
+Last-Checkpoint: 0
+Human: devmoraless
+Last-Session: david-claude-1794501625
+Updated: 1794501627
