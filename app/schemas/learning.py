@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Annotated
 
 from pydantic import Field
 
@@ -67,6 +68,8 @@ class LessonOut(OutModel):
     thumbnail_url: str
     description: str
     duration_min: int | None
+    start_s: int | None = None  # video segment (UPS-045); embed_url already starts and ends there
+    end_s: int | None = None
     is_published: bool
     links: list[LessonLinkOut] = []
     completed: bool = False
@@ -91,11 +94,18 @@ class ModuleIn(InModel):
     title: Title
 
 
+# Video segment in seconds (UPS-045): start 0–86 400, end 1–86 400; end > start is checked on save.
+SegmentStart = Annotated[int, Field(ge=0, le=86_400)]
+SegmentEnd = Annotated[int, Field(ge=1, le=86_400)]
+
+
 class LessonIn(InModel):
     title: Title
     youtube_url: str = Field(max_length=300)  # validated with app/services/youtube.py → 422
     description: MarkdownText = ""
     duration_min: int | None = Field(default=None, ge=1, le=600)
+    start_s: SegmentStart | None = None
+    end_s: SegmentEnd | None = None
     is_published: bool = False
     links: list[LessonLinkIn] = Field(default_factory=list, max_length=20)
 
@@ -105,5 +115,7 @@ class LessonUpdateIn(InModel):
     youtube_url: str | None = Field(default=None, max_length=300)
     description: MarkdownText | None = None
     duration_min: int | None = Field(default=None, ge=1, le=600)
+    start_s: SegmentStart | None = None
+    end_s: SegmentEnd | None = None
     is_published: bool | None = None
     links: list[LessonLinkIn] | None = Field(default=None, max_length=20)
