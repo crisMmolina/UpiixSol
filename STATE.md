@@ -1,9 +1,9 @@
 # STATE
 
 Phase: execution
-Updated: 1794455614
-AVAILABLE: UPS-031 UPS-040 UPS-045 UPS-048 UPS-047 UPS-046 
-CLAIMED: -
+Updated: 1794455783
+AVAILABLE: UPS-031 UPS-040 UPS-048 UPS-047 UPS-046 
+CLAIMED: UPS-045 
 BLOCKED: -
 REVIEW: UPS-044 
 INTEGRATED: (42; last 12) ... UPS-033 UPS-034 UPS-035 UPS-036 UPS-037 UPS-038 UPS-039 UPS-041 UPS-042 UPS-043 UPS-049 UPS-050 
@@ -11,6 +11,7 @@ CANCELLED: UPS-030
 
 Claims (first 24; status --task ID shows detail):
 UPS-044 | REVIEW | cris-dev | until 1794541798
+UPS-045 | CLAIMED | cris-dev | until 1794470183
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
