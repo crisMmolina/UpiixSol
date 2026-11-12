@@ -35,17 +35,39 @@ function sortForLearning(list: RouteCardOut[]): RouteCardOut[] {
   return [...list].sort((a, b) => rank[routeStatus(a)] - rank[routeStatus(b)] || a.position - b.position);
 }
 
+/** Room for up to 3 lines of the welcome text on phones and 2 from sm (UPS-040: nothing below jumps). */
+const WELCOME = "mt-3 min-h-[5.25rem] max-w-2xl text-lg sm:min-h-[3.5rem]";
+/** The mascot always takes the same box, loaded or not (its file has no known size). */
+const MASCOT_BOX = "mx-auto size-48 rounded-card object-contain sm:size-56";
+
+/** Name and mascot come with the club's branding, so they render before /home; only the welcome text waits. */
+function ClubHero({ welcome }: { welcome: string | null }) {
+  const branding = useAcademy();
+  const mascot = safeAssetPath(branding.mascot_url);
+  return (
+    <section className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-8 md:grid-cols-[1fr_auto]">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-link">Bienvenida al club</p>
+        {/* A name that is one long word wraps inside the card instead of pushing the page sideways. */}
+        <h1 className="mt-1 break-words text-3xl sm:text-4xl">{branding.name}</h1>
+        {welcome === null ? (
+          <div aria-hidden className={`${WELCOME} grid content-start gap-2 pt-1`}>
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-2/3" />
+          </div>
+        ) : (
+          <div className={WELCOME}>{welcome && <Markdown source={welcome} />}</div>
+        )}
+      </div>
+      {mascot && <img src={mascot} alt={`Mascota de ${branding.name}`} className={MASCOT_BOX} />}
+    </section>
+  );
+}
+
 function HomeSkeleton() {
   return (
     <div role="status" aria-label="Cargando" className="grid gap-8">
-      <div className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-8 md:grid-cols-[1fr_auto]">
-        <div className="grid gap-3">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-10 w-72 max-w-full" />
-          <Skeleton className="h-5 w-full max-w-xl" />
-        </div>
-        <Skeleton className="mx-auto size-40 rounded-card" />
-      </div>
+      <ClubHero welcome={null} />
       <section>
         <Skeleton className="mb-4 h-7 w-56" />
         <RouteGridSkeleton />
@@ -137,15 +159,7 @@ function AcademyHome() {
   const mascot = safeAssetPath(branding.mascot_url);
   return (
     <div className="grid gap-8">
-      <section className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-8 md:grid-cols-[1fr_auto]">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-link">Bienvenida al club</p>
-          {/* A name that is one long word wraps inside the card instead of pushing the page sideways. */}
-          <h1 className="mt-1 break-words text-3xl sm:text-4xl">{data.academy.name}</h1>
-          {data.academy.welcome_text && <Markdown source={data.academy.welcome_text} className="mt-3 max-w-2xl text-lg" />}
-        </div>
-        {mascot && <img src={mascot} alt={`Mascota de ${data.academy.name}`} className="mx-auto w-48 rounded-card sm:w-56" />}
-      </section>
+      <ClubHero welcome={data.academy.welcome_text} />
 
       <section>
         <SectionTitle title="Continúa aprendiendo" action={<Link to={`/a/${branding.slug}/rutas`}>Ver todas las rutas</Link>} />
@@ -170,7 +184,7 @@ function AcademyHome() {
                 const href = resource.url ?? resource.file_url ?? "#";
                 return (
                   <li key={resource.id}>
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl p-2 no-underline hover:bg-line/40">
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl p-2 no-underline hover:bg-line/40">
                       <Icon size={22} weight="bold" className="shrink-0 text-secondary" aria-hidden />
                       <span className="font-medium text-ink">{resource.title}</span>
                     </a>
@@ -209,7 +223,7 @@ function AcademyHome() {
       </div>
 
       <p className="text-center">
-        <Link to="/clubes" className="inline-flex items-center gap-1 font-semibold">
+        <Link to="/clubes" className="inline-flex min-h-11 items-center gap-1 font-semibold">
           Explorar otros clubes <ArrowRight weight="bold" aria-hidden />
         </Link>
       </p>

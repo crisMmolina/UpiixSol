@@ -107,7 +107,7 @@ function IconButton({ label, onClick, children, disabled, danger }: {
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`grid size-10 place-items-center rounded-full transition hover:bg-line/60 disabled:opacity-30 ${danger ? "text-accent-2" : "text-ink"}`}
+      className={`grid size-11 place-items-center rounded-full transition hover:bg-line/60 disabled:opacity-30 ${danger ? "text-accent-2" : "text-ink"}`}
     >
       {children}
     </button>
@@ -499,7 +499,7 @@ function EnrolleesSkeleton() {
             <Skeleton className="h-3 w-1/4" />
           </div>
           <Skeleton className="hidden h-3.5 w-24 sm:block" />
-          <Skeleton className="size-10 rounded-full" />
+          <Skeleton className="size-11 rounded-full" />
         </div>
       ))}
     </div>
@@ -583,6 +583,8 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="mr-auto text-xl">{route.title}</h3>
             <Badge tone={route.is_published ? "primary" : "alert"}>{route.is_published ? "Publicada" : "Borrador"}</Badge>
+            {/* One unit, as in the module rows: on a phone the whole toolbar moves under the title, never one icon. */}
+            <span className="ml-auto flex shrink-0 items-center">
             <IconButton label="Subir ruta" disabled={routeIndex === 0} onClick={() => reorder(`/academies/${academy.id}/routes/order`, move(content.routes, routeIndex, -1))}>
               <ArrowUp weight="bold" />
             </IconButton>
@@ -616,6 +618,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
             <IconButton label="Eliminar ruta" danger onClick={() => confirmDelete(`la ruta "${route.title}"`, `/routes/${route.id}`)}>
               <Trash weight="bold" />
             </IconButton>
+            </span>
           </div>
 
           <ol className="grid gap-3">

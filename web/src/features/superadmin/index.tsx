@@ -194,7 +194,7 @@ function AcademiesTab() {
                 </p>
                 <p className="text-sm text-muted">{academy.short_description || "Sin descripción."}</p>
                 <div className="flex flex-wrap gap-2">
-                  <Link to={`/panel/academia/${academy.slug}`} className="inline-flex min-h-9 items-center gap-1 rounded-full border-2 border-secondary px-3 text-sm font-semibold no-underline">
+                  <Link to={`/panel/academia/${academy.slug}`} className="inline-flex min-h-11 items-center gap-1 rounded-full border-2 border-secondary px-3 text-sm font-semibold no-underline">
                     Contenido e identidad <ArrowSquareOut weight="bold" aria-hidden />
                   </Link>
                   <Button size="sm" variant={academy.is_active ? "ghost" : "secondary"} icon={<Power weight="bold" />} onClick={() => void toggle(academy)}>
