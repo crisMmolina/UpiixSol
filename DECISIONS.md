@@ -58,3 +58,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794463448 | UPS-052 | QA only | Why: task
 - 1794527636 | deadline lease/UPS-046/1794517644 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794527636 | deadline lease/UPS-048/1794517129 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
+- 1794527722 | UPS-048 | clock helpers in academy-admin/clock.ts | Why: keep index.tsx parsing-free and testable
