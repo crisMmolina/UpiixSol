@@ -107,7 +107,7 @@ function IconButton({ label, onClick, children, disabled, danger }: {
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`grid size-10 place-items-center rounded-full transition hover:bg-line/60 disabled:opacity-30 ${danger ? "text-accent-2" : "text-ink"}`}
+      className={`grid size-11 place-items-center rounded-full transition hover:bg-line/60 disabled:opacity-30 ${danger ? "text-accent-2" : "text-ink"}`}
     >
       {children}
     </button>
@@ -499,7 +499,7 @@ function EnrolleesSkeleton() {
             <Skeleton className="h-3 w-1/4" />
           </div>
           <Skeleton className="hidden h-3.5 w-24 sm:block" />
-          <Skeleton className="size-10 rounded-full" />
+          <Skeleton className="size-11 rounded-full" />
         </div>
       ))}
     </div>

@@ -320,7 +320,7 @@ export function SiteBrandTab() {
                       Quitar
                     </Button>
                   </div>
-                  <a href={builtIn} download className="inline-flex items-center gap-1 text-xs font-semibold text-link">
+                  <a href={builtIn} download className="inline-flex min-h-11 items-center gap-1 self-start text-xs font-semibold text-link">
                     <DownloadSimple weight="bold" aria-hidden /> Descargar el original de UpiixSol
                   </a>
                 </div>

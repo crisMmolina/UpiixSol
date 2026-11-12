@@ -41,11 +41,11 @@ function AccountPage() {
           action={
             // Same footprint on both tabs (on Seguridad an invisible twin), so the tab bar never jumps.
             tab === "perfil" ? (
-              <button type="button" className="font-semibold underline" onClick={() => selectTab("seguridad")}>
+              <button type="button" className="inline-flex min-h-11 items-center font-semibold underline" onClick={() => selectTab("seguridad")}>
                 Ir a Seguridad →
               </button>
             ) : (
-              <span aria-hidden className="invisible font-semibold">
+              <span aria-hidden className="invisible inline-flex min-h-11 items-center font-semibold">
                 Ir a Seguridad →
               </span>
             )

@@ -33,7 +33,8 @@ export function SectionTitle({ title, action, subtitle }: { title: string; actio
         <h2 className="text-xl sm:text-2xl">{title}</h2>
         {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
       </div>
-      {action}
+      {/* Touch target ≥ 44 px for the link (UPS-040), the text looks the same. */}
+      {action && <div className="[&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a]:font-semibold">{action}</div>}
     </div>
   );
 }

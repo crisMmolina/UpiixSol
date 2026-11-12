@@ -219,7 +219,7 @@ function ResourceCard({ resource, canManage, onEdit, onDelete }: {
       <h2 className="text-xl">{resource.title}</h2>
       {resource.description && <Markdown source={resource.description} className="text-sm text-muted" />}
       {href && (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="mt-auto inline-flex items-center gap-1 font-semibold">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="mt-auto inline-flex min-h-11 items-center gap-1 self-start font-semibold">
           {resource.url ? "Abrir" : "Ver archivo"} <ArrowSquareOut weight="bold" aria-hidden />
           <span className="sr-only">(se abre en otra pestaña)</span>
         </a>
