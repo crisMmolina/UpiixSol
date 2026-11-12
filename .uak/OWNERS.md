@@ -35,6 +35,7 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/migrations/versions/0004_media_objects.py | UPS-030 |
 | app/migrations/versions/0005_activity_events.py | UPS-037 |
 | app/migrations/versions/0006_site_settings.py | UPS-041 |
+| app/migrations/versions/0007_lesson_segments.py | UPS-045 |
 | app/security.py | UPS-020 |
 | app/pagination.py | UPS-002 |
 | app/sanitize.py | UPS-002 |
