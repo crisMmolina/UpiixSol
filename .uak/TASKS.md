@@ -917,3 +917,40 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - e2e: a member opens lesson 1.2 "Variables"; the embed carries `start=2938&end=5665`; a simulated `ended` moves the route's progress bar.
 - **Verify:** `uv run pytest -q app/tests/test_seed_ruta_ia.py app/tests/test_seed.py && uv run pytest -q e2e/test_ruta_ia.py`
 - **Next step:** red fixture and idempotency tests, then the fixture from the spike, then `seed_ruta_ia`.
+
+## UPS-049 · E2E on Windows: a locked e2e.db at teardown must not fail the next test
+
+- **Type:** fix
+- **Priority:** P2
+- **Estimate:** 20 min
+- **Rubric / Spec:** review of UPS-041/042/043 on Windows, 2026-11-11: `uv run pytest e2e` gave 8 failed + 18 errors on main (mobile tests of test_admin_panels and test_community). Cause: when the `site` fixture switches desktop → mobile, `workdir.cleanup()` raises `PermissionError [WinError 32]` on `e2e.db` (the server process still holds it) and pytest reports it in the setup of the first mobile test. That test never runs, and the next ones depend on its state ("still the superadmin on /admin?tab=usuarios"). Proven: with `ignore_cleanup_errors=True` the same run gives 79 passed, 1 skipped, 0 errors.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-016
+- **Paths:** e2e/conftest.py
+- **Freeze-Allowed:** no
+- **Test-First:** no (test infrastructure: the proof is the full e2e run, not a new assertion)
+- **Acceptance:**
+  - The temporary directory of the `site` fixture ignores cleanup errors (`tempfile.TemporaryDirectory(..., ignore_cleanup_errors=True)`), after the server has been terminated and awaited. No test, assertion or skip changes.
+  - On Windows, `uv run pytest e2e` shows 0 failed and 0 errors (before: 8 failed, 18 errors). Linux behavior is unchanged.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e`
+- **Next step:** one-line change in `_start_server`, then the full e2e run.
+
+## UPS-050 · SVG upload hardening: reject processing instructions and cap `<use>` fan-out
+
+- **Type:** security
+- **Priority:** P2
+- **Estimate:** 60 min
+- **Rubric / Spec:** security review of UPS-041 (PR #72), 2026-11-11, two LOW findings in code already on main. Contained today by `MEDIA_CSP` (`default-src 'none'; sandbox`) and `nosniff`; only a superadmin or club admin can upload.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-041, UPS-035
+- **Paths:** app/services/media.py, app/tests/test_media.py
+- **Freeze-Allowed:** no
+- **Tests:** test_svg_rejects_processing_instruction, test_svg_rejects_use_fan_out, test_svg_plain_logo_still_accepted
+- **Acceptance:**
+  - `_svg_is_safe` rejects any processing instruction after the XML declaration (for example `<?xml-stylesheet ... href="https://evil.example/x.xsl"?>`), or the stored bytes are the sanitized serialization instead of the raw upload. Both uploads (club logo and site logo or mascot) get 422 as for other unsafe SVGs.
+  - A SVG with more than a small fixed number of `<use>` elements (at most 20) or with nested `<use>`/`<symbol>` references is rejected with the same 422.
+  - A normal logo SVG (paths, groups, gradients, one or two `<use>`) is still accepted, and PNG/WebP paths are untouched. Coverage of `app/` stays at 100 %.
+- **Verify:** `uv run pytest -q app/tests/test_media.py app/tests/test_site.py && uv run ruff check app`
+- **Next step:** red tests with the two payloads, then the check in `_svg_is_safe`.
