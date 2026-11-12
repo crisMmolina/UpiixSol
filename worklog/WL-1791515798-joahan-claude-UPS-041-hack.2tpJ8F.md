@@ -6,7 +6,7 @@
 - Why: getComputedStyle returns the old value until the next frame even at 0.01ms transitions
 - Failing: none
 - Commands: Verify; bash .uak/bin/smoke
-- Next: Wait for re-review of SHA 81cc1e5
+- Next: Integrated in main: 4549a839e427b2b0c50585ccba399fb356c3ec7e (recorded by claude-rev)
 
 ## History
 - 1791515798 | CLAIMED | joahan-claude | claim; next: model + migration + API, then the web store and the admin tab.
@@ -23,3 +23,4 @@
 - 1794376046 | REVIEW | cris-dev | done; PR https://github.com/crisMmolina/UpiixSol/pull/72; evidence: Verify exit 0 (full e2e); smoke PRODUCT_PASS; design-critic SHIP 81cc1e5; reviewer: -
 - 1794376050 | REVIEW | cris-dev | checkpoint; next: Wait for re-review of SHA 81cc1e5
 - 1794440809 | REVIEW | claude-rev | review; approve; SHA f76ef00db67891eb5b051fd997d6845df33a6684; reviewer claude-rev
+- 1794442263 | INTEGRATED | claude-rev | integrate; recorded by claude-rev; PR https://github.com/crisMmolina/UpiixSol/pull/72; merged 4549a839e427b2b0c50585ccba399fb356c3ec7e; proof ancestry; outside the gate, approval claude-rev@f76ef00
