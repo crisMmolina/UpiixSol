@@ -31,5 +31,27 @@ Load `.uak/docs/` only when `AGENTS.md` §7 or your mode says so. Minimal contex
 - Run tests with `bash .uak/bin/q ...`, using pytest `-q --tb=short -x`. Edit with Edit; never rewrite whole files.
 - Avoid editing `AGENTS.md` or `CLAUDE.md` while agents are running: it invalidates every agent's prompt cache. Urgent amendments go through `uak decision`.
 
+# Project · UpiixSol Campus
+Club platform (IPN · UPIIZ): academies, learning routes with progress, community channels, role panels. Product: `IDEA.md` · spec: `docs/specs/001-campus/` · permission matrix: `docs/permissions-matrix.md` · ADRs: `docs/adr/`. UI and docs in Spanish (Mexico).
+
+## Commands
+- Setup: `uv sync` · `npm --prefix web ci` · `uv run alembic upgrade head` (copy `.env.example` → `.env`, fill `JWT_SECRET`, `SEED_DEFAULT_PASSWORD`).
+- Run: `uv run uvicorn app.main:app --reload --port $UAK_PORT` (docs at `/api/docs`) · `npm --prefix web run dev` (Vite reads `$UAK_PORT+1`).
+- Backend: `uv run ruff check app` · `uv run pytest --cov=app` (target 100 %, CI floor 90) · one test: `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_learning.py::test_name`.
+- Migrations must round-trip (CI): `uv run alembic upgrade head && uv run alembic downgrade base`. CI also runs pytest on PostgreSQL 16: no SQLite-only SQL.
+- Web: `npm --prefix web run lint` (oxlint) · `npm --prefix web run build` (`tsc -b` + vite).
+- E2E (Playwright, outside default `testpaths`): `npm --prefix web run build && uv run pytest e2e` — serves `web/dist` on a fresh seeded SQLite DB, at 1280 and 390 wide; screenshots in `e2e/artifacts/`.
+- Everything: `bash .uak/bin/smoke`.
+
+## Architecture
+- Auto-discovery, so nobody edits `app/main.py` or `web/src/App.tsx`: a router is `app/routers/<f>.py` exporting `router = APIRouter(prefix="/api/...")`; a screen is `web/src/features/<f>/index.tsx` exporting `routes` (optional `order`); root providers in `web/src/lib/providers.tsx`.
+- Backend layers per feature: `routers/` (HTTP, deps, pagination) → `services/` (queries, rules, `AppError`) → `models/` (SQLAlchemy 2) + `schemas/` (Pydantic).
+- Authorization in `app/security.py`: `current_user`, `require_role(...)`, `ensure_academy_scope(user, academy_id)`. Always take `academy_id` from the DB row, never the request body. Every endpoint is covered by `app/tests/test_permissions_matrix.py`.
+- Errors: `raise AppError(status, "msg")` → `{"error": {"code","message","details"}}`. Lists use `app/pagination.py` cursor pages (≤ 50 items).
+- Tests: `app/tests/conftest.py` gives each test an empty in-memory DB; fixtures `seeded`, `as_superadmin`, `as_admin_ia`, `as_member` load the demo seed.
+- Frontend: shared UI in `web/src/components/`, layouts in `web/src/layouts/`, API client and types in `web/src/lib/`; design rules in `web/DESIGN.md`; brand assets in `assets/brand/` used as-is.
+- Shared-file owners: `.uak/OWNERS.md` — check it before editing `pyproject.toml`, `app/config.py`, migration env and similar.
+- UI numbers come from DB queries, never an LLM. Commits carry no AI co-author lines.
+
 ## When compacting
 Keep only: ID, branch, worktree, exact next step, pending criteria, failures with exact errors, verify commands, decisions and unanswered inbox. Drop command output, diffs and explorations.

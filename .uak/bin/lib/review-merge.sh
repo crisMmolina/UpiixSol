@@ -327,6 +327,36 @@ approval_check() {
   esac
   return 0
 }
+# Work that is on the base without passing the gate. The task's own diff is its commits that the base does not have
+# (merge commits and the base's commits that a "merge main into the branch" brought in are not its own), and each
+# file those commits touched must read on the base as the branch tip has it (mode and content, or absent in both):
+# never the whole tree hash, which any other change on the base or any base merge in the branch breaks.
+# Why (deus-ex-machina, 2026-11-09): squash merges, a PR merged after more commits, base merges in the branch and
+# equal content from another commit each ended in "tree hash does not match" or "changes no task file". Limits: a
+# file the base changed again after the merge no longer matches, and nothing is proven for an own diff with no files.
+integrated_outside_check() { # TIP; sets RM_PROOF, RM_REASON
+  local tip=$1 task_base base=refs/uak/base path n=0 a b
+  RM_PROOF= RM_REASON=
+  task_base=$(field "$RECORD" Task-Base); case "$task_base" in -|*[!0-9a-f]*) task_base=;; esac
+  git -C "$TX" cat-file -e "$tip^{commit}" 2>/dev/null || { RM_REASON='Task branch tip not available'; return 1; }
+  [ "$tip" != "$task_base" ] || { RM_REASON='TIP equals base; nothing implemented'; return 1; }
+  if git -C "$TX" merge-base --is-ancestor "$tip" "$base"; then
+    # The branch is in the history of the base: real work only if it is not just a point the base passed through.
+    if [ -n "$task_base" ]; then git -C "$TX" diff --quiet "$task_base" "$tip" && { RM_REASON='The task has no diff against its base'; return 1; }
+    elif git -C "$TX" rev-list --first-parent "$base" | grep -qx "$tip"; then RM_REASON="The branch tip is a commit $BASE passed through, not task work"; return 1; fi
+    RM_PROOF=ancestry; return 0
+  fi
+  git -C "$TX" log --no-merges --no-renames --name-only --format= -z "$tip" --not "$base" > "$TXROOT/outside-paths" || { RM_REASON='Could not read the task branch'; return 1; }
+  sort -zu "$TXROOT/outside-paths" > "$TXROOT/outside-paths.u" 2>/dev/null || cp "$TXROOT/outside-paths" "$TXROOT/outside-paths.u"
+  while IFS= read -r -d '' path; do
+    [ -n "$path" ] || continue
+    n=$((n + 1))
+    a=$(git -C "$TX" ls-tree "$tip" -- "$path" | cut -f 1); b=$(git -C "$TX" ls-tree "$base" -- "$path" | cut -f 1)
+    [ "$a" = "$b" ] || { RM_REASON="$path is not on $BASE as the task branch has it: the work did not land (or $BASE changed it again; merge it with uak merge or record it as a human)"; return 1; }
+  done < "$TXROOT/outside-paths.u"
+  [ "$n" -gt 0 ] || { RM_REASON='The task branch has no commits of its own to find on the base'; return 1; }
+  RM_PROOF="outside:content:$n"
+}
 integrated_check() {
   local tip=$1 merged=$2 task_base parent expected actual path entry mode type blob changed=no
   RM_PROOF= RM_REASON=
@@ -476,9 +506,10 @@ rm_coord_mutate() {
       STATE=INTEGRATED; WL=$(field "$RECORD" Worklog)
       put "$RECORD" State INTEGRATED; put "$RECORD" Merge-Commit "$RM_CANDIDATE"; put "$RECORD" Reviewer "$APPROVED_BY"
       put "$RECORD" Task-Tip "$RM_REVIEWED_TIP"; put "$RECORD" Integration-Proof ancestry
+      put "$RECORD" Smoke "${RM_SMOKE_NOTE:-full}"
       [ "${RM_ADOPTED:-no}" != yes ] || put "$RECORD" Merged-By "$AGENT"
       put "$RECORD" Lease-Until 0; put "$RECORD" Updated "$NOW"; put "$RECORD" Next "Integrated in $BASE: $RM_CANDIDATE"
-      update_summary_field Next "Integrated in $BASE: $RM_CANDIDATE"; event "merge; smoke and Verify PASS; commit $RM_CANDIDATE; reviewer $APPROVED_BY"
+      update_summary_field Next "Integrated in $BASE: $RM_CANDIDATE"; event "merge; smoke and Verify PASS (smoke: ${RM_SMOKE_NOTE:-full}); commit $RM_CANDIDATE; reviewer $APPROVED_BY"
       rm -f "$CLAIM" "$lock"; put "$TX/queue/$ID.md" State INTEGRATED; put "$TX/queue/$ID.md" Commit "$RM_CANDIDATE"
       msg_notify_related "$ID" integrated "$ID integrated in $BASE ($RM_CANDIDATE). If you depend on it: git fetch origin && git merge --no-edit origin/$BASE";;
   esac
@@ -732,6 +763,36 @@ rm_gate_log() {
   [ -n "$line" ] || line=$(grep -Ev '^[[:space:]]*$' "$dst" | tail -n 1 | cut -c 1-140)
   printf ': %s (log: %s)' "$(one_line "$line" | tr '|' '/')" "$dst"
 }
+# Merge-Smoke: affected (PROJECT.md on the base): the gate hands the project's smoke only the test files that name a changed
+# file or were changed themselves (UAK_SMOKE_TESTS, honoured by .uak/bin/smoke); lint, the project smoke and Verify still
+# run. A change under .uak/bin (the engine) or to the test harness runs everything. Default: full.
+# Sets RM_SMOKE_NOTE (the merge record's Smoke line) and RM_SMOKE_TESTS (set only when a list is handed over).
+# Why (v6.1.0 session): each `uak merge` ran the whole suite on the maintainer's machine, over 10 minutes per task; CI
+# runs every test on every push anyway.
+rm_smoke_scope() {
+  local changed="$TXROOT/smoke-changed" tests="$TXROOT/smoke-tests" pats="$TXROOT/smoke-pats" hit="$TXROOT/smoke-hit" total n
+  RM_SMOKE_NOTE=full; unset RM_SMOKE_TESTS RM_SMOKE_NONE
+  [ "$(coord_source_field Merge-Smoke full)" = affected ] || return 0
+  git -C "$RM_BUILD" diff --cached --name-only HEAD > "$changed" 2>/dev/null || { RM_SMOKE_NOTE='full (changed files not readable)'; return 0; }
+  # Any change under .uak/bin is the engine: every test sources its libs, and no test names lib/claim.sh by file name.
+  # Why (review of UAK-052): basename matching ran 0 of 52 tests for a change to lib/claim.sh.
+  if grep -Eq '(^|/)\.uak/bin/|(^|/)\.uak/tests/test_hack\.py$' "$changed"; then
+    RM_SMOKE_NOTE='full (engine changed)'; return 0; fi
+  git -C "$RM_BUILD" ls-files | grep -E '(^|/)\.uak/tests/test_[A-Za-z0-9_]+\.py$' > "$tests" || :
+  total=$(sed 's@.*/@@' "$tests" | sort -u | wc -l | tr -d ' ')
+  [ "${total:-0}" -gt 0 ] || { RM_SMOKE_NOTE='full (no test files)'; return 0; }
+  # Test files changed themselves, and test files that name a changed file (by its file name).
+  grep -E '(^|/)\.uak/tests/test_[A-Za-z0-9_]+\.py$' "$changed" > "$hit" || :
+  grep -Ev '(^|/)\.uak/tests/' "$changed" | sed 's@.*/@@' | sort -u > "$pats" || :
+  if [ -s "$pats" ]; then
+    (cd "$RM_BUILD" && xargs grep -lFf "$pats" < "$tests" 2>/dev/null) >> "$hit" || :
+  fi
+  RM_SMOKE_TESTS=$(sed 's@.*/@@;s@\.py$@@' "$hit" | sort -u | tr '\n' ' ' | sed 's@ $@@')
+  n=0; [ -z "$RM_SMOKE_TESTS" ] || n=$(printf '%s\n' $RM_SMOKE_TESTS | wc -l | tr -d ' ')
+  # The none-signal is a token file only the gate creates; smoke ignores any other value (a stale export of the user's).
+  [ -n "$RM_SMOKE_TESTS" ] || { printf 'affected-none\n' > "$TXROOT/smoke-none-token" && RM_SMOKE_NONE=$TXROOT/smoke-none-token; }
+  RM_SMOKE_NOTE="affected $n of $total test files"
+}
 rm_prepare_candidate() {
   local branch task_base verify missing
   RECORD=$(task_file); CLAIM=$(claim_file)
@@ -760,8 +821,9 @@ rm_prepare_candidate() {
     RM_REASON='Secret gate red'; return 1;
   }
   rm_gate_env
+  rm_smoke_scope
   # The project's commands run with the caller's SSH settings, not uak's (lib/net.sh, uak_caller_ssh).
-  (cd "$RM_BUILD" && { uak_caller_ssh 2>/dev/null || :; } && PATH="$RM_GATE_PATH" UAK_MAIN_CHECKOUT="$RM_MAIN" UAK_PORT="$RM_GATE_PORT" bash .uak/bin/smoke) > "$TXROOT/gate-smoke.log" 2>&1 ||
+  (cd "$RM_BUILD" && { uak_caller_ssh 2>/dev/null || :; } && unset UAK_SMOKE_TESTS UAK_SMOKE_GATE_NONE && { [ -z "${RM_SMOKE_TESTS:-}" ] || export UAK_SMOKE_TESTS="$RM_SMOKE_TESTS"; } && { [ -z "${RM_SMOKE_NONE:-}" ] || export UAK_SMOKE_GATE_NONE="$RM_SMOKE_NONE"; } && PATH="$RM_GATE_PATH" UAK_MAIN_CHECKOUT="$RM_MAIN" UAK_PORT="$RM_GATE_PORT" bash .uak/bin/smoke) > "$TXROOT/gate-smoke.log" 2>&1 ||
     { RM_REASON="Smoke red or product unverified$(rm_gate_log smoke)"; return 1; }
   verify=$(rm_task_value Verify); verify=$(printf '%s\n' "$verify" | sed 's/^`//;s/`$//')
   [ -n "$verify" ] || { RM_REASON='Missing runnable Verify'; return 1; }

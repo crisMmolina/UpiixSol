@@ -38,6 +38,7 @@ Deadlines run when any agent calls `next` or `status` (or cron or a GitHub Actio
    - no shared or CI files without an owner;
    - the secret scan;
    - `smoke` and Verify, with no tracked file modified.
+     With `Merge-Smoke: affected` in PROJECT.md the smoke gets only the test files that name a changed file or changed themselves; a change under `.uak/bin` (the engine) or to `test_hack.py` runs them all. The record says `Smoke: affected N of M test files`. Default `full`; CI runs every test.
 
    Then it pushes base and claims atomically. If anything fails, the task goes to the human queue (`digest`) and the agent moves on.
 4. Human merges: `done ID --pr URL --evidence "human merge" --integrated COMMIT`, verified by ancestry or a rebuilt tree hash, so squash and rebase merges work.
@@ -45,6 +46,7 @@ Deadlines run when any agent calls `next` or `status` (or cron or a GitHub Actio
 
 ## Merged outside uak
 - A human merged the PR on GitHub and the owner agent is offline: any agent runs `uak integrate ID`. It needs a valid approval for the merged SHA and proof that the SHA is in the remote base. For a squash merge, pass `--integrated COMMIT`. Without an approval only the human who merged records it (`UAK_HUMAN=NAME UAK_AGENT= bash .uak/bin/uak integrate ID`), and over a standing reject with `--reason TEXT`.
+- Work that reached the base outside the gate (a squash merge, a PR merged after more commits than the approved SHA, a branch carrying base merges, equal content from another commit, or a task never claimed whose `feat/<id>` branch was merged): `uak integrate ID` also records it when the task's own diff is on the base. Its own diff is its commits the base does not have, base merges dropped; every file they touched must read on the base as the branch tip has it (never the whole tree hash). The record says `Integrated-Outside: yes` and `Approval: REVIEWER@SHA` or `none`; `uak stats` and `dash` count those apart from gated merges, dependents unblock and the claim is released. A CLAIMED task is recorded by its owner or a human; a task in REVIEW or not yet claimed by any identity. `uak merge` is unchanged.
 - Generated files that every task touches (permission matrices, OpenAPI dumps, snapshots) get one owner in `OWNERS.md`. Other tasks regenerate them after `git merge --no-edit origin/main` instead of hand-merging.
 - New test files outside a task's `Paths`: list the test dirs in `Additive-Paths` (PROJECT.md). New files there pass the scope gate; edits to existing files still need a reservation.
 

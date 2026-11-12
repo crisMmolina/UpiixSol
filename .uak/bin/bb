@@ -76,7 +76,9 @@ publish() { # $1 file with lines
   rel="blackbox/$(date -u +%Y-%m-%d)-$host.md"
   ok=1
   git -C "$tmp" init -q && git -C "$tmp" remote add origin "$url" &&
-    git -C "$tmp" config user.name "${UAK_AGENT:-uak}" && git -C "$tmp" config user.email uak@localhost || { rm -rf "$tmp"; return 1; }
+    # The repository's own git identity (the human), never the agent's name: no AI authorship (PROJECT.md §5).
+    git -C "$tmp" config user.name "$(git -C "$top" config user.name 2>/dev/null || echo uak)" &&
+    git -C "$tmp" config user.email "$(git -C "$top" config user.email 2>/dev/null || echo uak@localhost)" || { rm -rf "$tmp"; return 1; }
   for attempt in 1 2 3 4; do
     if git -C "$tmp" ls-remote --exit-code --heads origin claims >/dev/null 2>&1; then
       git -C "$tmp" fetch -q --depth 1 origin refs/heads/claims && git -C "$tmp" checkout -q -B claims FETCH_HEAD || break
