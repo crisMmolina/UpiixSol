@@ -114,7 +114,12 @@ def test_svg_rejects_use_fan_out() -> None:
         b'<g id="b"><path d="M0 0"/></g></defs><use href="#a"/></svg>'
     )
     chained = SVG_OPEN + b'<defs><use id="a" href="#b"/><path id="b" d="M0 0"/></defs><use href="#a"/></svg>'
-    for evil in (many, nested, chained):
+    # Renderers resolve a duplicated id to the first element: a check that keeps the last is blind to it.
+    duplicated = (
+        SVG_OPEN + b'<g id="a"><use href="#b"/></g><g id="a"><path d="M0 0"/></g><path id="b" d="M0 0"/>'
+        b'<use href="#a"/></svg>'
+    )
+    for evil in (many, nested, chained, duplicated):
         with pytest.raises(AppError) as error:
             save_image_bytes(evil, "logo")
         assert error.value.status == 422

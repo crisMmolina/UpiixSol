@@ -188,6 +188,9 @@ def _use_is_cheap(root: ET.Element) -> bool:
     uses = [element for element in root.iter() if _split(element.tag)[1] == "use"]
     if len(uses) > MAX_USE_ELEMENTS:
         return False
+    ids = [element.get("id") for element in root.iter() if element.get("id")]
+    if len(ids) != len(set(ids)):  # renderers pick the first of two equal ids: the check below must not guess
+        return False
     by_id = {element.get("id"): element for element in root.iter() if element.get("id")}
     for use in uses:
         for name, value in use.attrib.items():
