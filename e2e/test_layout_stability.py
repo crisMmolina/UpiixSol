@@ -85,15 +85,15 @@ def test_login_card_keeps_top_and_size(site: Site) -> None:
 
     # Client checks in Spanish, without moving the card.
     page.get_by_role("button", name="Entrar").click()
-    expect(page.get_by_text("Escribe tu correo.")).to_be_visible()
+    expect(page.get_by_text("Escribe tu boleta o correo.")).to_be_visible()
     expect(page.get_by_text("Escribe tu contraseña.")).to_be_visible()
     assert_box(card, (top, login_height))
 
     # Wrong password: the API's error fills the reserved line under the button.
-    page.get_by_role("textbox", name="Correo", exact=True).fill(MEMBER)
+    page.get_by_role("textbox", name="Boleta o correo", exact=True).fill(MEMBER)
     page.get_by_label("Contraseña", exact=True).fill("no-es-la-clave")
     page.get_by_role("button", name="Entrar").click()
-    expect(page.get_by_text("Correo o contraseña incorrectos.")).to_be_visible()
+    expect(page.get_by_text("Boleta, correo o contraseña incorrectos.")).to_be_visible()
     assert_box(card, (top, login_height))
     site.shot("layout-login-error")
 

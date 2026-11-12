@@ -61,7 +61,8 @@ export interface RegisterIn {
 }
 
 export interface LoginIn {
-  email: string;
+  /** A 10-digit boleta or an email (UPS-044). */
+  identifier: string;
   password: string;
 }
 
