@@ -6,7 +6,7 @@
 - Why: overflow-hidden dialog scrolled sideways on showModal focus (scrollLeft 343)
 - Failing: none
 - Commands: Verify; full e2e; WebKit run
-- Next: Wait for review of SHA 1c39241
+- Next: Integrated in main: 5a59578d97e15190c80424d2a58f4cbd466bc238 (recorded by claude-rev)
 
 ## History
 - 1794379501 | CLAIMED | cris-dev | claim; next: reproduce with a frame-sampling e2e (red), then fix the dialog's initial position/animation in Overlay.tsx.
@@ -14,3 +14,4 @@
 - 1794381433 | REVIEW | cris-dev | done; PR https://github.com/crisMmolina/UpiixSol/pull/77; evidence: Verify exit 0; full e2e exit 0; WebKit and Chromium green on e2e/test_drawer_motion.py; smoke PRODUCT_PASS; design-critic SHIP · red at c572151: E   AssertionError: opening frame 0: panel on screen without the backdrop; reviewer: -
 - 1794381451 | REVIEW | cris-dev | checkpoint; next: Wait for review of SHA 1c39241
 - 1794439736 | REVIEW | claude-rev | review; approve; SHA 1c392414d347af26d891eb7e514a21eba79530e2; reviewer claude-rev
+- 1794441684 | INTEGRATED | claude-rev | integrate; recorded by claude-rev; PR https://github.com/crisMmolina/UpiixSol/pull/77; merged 5a59578d97e15190c80424d2a58f4cbd466bc238; proof ancestry
