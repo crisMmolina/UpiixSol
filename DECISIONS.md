@@ -54,3 +54,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794460771 | UPS-040 | heroes render real static parts while loading; reserved text heights; logo min width | Why: skeleton→content shifts up to 226px at 390
 - 1794462062 | UPS-051 | reuse matrix fixtures; QA only, no fixes | Why: task: mismatches become new tasks
 - 1794462401 | UPS-058 | QA only | Why: task
+- 1794462911 | UPS-053 | own rate-limited server for AUTH-02 | Why: shared e2e server disables the limiter
