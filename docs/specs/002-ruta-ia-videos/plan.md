@@ -94,7 +94,7 @@ This touches user-supplied URLs that end up in an iframe `src`, an area the spik
 Zero infrastructure or API cost: no YouTube API, no new services. About 55 more `lessons` rows.
 
 ## Risks
-- **Completion on segment end:** completion relies on the iframe's `ended` state (UPS-024). The `end` parameter should stop playback with state 0, but this is **unverified**. UPS-048 checks it in a real browser and records the result. If `ended` does not fire, the fallback is to treat `paused` within 2 s of `end_s` as ended, which is a decision for that task.
+- **Completion on segment end:** completion relies on the iframe's `ended` state (UPS-024). The `end` parameter stops playback with state 0. **Verified in UPS-048** (2026-11-12, Chromium, IFrame API, `aircAruvnKk?start=10&end=14`): states -1 → 1 at t=10.1 → 0 at t=14.0. No fallback is needed.
 - **Link rot:** catalog rows are checked once in UPS-046. Lessons that are not `ok` stay drafts.
 
 ## Tasks

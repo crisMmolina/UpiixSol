@@ -152,7 +152,7 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
             <p className="text-lg font-semibold">Video no disponible sin conexión</p>
             <p className="text-sm text-white/80">Revisa tu internet o ábrelo directamente en YouTube.</p>
             <a
-              href={`https://www.youtube.com/watch?v=${lesson.youtube_video_id}`}
+              href={`https://www.youtube.com/watch?v=${lesson.youtube_video_id}${lesson.start_s ? `&t=${lesson.start_s}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 font-semibold text-white underline"

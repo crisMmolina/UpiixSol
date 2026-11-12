@@ -241,6 +241,8 @@ export interface LessonOut {
   thumbnail_url: string;
   description: string;
   duration_min: number | null;
+  start_s: number | null;
+  end_s: number | null;
   is_published: boolean;
   links: LessonLinkOut[];
   completed: boolean;
@@ -266,6 +268,8 @@ export interface LessonIn {
   youtube_url: string;
   description?: string;
   duration_min?: number | null;
+  start_s?: number | null;
+  end_s?: number | null;
   is_published?: boolean;
   links?: LessonLinkIn[];
 }

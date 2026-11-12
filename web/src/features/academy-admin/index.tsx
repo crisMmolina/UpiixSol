@@ -37,6 +37,7 @@ import type { AcademyOut, BrandingUpdateIn, LessonLinkOut, Page } from "@/lib/ty
 import { ResourceBoard } from "@/features/resources/ResourceBoard";
 import { CampusLayout } from "@/layouts";
 
+import { formatClock, parseClock, startFromUrl } from "./clock";
 import { useSortable } from "./sortable";
 
 export const order = 50;
@@ -51,6 +52,8 @@ interface LessonAdminOut {
   youtube_video_id: string;
   description: string;
   duration_min: number | null;
+  start_s: number | null;
+  end_s: number | null;
   position: number;
   is_published: boolean;
   links: LessonLinkOut[];
@@ -289,6 +292,16 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
 
 // ── Content ──────────────────────────────────────────────────
 
+const CLOCK_HINT = "mm:ss o h:mm:ss";
+const CLOCK_ERROR = "Usa mm:ss o h:mm:ss.";
+const SEGMENT_ERROR = "El fin del tramo debe ser mayor que el inicio.";
+
+/** "14:10–48:58" for a lesson that plays only part of its video (UPS-048). */
+function segmentLabel(lesson: Pick<LessonAdminOut, "start_s" | "end_s">): string | null {
+  if (lesson.start_s == null && lesson.end_s == null) return null;
+  return `${formatClock(lesson.start_s ?? 0)}–${lesson.end_s == null ? "fin" : formatClock(lesson.end_s)}`;
+}
+
 interface LessonFormState {
   moduleId: number;
   lesson?: LessonAdminOut;
@@ -300,16 +313,32 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [start, setStart] = useState(editing?.start_s != null ? formatClock(editing.start_s) : "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const duration = String(form.get("duration_min") || "").trim();
+    const startText = start.trim();
+    const endText = String(form.get("end_s") || "").trim();
+    const startS = startText ? parseClock(startText) : null;
+    const endS = endText ? parseClock(endText) : null;
+    const segmentErrors: Record<string, string> = {};
+    if (startText && startS === null) segmentErrors.start_s = CLOCK_ERROR;
+    if (endText && endS === null) segmentErrors.end_s = CLOCK_ERROR;
+    else if (endS !== null && endS <= (startS ?? 0)) segmentErrors.end_s = SEGMENT_ERROR;
+    if (Object.keys(segmentErrors).length) {
+      setErrors(segmentErrors);
+      setError(segmentErrors.end_s ?? segmentErrors.start_s);
+      return;
+    }
     const payload = {
       title: String(form.get("title")).trim(),
       youtube_url: String(form.get("youtube_url")).trim(),
       description: String(form.get("description")),
       duration_min: duration ? Number(duration) : null,
+      start_s: startS,
+      end_s: endS,
       is_published: form.get("is_published") === "on",
       links: links.filter((l) => l.label.trim() && l.url.trim()),
     };
@@ -350,7 +379,35 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
         placeholder="https://www.youtube.com/watch?v=…"
         hint="Acepta watch, youtu.be, shorts o embed."
         error={errors.youtube_url}
+        onChange={(event) => {
+          // A pasted ?t= fills an empty start; a start the admin typed stays (UPS-048).
+          const fromUrl = startFromUrl(event.currentTarget.value);
+          if (!start.trim() && fromUrl !== null) setStart(formatClock(fromUrl));
+        }}
       />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="Inicio del tramo"
+          name="start_s"
+          value={start}
+          onChange={(event) => setStart(event.currentTarget.value)}
+          inputMode="numeric"
+          placeholder="0:00"
+          hint={CLOCK_HINT}
+          reserve
+          error={errors.start_s}
+        />
+        <TextField
+          label="Fin del tramo"
+          name="end_s"
+          defaultValue={editing?.end_s != null ? formatClock(editing.end_s) : ""}
+          inputMode="numeric"
+          placeholder="Hasta el final"
+          hint={CLOCK_HINT}
+          reserve
+          error={errors.end_s}
+        />
+      </div>
       <TextArea label="Descripción (markdown)" name="description" defaultValue={editing?.description} rows={4} reserve error={errors.description} />
       <TextField
         label="Duración (minutos)"
@@ -681,6 +738,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                         <span className="min-w-0">
                           {lessonIndex + 1}. {lesson.title}
                           {lesson.duration_min ? <span className="text-muted"> · {lesson.duration_min} min</span> : null}
+                          {segmentLabel(lesson) ? <span className="text-muted tabular-nums"> · {segmentLabel(lesson)}</span> : null}
                         </span>
                         {!lesson.is_published && <Badge tone="alert">Borrador</Badge>}
                       </span>
