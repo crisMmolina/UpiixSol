@@ -49,3 +49,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794455281 | UPS-046 | released before starting | Why: the §5 catalog of the human brief ruta-ia-videos.md is not in the repo (spec 002 only cites it); copying it from memory would invent links
 - 1794455376 | allow | NAME | test change: UPS-044 | Why: login es Boleta o correo (UPS-044)
 - 1794455398 | UPS-044 | human allowed the 4 edited assertions | Why: the login spec changed (Boleta o correo)
+- 1794456719 | UPS-045 | playerSrc fix pulled in from UPS-048 Paths | Why: UPS-045 alone would break embeds of lessons saved with ?t=
