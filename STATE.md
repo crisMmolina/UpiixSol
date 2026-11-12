@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794462389
+Updated: 1794462401
 AVAILABLE: UPS-031 UPS-048 UPS-047 UPS-052 UPS-053 UPS-054 UPS-055 UPS-056 UPS-057 UPS-059 UPS-060 UPS-046 
 CLAIMED: -
 BLOCKED: -
@@ -13,15 +13,15 @@ Claims (first 24; status --task ID shows detail):
 UPS-040 | REVIEW | cris-dev | until 1794547171
 UPS-045 | REVIEW | cris-dev | until 1794543119
 UPS-051 | REVIEW | cris-dev | until 1794548462
-UPS-058 | REVIEW | cris-dev | until 1794548789
+UPS-058 | REVIEW | cris-dev | until 1794548801
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794455398 | UPS-044 | human allowed the 4 edited assertions | Why: the login spec changed (Boleta o correo)
 - 1794456719 | UPS-045 | playerSrc fix pulled in from UPS-048 Paths | Why: UPS-045 alone would break embeds of lessons saved with ?t=
 - 1794458486 | deadline decision/UPS-045-1794456491/1794457391 | REVERSIBLE_AND_LOG | Option: UPS-045 also changes playerSrc() in web/src/features/learning/youtube.ts (in UPS-048 P
 - 1794460771 | UPS-040 | heroes render real static parts while loading; reserved text heights; logo min width | Why: skeleton→content shifts up to 226px at 390
 - 1794462062 | UPS-051 | reuse matrix fixtures; QA only, no fixes | Why: task: mismatches become new tasks
+- 1794462401 | UPS-058 | QA only | Why: task
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.

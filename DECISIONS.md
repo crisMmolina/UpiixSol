@@ -53,3 +53,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794458486 | deadline decision/UPS-045-1794456491/1794457391 | REVERSIBLE_AND_LOG | Option: UPS-045 also changes playerSrc() in web/src/features/learning/youtube.ts (in UPS-048 Paths, not claimed) to merge params with new URL(); Why: with UPS-045 alone, a lesson saved with ?t= gets embed_url ...?start=N and playerSrc appends ?enablejsapi=1 → broken URL and no completion tracking; UPS-048 cannot be claimed until UPS-045 is integrated; one line, plan.md §Design 1 prescribes it; no money, accounts, publishing or scope expansion; no money, accounts, publishing or scope expansion.
 - 1794460771 | UPS-040 | heroes render real static parts while loading; reserved text heights; logo min width | Why: skeleton→content shifts up to 226px at 390
 - 1794462062 | UPS-051 | reuse matrix fixtures; QA only, no fixes | Why: task: mismatches become new tasks
+- 1794462401 | UPS-058 | QA only | Why: task
