@@ -133,6 +133,8 @@ SVG_ATTRIBUTES = {
 }
 _LOCAL_REF = re.compile(r"^#[A-Za-z][\w.-]*$")
 _URL_FUNC = re.compile(r"url\(\s*(?!#)", re.IGNORECASE)
+_XML_DECLARATION = re.compile(rb"\A\s*<\?xml\s[^>]*\?>", re.IGNORECASE)
+MAX_USE_ELEMENTS = 20  # `use` copies render once each: a small cap keeps a logo cheap to paint
 
 
 def _too_large(rule: Rule) -> AppError:
@@ -181,13 +183,34 @@ def _split(name: str) -> tuple[str | None, str]:
     return None, name
 
 
+def _use_is_cheap(root: ET.Element) -> bool:
+    """At most MAX_USE_ELEMENTS `use`, and none points at something that holds another `use` (no fan-out)."""
+    uses = [element for element in root.iter() if _split(element.tag)[1] == "use"]
+    if len(uses) > MAX_USE_ELEMENTS:
+        return False
+    by_id = {element.get("id"): element for element in root.iter() if element.get("id")}
+    for use in uses:
+        for name, value in use.attrib.items():
+            if _split(name)[1] != "href":
+                continue
+            target = by_id.get(value.strip().removeprefix("#"))
+            if target is not None and any(_split(inner.tag)[1] == "use" for inner in target.iter()):
+                return False
+    return True
+
+
 def _svg_is_safe(data: bytes) -> bool:
     """Allowlist: SVG-namespace shapes only, no scripts/styles/events, references only to local ids."""
     if re.search(rb"<!(DOCTYPE|ENTITY)", data, re.IGNORECASE):
         return False
+    # ElementTree drops processing instructions but the raw bytes are stored: only the declaration has `<?`.
+    if b"<?" in _XML_DECLARATION.sub(b"", data, count=1):
+        return False
     try:
         root = ET.fromstring(data)  # noqa: S314 (no DTD → no entity expansion)
     except ET.ParseError:
+        return False
+    if not _use_is_cheap(root):
         return False
     for element in root.iter():
         namespace, tag = _split(element.tag)
