@@ -34,7 +34,7 @@ from app.security import (
     verify_password,
 )
 
-INVALID_CREDENTIALS = "Correo o contraseña incorrectos."
+INVALID_CREDENTIALS = "Boleta, correo o contraseña incorrectos."
 DUPLICATE_ACCOUNT = "Ya existe una cuenta con ese correo o esa boleta. Inicia sesión o recupera tu acceso."
 REFRESH_GRACE = timedelta(seconds=10)
 
@@ -80,8 +80,9 @@ def register_member(db: Session, data: RegisterIn) -> User:
 
 
 def authenticate(db: Session, data: LoginIn) -> User:
-    user = db.scalar(select(User).where(User.email == data.email))
-    # verify_password runs even for unknown emails (dummy hash) so timing does not reveal accounts.
+    column = User.boleta if data.is_boleta else User.email
+    user = db.scalar(select(User).where(column == data.key))
+    # verify_password runs even for unknown accounts (dummy hash) so timing does not reveal them.
     if not verify_password(user.password_hash if user else None, data.password) or user is None:
         raise AppError(401, INVALID_CREDENTIALS, code="invalid_credentials")
     if not user.is_active:

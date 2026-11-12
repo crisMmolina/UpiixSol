@@ -62,17 +62,29 @@ export function LoginForm({ onDone, play }: FormProps) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "").trim();
+    const identifier = String(form.get("identifier") ?? "").trim();
     const password = String(form.get("password") ?? "");
-    if (!check(event.currentTarget, validateLogin(email, password))) return;
-    void send(async () => onDone(await login({ email, password })));
+    if (!check(event.currentTarget, validateLogin(identifier, password))) return;
+    void send(async () => onDone(await login({ identifier, password })));
   }
 
   return (
     <form onSubmit={submit} onInput={onInput} noValidate>
       <Stagger className="grid gap-2" play={play}>
         <StaggerItem>
-          <TextField label="Correo" name="email" type="email" autoComplete="email" inputMode="email" required reserve error={errors.email} />
+          {/* One field for every role (UPS-044): members type their boleta; the club board, its email. */}
+          <TextField
+            label="Boleta o correo"
+            name="identifier"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            hint="Tu número de boleta, o tu correo si eres de la mesa directiva."
+            required
+            reserve
+            error={errors.identifier}
+          />
         </StaggerItem>
         <StaggerItem>
           <TextField label="Contraseña" name="password" type="password" autoComplete="current-password" required reserve error={errors.password} />

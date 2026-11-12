@@ -38,7 +38,7 @@ def sign_in(site: Site, email: str, path: str = "/", password: str = SEED_PASSWO
     sign_out(site.page)
     page = site.page
     page.goto(site.url(f"/login?next={path}"))
-    page.get_by_role("textbox", name="Correo", exact=True).fill(email)
+    page.get_by_role("textbox", name="Boleta o correo", exact=True).fill(email)
     page.get_by_label("Contraseña", exact=True).fill(password)
     page.get_by_role("button", name="Entrar").click()
     expect(page).not_to_have_url(re.compile(r"/login"))

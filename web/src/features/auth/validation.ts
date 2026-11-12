@@ -11,9 +11,13 @@ function checkEmail(value: string, errors: Errors): void {
   else if (!EMAIL.test(value)) errors.email = "Escribe un correo válido.";
 }
 
-export function validateLogin(email: string, password: string): Errors {
+const BOLETA = /^\d{10}$/;
+
+/** Login (UPS-044): a 10-digit boleta or an email in the same field. */
+export function validateLogin(identifier: string, password: string): Errors {
   const errors: Errors = {};
-  checkEmail(email, errors);
+  if (!identifier) errors.identifier = "Escribe tu boleta o correo.";
+  else if (!BOLETA.test(identifier) && !EMAIL.test(identifier)) errors.identifier = "Escribe tu boleta (10 dígitos) o un correo válido.";
   if (!password) errors.password = "Escribe tu contraseña.";
   return errors;
 }
