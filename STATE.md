@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794455283
+Updated: 1794455376
 AVAILABLE: UPS-031 UPS-040 UPS-045 UPS-048 UPS-047 UPS-046 
 CLAIMED: UPS-044 
 BLOCKED: -
@@ -14,11 +14,11 @@ UPS-044 | CLAIMED | cris-dev | until 1794469628
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794382168 | UPS-042 | top padding computed once with the mount-time block height; resize recenters with it | Why: flex centering would move the card top on tab/message changes; 
 - 1794436396 | deadline decision/UPS-042-1794382115/1794383015 | REVERSIBLE_AND_LOG | Option: UPS-042 edits one rule in web/DESIGN.md (owned by integrated UPS-039): the login is ce
 - 1794454737 | deadline decision/UPS-044-1794453759/1794454659 | REVERSIBLE_AND_LOG | Option: Human 2026-11-12: a duplicate boleta at registration keeps the generic 409 (never says
 - 1794455228 | UPS-044 | human: generic 409 for duplicate boleta; new login error copy | Why: enumeration-safe registration kept
 - 1794455281 | UPS-046 | released before starting | Why: the §5 catalog of the human brief ruta-ia-videos.md is not in the repo (spec 002 only cites it); copying it from memory wo
+- 1794455376 | allow | NAME | test change: UPS-044 | Why: login es Boleta o correo (UPS-044)
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
