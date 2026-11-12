@@ -583,6 +583,8 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="mr-auto text-xl">{route.title}</h3>
             <Badge tone={route.is_published ? "primary" : "alert"}>{route.is_published ? "Publicada" : "Borrador"}</Badge>
+            {/* One unit, as in the module rows: on a phone the whole toolbar moves under the title, never one icon. */}
+            <span className="ml-auto flex shrink-0 items-center">
             <IconButton label="Subir ruta" disabled={routeIndex === 0} onClick={() => reorder(`/academies/${academy.id}/routes/order`, move(content.routes, routeIndex, -1))}>
               <ArrowUp weight="bold" />
             </IconButton>
@@ -616,6 +618,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
             <IconButton label="Eliminar ruta" danger onClick={() => confirmDelete(`la ruta "${route.title}"`, `/routes/${route.id}`)}>
               <Trash weight="bold" />
             </IconButton>
+            </span>
           </div>
 
           <ol className="grid gap-3">

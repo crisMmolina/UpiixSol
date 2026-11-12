@@ -94,9 +94,10 @@ UNDER_TAB_BAR = """
     const top = bar.getBoundingClientRect().top;
     const main = document.querySelector('main') || document.body;
     return [...main.querySelectorAll('a[href], button, input, select, textarea, [role=tab]')]
+      .filter((el) => !el.closest('.sr-only, [aria-hidden="true"], dialog:not([open])'))
       .filter((el) => {
         const r = el.getBoundingClientRect();
-        return r.height > 0 && r.bottom > top + 1 && r.top < window.innerHeight;
+        return r.height > 1 && r.width > 1 && r.bottom > top + 1 && r.top < window.innerHeight;
       })
       .map((el) => (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 40));
   }
@@ -173,11 +174,25 @@ def settle(page: Page) -> None:
         page.locator('[role="status"][aria-label^="Cargando"]').first.wait_for(state="detached", timeout=3000)
 
 
+def scroll_to_end(page: Page) -> None:
+    """Scroll until the bottom stays put (the page can still grow while images and lists settle)."""
+    for _ in range(20):
+        at_end = page.evaluate(
+            """() => {
+              window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+              const end = document.documentElement.scrollHeight - 1;
+              return Math.ceil(window.scrollY + window.innerHeight) >= end;
+            }"""
+        )
+        page.wait_for_timeout(100)
+        if at_end:
+            return
+
+
 def audit_screen(page: Page, where: str) -> list[str]:
     settle(page)
     problems = [f"{where}: {p}" for p in page.evaluate(AUDIT, MIN_TARGET)]
-    page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
-    page.wait_for_timeout(100)
+    scroll_to_end(page)
     problems += [f'{where}: under the tab bar "{name}"' for name in page.evaluate(UNDER_TAB_BAR)]
     page.evaluate("() => window.scrollTo(0, 0)")
     return problems

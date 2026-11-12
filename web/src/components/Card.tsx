@@ -28,13 +28,16 @@ export function Card({ interactive = false, stripe = false, className = "", chil
 
 export function SectionTitle({ title, action, subtitle }: { title: string; action?: ReactNode; subtitle?: string }) {
   return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-      <div>
+    // Title and action share one row at every width: the action never drops alone under the title (UPS-040).
+    <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="min-w-0 flex-1">
         <h2 className="text-xl sm:text-2xl">{title}</h2>
         {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
       </div>
       {/* Touch target ≥ 44 px for the link (UPS-040), the text looks the same. */}
-      {action && <div className="[&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a]:font-semibold">{action}</div>}
+      {action && (
+        <div className="shrink-0 whitespace-nowrap [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a]:font-semibold">{action}</div>
+      )}
     </div>
   );
 }
