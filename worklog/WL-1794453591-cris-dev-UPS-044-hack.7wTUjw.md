@@ -6,7 +6,7 @@
 - Why: the login spec changed (Boleta o correo)
 - Failing: none
 - Commands: Verify; pytest --cov=app; smoke
-- Next: Wait for review of SHA 76f092c
+- Next: Integrated in main: a16cdc19460eb95b95f9ec50f1d9f3792b7f8afe (recorded by crisMmolina)
 
 ## History
 - 1794453591 | CLAIMED | cris-dev | claim; next: schema + service with tests, then the form and the e2e helper.
@@ -15,3 +15,4 @@
 - 1794455228 | CLAIMED | cris-dev | checkpoint; next: Human runs uak allow UPS-044 --tests, then uak done UPS-044 --pr .../84
 - 1794455387 | REVIEW | cris-dev | done; PR https://github.com/crisMmolina/UpiixSol/pull/84; evidence: Verify exit 0 after merging main; pytest --cov=app 100%; smoke PRODUCT_PASS; design-critic SHIP 7e6e97c; test edits allowed by human · existing tests changed with a human's approval (NAME) · red at 327eaf9: E   AssertionError: assert 'Correo o con... incorrectos.' == 'Boleta, corr... incorrectos.'; reviewer: -
 - 1794455398 | REVIEW | cris-dev | checkpoint; next: Wait for review of SHA 76f092c
+- 1794458462 | INTEGRATED | crisMmolina | integrate; recorded by crisMmolina; PR https://github.com/crisMmolina/UpiixSol/pull/84; merged a16cdc19460eb95b95f9ec50f1d9f3792b7f8afe; proof ancestry
