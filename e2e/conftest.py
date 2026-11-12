@@ -79,7 +79,8 @@ def web_build() -> None:
 
 
 def _start_server() -> tuple[str, subprocess.Popen, tempfile.TemporaryDirectory]:
-    workdir = tempfile.TemporaryDirectory(prefix="upiixsol-e2e-")
+    # On Windows the terminated server can still hold e2e.db (WinError 32); that must not fail the next test.
+    workdir = tempfile.TemporaryDirectory(prefix="upiixsol-e2e-", ignore_cleanup_errors=True)
     env = {
         **os.environ,
         "ENV": "dev",
