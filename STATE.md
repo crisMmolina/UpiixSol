@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794454710
+Updated: 1794454737
 AVAILABLE: UPS-031 UPS-040 UPS-045 UPS-046 UPS-048 UPS-047 
 CLAIMED: UPS-044 
 BLOCKED: -
@@ -14,11 +14,11 @@ UPS-044 | CLAIMED | cris-dev | until 1794467991
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794376050 | UPS-041 | e2e color check retried with to_have_css | Why: getComputedStyle returns the old value until the next frame even at 0.01ms transitions
 - 1794381328 | UPS-043 | dialog overflow-clip; panel exits before the backdrop; dialog closes on backdrop exit | Why: overflow-hidden dialog scrolled sideways when showModal focuse
 - 1794381451 | UPS-043 | dialog overflow-clip; panel exits before backdrop; close on backdrop exit | Why: overflow-hidden dialog scrolled sideways on showModal focus (scrollLeft 34
 - 1794382168 | UPS-042 | top padding computed once with the mount-time block height; resize recenters with it | Why: flex centering would move the card top on tab/message changes; 
 - 1794436396 | deadline decision/UPS-042-1794382115/1794383015 | REVERSIBLE_AND_LOG | Option: UPS-042 edits one rule in web/DESIGN.md (owned by integrated UPS-039): the login is ce
+- 1794454737 | deadline decision/UPS-044-1794453759/1794454659 | REVERSIBLE_AND_LOG | Option: Human 2026-11-12: a duplicate boleta at registration keeps the generic 409 (never says
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
