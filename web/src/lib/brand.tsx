@@ -7,10 +7,11 @@
 // Runtime store: SITE starts from the build (VITE_SITE_NAME, VITE_SITE_LOGO, the UpiixSol files in
 // public/brand/) and is overwritten by GET /api/site, which superadmins edit in /admin → "Marca del sitio".
 // This module waits for that read (top-level await, at most LOAD_TIMEOUT_MS; on failure the build defaults
-// stay) before any importer runs, so the copies other modules take when they load (CAMPUS_BRANDING in
-// lib/theme.tsx, the login wordmark colors) already hold the site brand. A later change (applySite) mutates
-// SITE in place and notifies subscribers: App.tsx keeps CAMPUS_BRANDING in step and remounts the routes so
-// every screen renders it without a reload.
+// stay) before any importer runs, so the first paint already uses it. A later change (applySite) mutates SITE
+// in place and notifies subscribers: components that read it with useSite() re-render, App.tsx keeps
+// CAMPUS_BRANDING in step, and the routes remount so screens that read SITE directly render it too:
+// - right away after a superadmin's save (`applySite(next, { remount: true })`);
+// - on the next navigation when the first answer came late, so nothing typed on the current page is lost.
 //
 // Leaf module: lib/theme.tsx builds CAMPUS_BRANDING from SITE, so this file must not import theme.tsx.
 
@@ -152,24 +153,54 @@ function settingsOf(site: Site): SiteSettings {
 
 let current: SiteSettings = settingsOf(SITE);
 let snapshot: Readonly<Site> = { ...SITE, colors: { ...SITE.colors } };
-let version = 0;
+let routesVersion = 0;
+/** A change arrived after the first paint (slow GET /api/site): remount the routes on the next navigation. */
+let remountPending = false;
+/** False until the first paint stops waiting for GET /api/site: changes before it need no remount. */
+let painted = false;
 const listeners = new Set<() => void>();
 
-/** Make `settings` the site brand everywhere (no-op when nothing changed). */
+/** Keeps a club's tab title ("Club · Site") and the site title ("Site Campus") in step with the name. */
+function retitle(previous: Site, next: Site): void {
+  if (typeof document === "undefined") return;
+  if (!painted || document.title === previous.title) document.title = next.title;
+  else if (document.title.endsWith(` · ${previous.name}`))
+    document.title = `${document.title.slice(0, -previous.name.length)}${next.name}`;
+}
+
+/**
+ * Make `settings` the site brand everywhere (no-op when nothing changed). `remount` re-renders every route
+ * right away (a superadmin's save); otherwise the routes remount on the next navigation.
+ */
 // oxlint-disable-next-line react/only-export-components
-export function applySite(settings: SiteSettings): void {
+export function applySite(settings: SiteSettings, { remount = false }: { remount?: boolean } = {}): void {
   const next = siteFrom(settings);
   const normalized = settingsOf(next);
   if (JSON.stringify(normalized) === JSON.stringify(current)) return;
   current = normalized;
+  const previous = { ...SITE };
   const { colors, ...rest } = next;
   Object.assign(SITE, rest);
   if (!next.logoSize) delete SITE.logoSize;
   if (!next.mascotSize) delete SITE.mascotSize;
   Object.assign(SITE.colors, colors);
   snapshot = { ...SITE, colors: { ...SITE.colors } };
-  version += 1;
-  if (typeof document !== "undefined") document.title = SITE.title;
+  if (remount) {
+    routesVersion += 1;
+    remountPending = false;
+  } else if (painted) {
+    remountPending = true;
+  }
+  retitle(previous, SITE);
+  for (const listener of listeners) listener();
+}
+
+/** Called by App.tsx when a navigation finishes: applies a remount left pending by a late brand. */
+// oxlint-disable-next-line react/only-export-components
+export function remountIfBrandChanged(): void {
+  if (!remountPending) return;
+  remountPending = false;
+  routesVersion += 1;
   for (const listener of listeners) listener();
 }
 
@@ -191,10 +222,10 @@ export function useSite(): Readonly<Site> {
   return useSyncExternalStore(subscribeSite, () => snapshot);
 }
 
-/** A number that changes with every brand change (App.tsx keys the routes with it). */
+/** The key App.tsx gives the routes: it changes when they must remount to show a new brand. */
 // oxlint-disable-next-line react/only-export-components
-export function useSiteVersion(): number {
-  return useSyncExternalStore(subscribeSite, () => version);
+export function useRoutesKey(): number {
+  return useSyncExternalStore(subscribeSite, () => routesVersion);
 }
 
 async function fetchSite(cache: RequestCache): Promise<SiteSettings> {
@@ -209,16 +240,18 @@ async function fetchSite(cache: RequestCache): Promise<SiteSettings> {
  */
 // oxlint-disable-next-line react/only-export-components
 export async function reloadSite(): Promise<void> {
-  applySite(await fetchSite("reload"));
+  applySite(await fetchSite("reload"), { remount: true });
 }
 
 if (typeof document !== "undefined") {
-  // A late answer still applies (App.tsx remounts the routes); a failed one keeps the build defaults.
+  // A late answer still applies (useSite readers at once, the rest on the next navigation); a failed one
+  // keeps the build defaults.
   const loading = fetchSite("default")
-    .then(applySite)
+    .then((settings) => applySite(settings))
     .catch(() => undefined);
   await Promise.race([loading, new Promise((resolve) => setTimeout(resolve, LOAD_TIMEOUT_MS))]);
   document.title = SITE.title;
+  painted = true;
 }
 
 function luminance(hex: string): number {

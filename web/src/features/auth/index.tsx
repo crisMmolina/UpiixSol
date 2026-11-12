@@ -1,11 +1,11 @@
 // Flow step 1 (UPS-005): single login for every role + member self-registration.
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, useNavigate, useSearchParams, type RouteObject } from "react-router";
 
 import { AnimatedHeight } from "@/components/Motion";
 import { PageSkeleton } from "@/components/Skeleton";
 import { homeFor, useAuth } from "@/lib/auth";
-import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, useSite, Wordmark } from "@/lib/brand";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 import type { UserMe } from "@/lib/types";
 
@@ -15,11 +15,38 @@ export const order = 10;
 
 type Tab = "login" | "register";
 
-const SITE_WORDMARK = {
-  color_primary: SITE.colors.primary,
-  color_secondary: SITE.colors.secondary,
-  color_accent: SITE.colors.accent,
-};
+/** Top padding of the login on large screens: the default lg:pt-16, or more to center the block when it fits. */
+const MIN_TOP_PX = 64;
+
+/**
+ * Ref for the login <main> (UPS-042): from 1024 px it centers the block (brand column + card) in the viewport
+ * by setting its top padding before the first paint. The block's height is measured then (and once more when
+ * the fonts finish loading); a window resize recenters with that same height. Never with the current content,
+ * so the card keeps its top edge when a tab or a message makes it taller (UPS-033). Short windows and phones
+ * keep the fixed top padding and scroll.
+ */
+function useCenteredTop() {
+  return useCallback((main: HTMLElement | null) => {
+    if (!main) return;
+    const large = window.matchMedia("(min-width: 1024px)");
+    const measure = () => Math.max(...[...main.children].map((child) => child.getBoundingClientRect().height));
+    let height = measure();
+    const update = () => {
+      if (!large.matches) {
+        main.style.paddingTop = "";
+        return;
+      }
+      main.style.paddingTop = `${Math.max(MIN_TOP_PX, Math.round((window.innerHeight - height) / 2))}px`;
+    };
+    update();
+    void document.fonts?.ready.then(() => {
+      height = measure();
+      update();
+    });
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+}
 
 /** Only same-origin app paths; rejects //host, /\host and absolute URLs (open redirect). */
 export function safeNext(next: string | null): string | null {
@@ -35,11 +62,14 @@ function useDestination() {
 
 function LoginPage() {
   const { status, user } = useAuth();
+  // Read at render: the site brand can arrive after the first paint or change in /admin (UPS-041).
+  const site = useSite();
   const [params, setParams] = useSearchParams();
   const destination = useDestination();
   const navigate = useNavigate();
   // First paint shows the form in place; switching tabs staggers the new fields in.
   const [switched, setSwitched] = useState(false);
+  const centeredTop = useCenteredTop();
   const tab: Tab = params.get("tab") === "registro" ? "register" : "login";
 
   if (status === "loading") return <PageSkeleton />;
@@ -61,25 +91,31 @@ function LoginPage() {
 
   return (
     <AcademyTheme branding={CAMPUS_BRANDING} className="min-h-dvh bg-bg">
-      {/* Anchored to the top with fixed padding (not centered): the card's top edge never moves when
-          the tab or a message changes its height. */}
-      <main className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
+      {/* Anchored by its top padding, never by flex centering: the card's top edge never moves when the tab
+          or a message changes its height. From lg, useCenteredTop picks that padding so the block is centered. */}
+      <main ref={centeredTop} className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          {SITE.logoUrl ? (
-            <img src={SITE.logoUrl} alt={SITE.name} {...SITE.logoSize} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.login}`} />
+          {site.logoUrl ? (
+            <img src={site.logoUrl} alt={site.name} {...site.logoSize} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.login}`} />
           ) : (
-            <Wordmark name={SITE.name} colors={SITE_WORDMARK} className={`block max-w-full break-words ${LOGO_HEIGHT.login}`} />
+            <Wordmark
+              name={site.name}
+              colors={{ color_primary: site.colors.primary, color_secondary: site.colors.secondary, color_accent: site.colors.accent }}
+              className={`block max-w-full break-words ${LOGO_HEIGHT.login}`}
+            />
           )}
           <h1 className="mt-6 text-3xl sm:text-4xl">Tus clubs en un solo campus</h1>
           <p className="mt-3 max-w-md text-muted">
             Retoma tus clases donde te quedaste y conversa con tu comunidad.
           </p>
-          <img
-            src={SITE.mascotUrl}
-            alt={`Mascota de ${SITE.name}`}
-            {...SITE.mascotSize}
-            className="mt-6 hidden w-full max-w-xs sm:block"
-          />
+          {site.hasMascot && (
+            <img
+              src={site.mascotUrl}
+              alt={`Mascota de ${site.name}`}
+              {...site.mascotSize}
+              className="mt-6 hidden w-full max-w-xs sm:block"
+            />
+          )}
         </section>
 
         <section aria-label="Tu cuenta" className="rounded-card border border-line bg-surface p-5 shadow-soft sm:p-8">

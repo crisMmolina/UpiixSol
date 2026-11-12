@@ -114,7 +114,7 @@ def test_login_wrong_credentials_are_generic_401(
     make_user(db, email="m@ipn.mx")
     response = _login(client, email, password)
     assert response.status_code == 401
-    assert response.json()["error"]["message"] == "Correo o contraseña incorrectos."
+    assert response.json()["error"]["message"] == "Boleta, correo o contraseña incorrectos."
 
 
 def test_inactive_user_cannot_login(client: TestClient, db: Session) -> None:
@@ -507,3 +507,115 @@ def test_refresh_racing_a_password_change_leaves_no_live_token(refresh_first: bo
             cleanup.execute(delete(User).where(User.id == user_id))
             cleanup.commit()
         engine.dispose()
+
+
+# ── Sign in with boleta or email (UPS-044) ────────────────────
+
+
+def _login_as(client: TestClient, identifier: str, password: str = "password123"):  # noqa: S107
+    return client.post("/api/auth/login", json={"identifier": identifier, "password": password})
+
+
+def test_login_with_boleta(client: TestClient, db: Session) -> None:
+    make_user(db, email="ana@ipn.mx", boleta="2026000123")
+    response = _login_as(client, "2026000123")
+    assert response.status_code == 200
+    assert response.json()["user"]["email"] == "ana@ipn.mx"
+
+
+def test_login_with_email_in_the_identifier_field(client: TestClient, db: Session) -> None:
+    """Superadmins and club admins have no boleta: they keep signing in with their email."""
+    make_user(db, role=Role.superadmin, email="root@upiixsol.dev")
+    response = _login_as(client, "  ROOT@upiixsol.dev ")
+    assert response.status_code == 200 and response.json()["user"]["role"] == "superadmin"
+
+
+def test_login_legacy_email_key_still_works(client: TestClient, db: Session) -> None:
+    make_user(db, email="m@ipn.mx")
+    assert _login(client, "m@ipn.mx", "password123").status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("identifier", "password"),
+    [
+        ("2026999999", "password123"),
+        ("2026000123", "incorrecta"),
+        ("nadie@ipn.mx", "password123"),
+        ("abc", "x"),
+    ],
+)
+def test_login_boleta_and_email_errors_are_identical(
+    client: TestClient, db: Session, identifier: str, password: str
+) -> None:
+    make_user(db, email="ana@ipn.mx", boleta="2026000123")
+    response = _login_as(client, identifier, password)
+    assert response.status_code == 401
+    assert response.json()["error"] == {
+        "code": "invalid_credentials",
+        "message": "Boleta, correo o contraseña incorrectos.",
+        "details": None,
+    }
+
+
+@pytest.mark.parametrize("body", [{"password": "x"}, {"identifier": "   ", "password": "x"}])
+def test_login_requires_an_identifier(client: TestClient, body: dict) -> None:
+    assert client.post("/api/auth/login", json=body).status_code == 422
+
+
+def test_login_is_rate_limited_per_boleta_across_ips(client: TestClient, db: Session) -> None:
+    from app.db import get_db
+    from app.main import app
+
+    make_user(db, email="ana@ipn.mx", boleta="2026000123")
+    app.dependency_overrides[get_db] = lambda: db
+    statuses = []
+    for n in range(6):
+        with TestClient(app, headers={"X-Requested-With": "fetch"}, client=(f"10.0.1.{n}", 1)) as other_ip:
+            response = other_ip.post("/api/auth/login", json={"identifier": " 2026000123", "password": "mal"})
+            statuses.append(response.status_code)
+    assert statuses == [401] * 5 + [429]
+
+
+def test_login_with_boleta_follows_the_provisional_password_rule(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "require_password_change", True)
+    user = make_user(db, email="nuevo@ipn.mx", boleta="2026000777")
+    user.must_change_password = True
+    db.flush()
+    response = _login_as(client, "2026000777")
+    assert response.status_code == 200 and response.json()["user"]["must_change_password"] is True
+
+
+def test_register_duplicate_boleta_with_another_email_is_generic_409(client: TestClient, db: Session) -> None:
+    make_user(db, email="primera@ipn.mx", boleta=REGISTER["boleta"])
+    response = client.post("/api/auth/register", json={**REGISTER, "email": "segunda@ipn.mx"})
+    assert response.status_code == 409 and response.json()["error"]["code"] == "account_exists"
+    assert db.scalar(select(User).filter_by(email="segunda@ipn.mx")) is None
+
+
+def test_concurrent_register_with_the_same_boleta_creates_one_account(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both requests pass the existence check; the unique boleta index rejects the second insert."""
+    make_user(db, email="primera@ipn.mx", boleta=REGISTER["boleta"])
+    monkeypatch.setattr(db, "scalar", lambda *args, **kwargs: None)  # the check ran before the other insert
+    response = client.post("/api/auth/register", json={**REGISTER, "email": "segunda@ipn.mx"})
+    monkeypatch.undo()
+    assert response.status_code == 409 and response.json()["error"]["code"] == "account_exists"
+    assert len(db.scalars(select(User).filter_by(boleta=REGISTER["boleta"])).all()) == 1
+
+
+def test_superadmin_cannot_create_a_user_with_a_taken_boleta(as_superadmin: TestClient, seeded: dict) -> None:
+    response = as_superadmin.post(
+        "/api/admin/users",
+        json={
+            "full_name": "Otra Persona",
+            "email": "otra.persona@upiixsol.dev",
+            "boleta": "2026000001",  # alumno.demo's
+            "role": "member",
+            "password": "temporal-123",
+        },
+    )
+    assert response.status_code == 409
+

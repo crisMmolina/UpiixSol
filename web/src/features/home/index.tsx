@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
-import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, useSite, Wordmark } from "@/lib/brand";
 import { AcademyTheme, safeAssetPath } from "@/lib/theme";
 import type { AcademyCardOut, ContinueOut, EventOut, HomeContentOut, Page, PostOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
@@ -279,6 +279,7 @@ function HomeSkeleton() {
 function HomePage() {
   const { user } = useAuth();
   const { data, error, loading, retry } = useData<HomeOut>("/home");
+  const site = useSite();
 
   if (loading) return <HomeSkeleton />;
   if (error || !data) return <ErrorState message={error ?? "No pudimos cargar el inicio."} onRetry={retry} />;
@@ -298,7 +299,7 @@ function HomePage() {
             {heroText}
           </p>
         </div>
-        <img src={SITE.mascotUrl} alt={`Mascota de ${SITE.name}`} className="mx-auto w-full max-w-xs" />
+        {site.hasMascot && <img src={site.mascotUrl} alt={`Mascota de ${site.name}`} className="mx-auto w-full max-w-xs" />}
       </section>
 
       <ContinueLearning clubs={data.academies} />

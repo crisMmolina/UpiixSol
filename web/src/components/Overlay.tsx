@@ -10,20 +10,22 @@ const MODAL_TOP = "max(1rem, 8dvh)";
 
 const shownTransition = { duration: DURATION.enter, ease: EASE_OUT };
 const hiddenTransition = { duration: DURATION.exit, ease: EASE_IN };
+// The panel leaves a little before the backdrop fades out, so it is never on screen without it (UPS-043);
+// the dialog closes when the backdrop's exit completes.
+const panelHiddenTransition = { duration: DURATION.exit * 0.8, ease: EASE_IN };
 
 const panels: Record<"modal" | "left" | "right", Variants> = {
   modal: {
-    hidden: { opacity: 0, scale: 0.97, y: 8, transition: hiddenTransition },
+    hidden: { opacity: 0, scale: 0.97, y: 8, transition: panelHiddenTransition },
     shown: { opacity: 1, scale: 1, y: 0, transition: shownTransition },
   },
-  left: { hidden: { x: "-100%", transition: hiddenTransition }, shown: { x: 0, transition: shownTransition } },
-  right: { hidden: { x: "100%", transition: hiddenTransition }, shown: { x: 0, transition: shownTransition } },
+  left: { hidden: { x: "-100%", transition: panelHiddenTransition }, shown: { x: 0, transition: shownTransition } },
+  right: { hidden: { x: "100%", transition: panelHiddenTransition }, shown: { x: 0, transition: shownTransition } },
 };
 const backdrop: Variants = {
   hidden: { opacity: 0, transition: hiddenTransition },
   shown: { opacity: 1, transition: shownTransition },
 };
-const instant: Variants = { hidden: { opacity: 0, transition: { duration: 0 } }, shown: { opacity: 1, transition: { duration: 0 } } };
 
 /** Phones and tablets: focusing a text field would open the on-screen keyboard over the panel. */
 function touchOrNarrow(): boolean {
@@ -69,7 +71,8 @@ function Overlay({
       dialog.close();
       return;
     }
-    const timer = window.setTimeout(() => dialog.close(), DURATION.exit * 1000);
+    // Normally the backdrop's exit closes it (onAnimationComplete below); this only covers a missed callback.
+    const timer = window.setTimeout(() => dialog.close(), DURATION.exit * 1000 + 150);
     return () => window.clearTimeout(timer);
   }, [open, reduce, side]);
 
@@ -88,22 +91,28 @@ function Overlay({
         onClose();
       }}
       onClose={onClose}
-      className="m-0 size-full max-h-none max-w-none overflow-hidden bg-transparent p-0 text-ink backdrop:bg-transparent"
+      // overflow-clip, not overflow-hidden: a hidden overflow is still a scroll container, and showModal focusing
+      // the close button of a right drawer still off-screen (translateX(100%)) scrolled the dialog sideways, so the
+      // panel showed in place before the backdrop and never slid in (UPS-043; iPhone video).
+      className="m-0 size-full max-h-none max-w-none overflow-clip bg-transparent p-0 text-ink backdrop:bg-transparent"
     >
       <motion.div
         aria-hidden
         className="absolute inset-0 bg-ink/40"
-        variants={reduce ? instant : backdrop}
-        initial="hidden"
-        animate={state}
+        // Reduced motion: plain styles land in the same commit as the open, never one frame late.
+        {...(reduce ? { style: { opacity: open ? 1 : 0 } } : { variants: backdrop, initial: "hidden", animate: state })}
+        onAnimationComplete={(definition) => {
+          if (definition === "hidden" && !open && ref.current?.open) ref.current.close();
+        }}
         onClick={onClose}
       />
       <motion.div
         className={`${panelClass} bg-surface shadow-lift`}
-        style={side ? undefined : { marginTop: MODAL_TOP, maxHeight: `calc(100dvh - ${MODAL_TOP} - 1rem)` }}
-        variants={reduce ? instant : panels[side ?? "modal"]}
-        initial="hidden"
-        animate={state}
+        style={{
+          ...(side ? {} : { marginTop: MODAL_TOP, maxHeight: `calc(100dvh - ${MODAL_TOP} - 1rem)` }),
+          ...(reduce ? { opacity: open ? 1 : 0 } : {}),
+        }}
+        {...(reduce ? {} : { variants: panels[side ?? "modal"], initial: "hidden", animate: state })}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-3">
           <h2 className="text-lg">{title}</h2>

@@ -96,6 +96,9 @@ def test_superadmin_updates_name_and_colors(as_superadmin: TestClient, db: Sessi
         {"name": "U"},
         {"name": "x" * 41},
         {"name": "Upiix\nSol"},
+        {"name": "Upiix\u202eloS"},  # right-to-left override
+        {"name": "Upiix\u2066Sol\u2069"},  # isolates
+        {"name": "Upiix\u200fSol"},  # right-to-left mark
         {"name": "   "},
         {"color_primary": "green"},
         {"color_secondary": "#12345"},
@@ -170,6 +173,43 @@ def test_failed_commit_keeps_the_previous_logo(
     assert _upload(as_superadmin, "logo").status_code == 500
     assert {p.name for p in _on_disk(first).parent.iterdir()} == before  # new file removed, previous kept
     assert _on_disk(first).is_file()
+
+
+def test_simultaneous_uploads_never_orphan_a_file(
+    as_superadmin: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Upload B read the row before upload A committed: B must replace (and delete) A, not the stale value."""
+    from app.services import site as service
+
+    first = _upload(as_superadmin, "logo").json()["logo_url"]
+    real = service._stored
+    reads: list[str | None] = []
+
+    def stale_once(db: Session, field: str) -> str | None:
+        reads.append(field)
+        return DEFAULTS["logo_url"] if len(reads) == 1 else real(db, field)
+
+    monkeypatch.setattr(service, "_stored", stale_once)
+    second = _upload(as_superadmin, "logo").json()["logo_url"]
+    assert len(reads) == 2  # the stale swap did not apply; the retry read the committed value
+    assert not _on_disk(first).exists() and _on_disk(second).is_file()
+    assert as_superadmin.get("/api/site").json()["logo_url"] == second
+
+
+def test_a_brand_that_keeps_changing_is_a_conflict(
+    as_superadmin: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.services import site as service
+
+    first = _upload(as_superadmin, "logo").json()["logo_url"]
+    before = {p.name for p in _on_disk(first).parent.iterdir()}
+    monkeypatch.setattr(service, "_stored", lambda _db, _field: "/media/logo/stale.webp")
+    response = _upload(as_superadmin, "logo")
+    assert response.status_code == 409
+    assert {p.name for p in _on_disk(first).parent.iterdir()} == before  # the new file was removed
+    assert as_superadmin.delete("/api/admin/site/logo").status_code == 409
+    monkeypatch.undo()
+    assert as_superadmin.get("/api/site").json()["logo_url"] == first
 
 
 # ── MEDIA_STORAGE=database ───────────────────────────────────
