@@ -12,9 +12,11 @@ Its Pydantic contracts live here (app/schemas has a single owner). Old uploads a
 from typing import Annotated, Literal
 
 from fastapi import UploadFile
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.errors import AppError
 from app.models import SiteSettings
 from app.schemas.common import HexColor, InModel
 from app.services import media
@@ -31,7 +33,23 @@ DEFAULTS: dict[str, str | None] = {
     "color_accent": "#F28034",
 }
 
-SiteName = Annotated[str, StringConstraints(min_length=2, max_length=40, pattern=r"^[^\x00-\x1f\x7f]+$")]
+# Bidirectional controls (LRM/RLM, embeddings, overrides, isolates) would let a name render reversed or
+# reorder the text around it (title, switcher, wordmark).
+BIDI_CONTROLS = frozenset("\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
+SWAP_ATTEMPTS = 5
+
+
+def _no_bidi_controls(value: str) -> str:
+    if any(char in BIDI_CONTROLS for char in value):
+        raise ValueError("El nombre no puede llevar caracteres de control de dirección.")
+    return value
+
+
+SiteName = Annotated[
+    str,
+    StringConstraints(min_length=2, max_length=40, pattern=r"^[^\x00-\x1f\x7f]+$"),
+    AfterValidator(_no_bidi_controls),
+]
 
 
 class SiteOut(BaseModel):
@@ -74,31 +92,52 @@ def update_site(db: Session, data: SiteIn) -> SiteOut:
     return SiteOut.model_validate(row)
 
 
-async def upload_image(db: Session, file: UploadFile, kind: ImageKind) -> SiteOut:
-    """Store the new file, commit, and only then delete the previous upload.
+def _stored(db: Session, field: str) -> str | None:
+    """The value in the database right now (not the session's copy)."""
+    return db.execute(select(getattr(SiteSettings, field)).where(SiteSettings.id == 1)).scalar_one()
 
-    If the commit fails the new file is removed and the previous one is kept (no orphans, no data loss).
+
+def _swap(db: Session, kind: ImageKind, url: str | None) -> str | None:
+    """Points `<kind>_url` at `url` and returns the value it replaced.
+
+    Compare-and-swap: the UPDATE only applies while the column still holds the value just read, so two
+    simultaneous uploads each get (and later delete) exactly the file they replaced, never orphaning one.
+    """
+    _row(db)
+    field = f"{kind}_url"
+    column = getattr(SiteSettings, field)
+    for _ in range(SWAP_ATTEMPTS):
+        previous = _stored(db, field)
+        unchanged = column.is_(None) if previous is None else column == previous
+        swapped = db.execute(update(SiteSettings).where(SiteSettings.id == 1, unchanged).values({field: url}))
+        if swapped.rowcount == 1:
+            return previous
+    raise AppError(409, "La marca cambió mientras se guardaba. Intenta de nuevo.", code="conflict")
+
+
+def _out(db: Session) -> SiteOut:
+    return SiteOut.model_validate(db.get(SiteSettings, 1, populate_existing=True))
+
+
+async def upload_image(db: Session, file: UploadFile, kind: ImageKind) -> SiteOut:
+    """Store the new file, swap it in, commit, and only then delete the file it replaced.
+
+    If anything fails the new file is removed and the previous one is kept (no orphans, no data loss).
     """
     url = await media.save_upload(file, kind)
-    field = f"{kind}_url"
     try:
-        row = _row(db)
-        previous = getattr(row, field)
-        setattr(row, field, url)
+        previous = _swap(db, kind, url)
         db.commit()
     except Exception:
         db.rollback()
         media.delete_media(url)
         raise
     media.delete_media(previous)  # only removes files we stored under /media
-    return SiteOut.model_validate(row)
+    return _out(db)
 
 
 def remove_image(db: Session, kind: ImageKind) -> SiteOut:
-    row = _row(db)
-    field = f"{kind}_url"
-    previous = getattr(row, field)
-    setattr(row, field, None)
+    previous = _swap(db, kind, None)
     db.commit()
     media.delete_media(previous)
-    return SiteOut.model_validate(row)
+    return _out(db)

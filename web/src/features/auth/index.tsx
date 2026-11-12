@@ -5,7 +5,7 @@ import { Navigate, useNavigate, useSearchParams, type RouteObject } from "react-
 import { AnimatedHeight } from "@/components/Motion";
 import { PageSkeleton } from "@/components/Skeleton";
 import { homeFor, useAuth } from "@/lib/auth";
-import { LOGO_HEIGHT, SITE, Wordmark } from "@/lib/brand";
+import { LOGO_HEIGHT, useSite, Wordmark } from "@/lib/brand";
 import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 import type { UserMe } from "@/lib/types";
 
@@ -48,12 +48,6 @@ function useCenteredTop() {
   }, []);
 }
 
-const SITE_WORDMARK = {
-  color_primary: SITE.colors.primary,
-  color_secondary: SITE.colors.secondary,
-  color_accent: SITE.colors.accent,
-};
-
 /** Only same-origin app paths; rejects //host, /\host and absolute URLs (open redirect). */
 export function safeNext(next: string | null): string | null {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;
@@ -68,6 +62,8 @@ function useDestination() {
 
 function LoginPage() {
   const { status, user } = useAuth();
+  // Read at render: the site brand can arrive after the first paint or change in /admin (UPS-041).
+  const site = useSite();
   const [params, setParams] = useSearchParams();
   const destination = useDestination();
   const navigate = useNavigate();
@@ -99,21 +95,27 @@ function LoginPage() {
           or a message changes its height. From lg, useCenteredTop picks that padding so the block is centered. */}
       <main ref={centeredTop} className="mx-auto grid max-w-5xl items-start gap-8 px-4 pt-8 pb-10 sm:px-8 sm:pt-12 lg:grid-cols-2 lg:pt-16">
         <section className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          {SITE.logoUrl ? (
-            <img src={SITE.logoUrl} alt={SITE.name} {...SITE.logoSize} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.login}`} />
+          {site.logoUrl ? (
+            <img src={site.logoUrl} alt={site.name} {...site.logoSize} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.login}`} />
           ) : (
-            <Wordmark name={SITE.name} colors={SITE_WORDMARK} className={`block max-w-full break-words ${LOGO_HEIGHT.login}`} />
+            <Wordmark
+              name={site.name}
+              colors={{ color_primary: site.colors.primary, color_secondary: site.colors.secondary, color_accent: site.colors.accent }}
+              className={`block max-w-full break-words ${LOGO_HEIGHT.login}`}
+            />
           )}
           <h1 className="mt-6 text-3xl sm:text-4xl">Tus clubs en un solo campus</h1>
           <p className="mt-3 max-w-md text-muted">
             Retoma tus clases donde te quedaste y conversa con tu comunidad.
           </p>
-          <img
-            src={SITE.mascotUrl}
-            alt={`Mascota de ${SITE.name}`}
-            {...SITE.mascotSize}
-            className="mt-6 hidden w-full max-w-xs sm:block"
-          />
+          {site.hasMascot && (
+            <img
+              src={site.mascotUrl}
+              alt={`Mascota de ${site.name}`}
+              {...site.mascotSize}
+              className="mt-6 hidden w-full max-w-xs sm:block"
+            />
+          )}
         </section>
 
         <section aria-label="Tu cuenta" className="rounded-card border border-line bg-surface p-5 shadow-soft sm:p-8">

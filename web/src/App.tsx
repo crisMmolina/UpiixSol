@@ -3,7 +3,7 @@ import { createBrowserRouter, matchRoutes, Outlet, RouterProvider, useLocation, 
 
 import { setAnalyticsUser, track } from "./lib/analytics";
 import { useAuth } from "./lib/auth";
-import { SITE, subscribeSite, useSiteVersion } from "./lib/brand";
+import { remountIfBrandChanged, SITE, subscribeSite, useRoutesKey } from "./lib/brand";
 import { CAMPUS_BRANDING } from "./lib/theme";
 
 // Contract (owner UPS-001, nobody edits this file after setup):
@@ -15,9 +15,11 @@ import { CAMPUS_BRANDING } from "./lib/theme";
 //   route template ("/a/:slug/clases/:lessonId"), never the raw URL (UPS-037, web/src/lib/analytics.ts).
 //   It reads the session from AuthProvider (web/src/lib/providers.tsx).
 // - Site brand (UPS-041): lib/brand.tsx has already loaded GET /api/site before this module runs (top-level
-//   await, ≤ 800 ms, build defaults on failure), so the first paint uses it. When it changes later (a
-//   superadmin saves "Marca del sitio" in /admin, or a slow first answer), CAMPUS_BRANDING follows and the
-//   routes remount under the new brand; the providers (session, notifications) stay mounted.
+//   await, ≤ 800 ms, build defaults on failure), so the first paint uses it. When it changes later,
+//   CAMPUS_BRANDING follows, useSite() readers re-render, and the routes remount (same URL; the providers,
+//   session and notifications stay mounted) for the screens that read SITE directly: at once after a
+//   superadmin's save in /admin, or at the next navigation when the first answer came late. A remount
+//   never records a second page.view of the same page.
 type FeatureModule = { routes?: RouteObject[]; order?: number };
 type ProvidersModule = { default: ComponentType<{ children: ReactNode }> };
 
@@ -70,6 +72,16 @@ function pageOf(pathname: string): { path: string; academySlug?: string } {
   return { path: path || "/", academySlug: path.startsWith("/a/:slug") ? slug : undefined };
 }
 
+// The last page view recorded ("user:path"): a remount of the routes must not count the same page again.
+let lastView = "";
+function trackView(userId: number, pathname: string): void {
+  const id = `${userId}:${pathname}`;
+  if (id === lastView) return;
+  lastView = id;
+  const { path, academySlug } = pageOf(pathname);
+  track("page.view", { path, academy_slug: academySlug });
+}
+
 function PageViews() {
   const { pathname } = useLocation();
   const { user } = useAuth();
@@ -77,9 +89,7 @@ function PageViews() {
 
   useEffect(() => setAnalyticsUser(userId), [userId]);
   useEffect(() => {
-    if (userId === null) return;
-    const { path, academySlug } = pageOf(pathname);
-    track("page.view", { path, academy_slug: academySlug });
+    if (userId !== null) trackView(userId, pathname);
   }, [pathname, userId]);
 
   return <Outlet />;
@@ -99,12 +109,20 @@ subscribeSite(() =>
 
 const router = createBrowserRouter([{ element: <PageViews />, children: appRoutes }]);
 
+// A brand that arrived after the first paint remounts the routes when the user next moves to another page.
+let lastPathname = router.state.location.pathname;
+router.subscribe((state) => {
+  if (state.navigation.state !== "idle" || state.location.pathname === lastPathname) return;
+  lastPathname = state.location.pathname;
+  remountIfBrandChanged();
+});
+
 export default function App() {
-  // Screens read SITE while rendering: a new key re-renders all of them with the new brand (same URL).
-  const brand = useSiteVersion();
+  // Screens that read SITE while rendering pick up a new brand when the routes remount (see above).
+  const routesKey = useRoutesKey();
   return (
     <Providers>
-      <RouterProvider key={brand} router={router} />
+      <RouterProvider key={routesKey} router={router} />
     </Providers>
   );
 }
