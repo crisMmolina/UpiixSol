@@ -56,3 +56,5 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794462401 | UPS-058 | QA only | Why: task
 - 1794462911 | UPS-053 | own rate-limited server for AUTH-02 | Why: shared e2e server disables the limiter
 - 1794463448 | UPS-052 | QA only | Why: task
+- 1794527636 | deadline lease/UPS-046/1794517644 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
+- 1794527636 | deadline lease/UPS-048/1794517129 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.

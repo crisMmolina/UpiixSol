@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794527230
+Updated: 1794527636
 AVAILABLE: UPS-031 UPS-047 UPS-054 UPS-055 UPS-056 UPS-057 UPS-059 UPS-060 
 CLAIMED: UPS-046 UPS-048 
 BLOCKED: -
@@ -16,11 +16,11 @@ UPS-052 | REVIEW | cris-dev | until 1794549848
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794460771 | UPS-040 | heroes render real static parts while loading; reserved text heights; logo min width | Why: skeleton→content shifts up to 226px at 390
-- 1794462062 | UPS-051 | reuse matrix fixtures; QA only, no fixes | Why: task: mismatches become new tasks
 - 1794462401 | UPS-058 | QA only | Why: task
 - 1794462911 | UPS-053 | own rate-limited server for AUTH-02 | Why: shared e2e server disables the limiter
 - 1794463448 | UPS-052 | QA only | Why: task
+- 1794527636 | deadline lease/UPS-046/1794517644 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
+- 1794527636 | deadline lease/UPS-048/1794517129 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
