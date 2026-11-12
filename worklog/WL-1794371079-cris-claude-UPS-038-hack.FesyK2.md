@@ -6,7 +6,7 @@
 - Why: acceptance asks for browser coverage of the player; a new e2e file touches no shared resource; no money, accounts, publishing or scope expansion
 - Failing: none (test_admin_panels flaked once at base)
 - Commands: Verify; bash .uak/bin/smoke
-- Next: Apply option: UPS-038 adds a new file e2e/test_player.py outside its Paths
+- Next: Integrated in main: 327eaf9db5b967d6a06515176afad28398370247 (recorded by claude-rev)
 
 ## History
 - 1794371079 | CLAIMED | cris-claude | claim; next: keep the shell mounted between lessons, then the search state.
@@ -15,3 +15,4 @@
 - 1794371892 | REVIEW | cris-claude | checkpoint; next: Wait for review of SHA 04ac3d0
 - 1794374132 | REVIEW | scheduler | deadline decision UPS-038-1794371177; option: UPS-038 adds a new file e2e/test_player.py outside its Paths; Why: acceptance asks for browser coverage of the player; a new e2e file touches no shared resource; no money, accounts, publishing or scope expansion
 - 1794447578 | REVIEW | claude-rev | review; approve; SHA 2947f47f886d865580f0d59de9f415a83d822ae4; reviewer claude-rev
+- 1794448639 | INTEGRATED | claude-rev | integrate; recorded by claude-rev; PR https://github.com/crisMmolina/UpiixSol/pull/71; merged 327eaf9db5b967d6a06515176afad28398370247; proof ancestry
