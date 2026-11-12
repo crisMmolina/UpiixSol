@@ -1,0 +1,11 @@
+# zoe-1
+Agent: zoe-1
+Started: 1794502729
+Events: 1
+Events-Since-Checkpoint: 1
+Checkpoints: 0
+Sessions: 1
+Last-Checkpoint: 0
+Human: zoe718
+Last-Session: zoe-1-1794502727
+Updated: 1794502729
