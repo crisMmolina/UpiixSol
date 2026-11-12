@@ -26,3 +26,12 @@ The ID must match `[A-Za-z0-9_-]{11}`. Rejected: other domains (including `youtu
 ## References (unverified as of 2026-10-06; check before citing)
 - IFrame Player API: https://developers.google.com/youtube/iframe_api_reference
 - Privacy-enhanced mode: https://support.google.com/youtube/answer/171780
+
+## Segmentos de video (UPS-045)
+
+Una clase puede ser un tramo de un video largo: `lessons.start_s` / `lessons.end_s` (segundos, `NULL` = el video completo; migración 0007 con CHECKs `start_s >= 0` y `end_s > COALESCE(start_s, 0)`).
+
+- `parse_start(url)` lee `t=` o `start=` de la query o del fragmento en las formas `850`, `850s`, `14m10s` y `1h2m3s`. Cualquier otra cosa, más de un valor, más de 12 caracteres o más de un día da `None`: solo parsea el texto, nunca hace fetch.
+- `embed_url(id, start_s, end_s)` agrega `?start=&end=` con `urlencode` y únicamente desde ints validados (0–86 400). Sin tramo, la URL es idéntica a la de antes.
+- Al guardar una clase (`POST /api/modules/{id}/lessons`, `PATCH /api/lessons/{id}`), si no se envía `start_s` y la URL pegada trae `t=`, se precarga **antes** de canonicalizar la URL (`watch?v=ID`). `end_s ≤ start_s` da 422 `invalid_segment`, y un PATCH se compara con el valor guardado. Con ambos extremos, `duration_min = ceil((end_s − start_s) / 60)`.
+- `LessonOut` y `LessonAdminOut` exponen `start_s` y `end_s`; `embed_url` del reproductor ya empieza y termina en el tramo.

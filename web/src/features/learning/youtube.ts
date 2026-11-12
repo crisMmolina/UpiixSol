@@ -7,10 +7,13 @@ import { useEffect, useRef, type RefObject } from "react";
 export const YOUTUBE_ORIGIN = "https://www.youtube-nocookie.com";
 const ENDED = 0;
 
-/** Embed URL with the JS API enabled for this page's origin. */
+/** Embed URL with the JS API enabled for this page's origin. Merges into any query the API already set
+ * (a lesson segment's ?start=&end=, UPS-045) instead of appending a second "?". */
 export function playerSrc(embedUrl: string): string {
-  const params = new URLSearchParams({ enablejsapi: "1", rel: "0", modestbranding: "1", origin: window.location.origin });
-  return `${embedUrl}?${params}`;
+  const url = new URL(embedUrl);
+  const params = { enablejsapi: "1", rel: "0", modestbranding: "1", origin: window.location.origin };
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.toString();
 }
 
 function playerState(data: unknown): number | null {
