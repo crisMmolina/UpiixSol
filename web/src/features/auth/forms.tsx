@@ -80,7 +80,8 @@ export function LoginForm({ onDone, play }: FormProps) {
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
-            hint="Tu número de boleta, o tu correo si eres de la mesa directiva."
+            // One line even at 360 px: the field reserves a single message line (a longer hint wrapped and moved the card).
+            hint="Alumnos: boleta. Mesa directiva: correo."
             required
             reserve
             error={errors.identifier}
