@@ -1252,25 +1252,6 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_admin.py`
 - **Next step:** red: assert the title on the home in test_sup05, then render it in the hero.
 
-## UPS-066 · PROPOSAL, needs human approval: superadmin changes a user's role
-
-- **Type:** feature
-- **Priority:** P2
-- **Estimate:** 90 min
-- **Rubric / Spec:** PROPUESTA: a product decision (which roles an admin may grant, whether superadmin can be granted or removed, what an academy_admin needs). Do not start until a human approves the scope. Evidence: `docs/PRUEBAS-CAMPUS.md` SUP-02 ("cambiarle el rol o la academia") and ROL-07 (new scope applies on the next token refresh, marked ❌). `AdminUserUpdateIn` (app/schemas/users.py) takes only `full_name`, `nickname`, `academy_id`, `is_active`: no endpoint changes `role`. Found in review of UPS-055.
-- **Depends on:** None
-- **Uses contract:** None
-- **Related:** UPS-055
-- **Paths:** app/schemas/users.py, app/services/admin.py, app/routers/admin.py, app/tests/test_admin.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/features/superadmin/index.tsx
-- **Freeze-Allowed:** no
-- **Tests:** test_superadmin_changes_a_user_role, test_role_change_applies_on_token_refresh
-- **Acceptance (after human approval only):**
-  - The human first writes the role rules in this task's Rubric (allowed roles, academy_id rules, superadmin grant or removal).
-  - The row in docs/permissions-matrix.md and the permissions matrix test cover the new endpoint or field.
-  - ROL-07 in docs/PRUEBAS-CAMPUS.md is checked in a real browser with the target user's session already open.
-- **Verify:** `bash .uak/bin/q uv run pytest -q app/tests/test_admin.py app/tests/test_permissions_matrix.py`
-- **Next step:** wait for the human's rules; then red tests on the new behavior.
-
 ## UPS-067 · Backend test: the temporary password never reaches the server log
 
 - **Type:** test
