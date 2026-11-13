@@ -534,7 +534,7 @@ function ContentSkeleton() {
       {[0, 1].map((i) => (
         <div key={i} className="grid gap-4 rounded-card border border-line bg-surface p-5">
           <Skeleton className="h-7 w-1/2" />
-          <div className="grid gap-2 rounded-2xl border border-line p-3">
+          <div className="grid gap-2 border-t border-line pt-4">
             <Skeleton className="h-5 w-2/3" />
             <SkeletonText lines={3} />
           </div>
@@ -636,7 +636,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
       {content.routes.length === 0 && <EmptyState title="Aún no hay rutas" description="Crea la primera ruta de tu club." mascotUrl={academy.mascot_url} />}
 
       {content.routes.map((route, routeIndex) => (
-        <Card key={route.id} stripe className="grid gap-4 p-5">
+        <Card key={route.id} className="grid gap-4 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="mr-auto text-xl">{route.title}</h3>
             <Badge tone={route.is_published ? "primary" : "alert"}>{route.is_published ? "Publicada" : "Borrador"}</Badge>
@@ -678,18 +678,19 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
             </span>
           </div>
 
-          <ol className="grid gap-3">
+          {/* Modules are divider sections of the route card, not boxes inside it: one line between them. */}
+          <ol className="grid">
             {route.modules.map((module, moduleIndex) => (
               <li
                 key={module.id}
-                className="rounded-2xl border border-line cursor-grab data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
+                className="cursor-grab rounded-xl border-t border-line pt-4 first:border-t-0 first:pt-0 data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
                 {...sortable.item(`route-${route.id}`, route.modules.map((m) => m.id), module.id, (ids) =>
                   reorder(`/routes/${route.id}/modules/order`, ids),
                 )}
               >
                 {/* Title and controls are two units: on a narrow screen the whole toolbar moves under the
                     title instead of single icons wrapping one by one. */}
-                <div className="flex flex-wrap items-center gap-x-1 border-b border-line px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-1 pb-1">
                   <span className="flex min-w-0 flex-1 basis-48 items-center gap-2 font-semibold">
                     <DotsSixVertical weight="bold" aria-hidden className="shrink-0 text-muted" />
                     Módulo {moduleIndex + 1} · {module.title}
@@ -724,7 +725,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                     </IconButton>
                   </span>
                 </div>
-                <ol className="grid gap-1 p-2">
+                <ol className="grid gap-1 pt-1">
                   {module.lessons.map((lesson, lessonIndex) => (
                     <li
                       key={lesson.id}

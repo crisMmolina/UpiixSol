@@ -109,7 +109,15 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(() =>
     typeof navigator !== "undefined" && !navigator.onLine ? "unavailable" : "loading",
   );
-  useVideoEnded(frame, onEnded, status !== "unavailable");
+  const [ended, setEnded] = useState(false);
+  // Shown only once the embed answers over postMessage. onLoad alone is not enough: a blocked embed still loads
+  // (as an empty white frame), and the timeout below must still be able to show the plan-B message.
+  const alive = useCallback(() => setStatus((s) => (s === "loading" ? "ready" : s)), []);
+  const finished = useCallback(() => {
+    setEnded(true);
+    onEnded();
+  }, [onEnded]);
+  useVideoEnded(frame, finished, status !== "unavailable", alive);
 
   useEffect(() => {
     // An <iframe> has no reliable onerror: if it does not load in time (or we are offline) show the fallback.
@@ -136,13 +144,15 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
       {status !== "unavailable" && (
         <iframe
           ref={frame}
-          className={`absolute inset-0 size-full transition-opacity duration-300 ${status === "ready" ? "opacity-100" : "opacity-0"}`}
+          // After `ended` the frame fades out and stops catching clicks, so YouTube's end screen does not stay on top.
+          className={`absolute inset-0 size-full transition-opacity duration-300 ${
+            ended ? "pointer-events-none opacity-0" : status === "ready" ? "opacity-100" : "opacity-0"
+          }`}
           src={playerSrc(lesson.embed_url)}
           title={lesson.title}
           referrerPolicy="strict-origin-when-cross-origin"
           allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
-          onLoad={() => setStatus("ready")}
         />
       )}
       {status === "unavailable" && (
