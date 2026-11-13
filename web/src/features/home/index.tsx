@@ -253,8 +253,9 @@ function ListSkeleton({ rows }: { rows: number }) {
 /** Room for up to 3 lines of the hero text on phones and 2 from sm, loading or not, so nothing below jumps
  * when /home answers (UPS-040). */
 const HERO_TEXT = "mt-4 min-h-[5.25rem] max-w-xl text-lg text-muted sm:min-h-[3.5rem]";
-/** Room for 2 lines of the title on phones and 1 from sm, loading or not (UPS-065 keeps UPS-040's no-jump rule). */
-const HERO_TITLE = "min-h-[4.5rem] text-3xl sm:min-h-[3rem] sm:text-5xl";
+/** Room for 2 lines of the title at every width (it wraps in the half-width hero column on desktop too),
+ * loading or not: UPS-065 keeps UPS-040's no-jump rule. */
+const HERO_TITLE = "min-h-[4.5rem] text-3xl sm:min-h-[6rem] sm:text-5xl";
 /** Shown when the superadmin leaves "Título principal" empty: never an empty heading. */
 const DEFAULT_HERO_TITLE = "Tus clubs en un solo campus";
 
@@ -272,7 +273,7 @@ function HomeHero({ title, text }: { title: string | null; text: string | null }
         {title === null ? (
           <div aria-hidden className={`${HERO_TITLE} grid content-start gap-2 pt-1`}>
             <Skeleton className="h-8 w-full sm:h-11 sm:w-4/5" />
-            <Skeleton className="h-8 w-2/3 sm:hidden" />
+            <Skeleton className="h-8 w-2/3 sm:h-11" />
           </div>
         ) : (
           <h1 className={HERO_TITLE}>{title}</h1>
