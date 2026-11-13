@@ -4,3 +4,4 @@ Append-only. Format: - ID | epoch | human | reason. Why: a test is a spec; chang
 
 - DSK-049 | 1794369953 | NOMBRE | Autorizo invertir InicioV5Test:81 y exentar el campo Nombre en ScreensTourTest (quitar el texto de ejemplo)
 - UPS-044 | 1794455376 | NAME | login es Boleta o correo (UPS-044)
+- UPS-052 | 1794545523 | saus | LRN-04: una clase completada no se desmarca (decisión humana 2026-11-12)
