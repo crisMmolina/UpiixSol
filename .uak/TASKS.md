@@ -645,7 +645,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 210 min
 - **Rubric / Spec:** audit docs/audit/2026-10-08/community.md (all) · UPS-025 security notes
-- **Depends on:** UPS-033
+- **Depends on:** UPS-033, UPS-063
 - **Uses contract:** UPS-033
 - **Related:** UPS-025
 - **Paths:** web/src/features/community/, app/services/community.py, app/routers/community.py, app/services/media.py, app/tests/test_community.py, app/tests/test_media.py
@@ -1196,3 +1196,20 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - A member who completed lessons before this change keeps them completed; no migration.
 - **Verify:** `uv run pytest -q app/tests/test_learning.py app/tests/test_analytics.py app/tests/test_permissions_matrix.py`
 - **Next step:** red test that DELETE answers 405, then remove the endpoint and the dead code, then fix the tests that used it.
+
+## UPS-063 · Uploaded WebP images are served as image/webp on every OS
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 30 min
+- **Rubric / Spec:** found by the UPS-056 review (david-3, Windows): with `MEDIA_STORAGE=disk` (the default) `/media/*.webp` is served as `application/octet-stream`. Starlette's `StaticFiles` guesses the type with Python's `mimetypes`, whose built-in table has no `.webp` before Python 3.13; macOS and desktop Linux add it from the OS, Windows (registry without it) and likely `python:3.12-slim` (no `/etc/mime.types`, unverified) do not. With `nosniff`, browsers may refuse those avatars, covers and post images. `MEDIA_STORAGE=database` (Render) is not affected.
+- **Depends on:** -
+- **Uses contract:** -
+- **Related:** UPS-056, UPS-058
+- **Paths:** app/services/media.py, app/tests/test_media.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The app registers `image/webp` for `.webp` (and keeps `image/svg+xml` for `.svg`) when media is loaded, so `GET /media/<kind>/<name>.webp` answers `Content-Type: image/webp` with disk storage even when the OS mime table lacks it.
+  - A test resets `mimetypes` to Python's built-in table (no OS files) and still gets `image/webp` for a stored WebP; `nosniff` and the media CSP stay.
+- **Verify:** `uv run pytest -q app/tests/test_media.py && uv run ruff check app`
+- **Next step:** red test with `mimetypes.init(files=[])`, then register the types in app/services/media.py.
