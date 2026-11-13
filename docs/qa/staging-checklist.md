@@ -56,7 +56,8 @@ uv run alembic upgrade head && uv run alembic downgrade base && uv run alembic u
 ## P0-07 · `docker compose up` desde cero (sin volúmenes)
 
 - Fecha: 2026-11-12 21:56 (build) · 21:57 (up) · 22:02 (comprobaciones) · 22:04 (limpieza), UTC-6.
-- Aislamiento: proyecto de Compose `ups059qa` con `-p` (el `docker-compose.yml` fija `name: upiixsol`, así que sin `-p` chocaría con el stack principal). Puerto publicado `HTTP_PORT=8695`. Ninguna otra pieza de la máquina se tocó.
+- Aislamiento: proyecto de Compose `ups059qa` con `-p` (el `docker-compose.yml` fija `name: upiixsol`, así que sin `-p` chocaría con el stack principal). Puerto publicado `HTTP_PORT=8695`. Contenedores, volúmenes y redes son solo de `ups059qa`.
+- Las imágenes no quedan aisladas por `-p`: `docker-compose.yml` fija las etiquetas `upiixsol-api:${APP_VERSION:-latest}` y `upiixsol-web:${APP_VERSION:-latest}`. El `build` asignó esas etiquetas a las imágenes nuevas; si ya existían imágenes con esas etiquetas en la máquina, siguen existiendo, pero la etiqueta `latest` apunta ahora a las de esta prueba. No se borró ninguna imagen. Ver H4.
 - `.env` temporal, con secretos generados localmente y sin commitear (ignorado por git); se borró al terminar. Valores para local: `COOKIE_SECURE=false` y `CORS_ORIGINS=http://127.0.0.1:8695`, porque la prueba va por HTTP local; en producción van `true` y el dominio https.
 
 Comandos y resultados:
@@ -85,8 +86,10 @@ Estado: **pendiente: lo ejecuta un humano.** El agente no creó cuentas, no desp
 
 Precondiciones: cuenta de Neon (plan free) y cuenta de Render (plan free); autorización explícita del responsable para crear ambas cuentas y desplegar.
 
+**Staging, no producción:** usar un proyecto de Neon de staging y un servicio de Render de staging con nombre distinto del de producción (el `render.yaml` trae el nombre `upiixsol`; cámbialo en el Blueprint, p. ej. `upiixsol-staging`). **Nunca** reutilizar la `DATABASE_URL` de producción. `SEED_ON_START=true` solo debe apuntar a la base de staging: contra una base de producción volvería a crear el contenido de demostración.
+
 Pasos:
-1. Neon: crear el proyecto en AWS us-east-2. Con **Connection pooling apagado**, copiar la cadena directa (el host no lleva `-pooler`) y guardarla como secreto. No pegarla en chats, issues ni el repo.
+1. Neon: crear el proyecto de **staging** en AWS us-east-2. Con **Connection pooling apagado**, copiar la cadena directa (el host no lleva `-pooler`) y guardarla como secreto. No pegarla en chats, issues ni el repo.
 2. Render: **New → Blueprint** → repo `crisMmolina/UpiixSol`, rama `main` (lee `render.yaml`). Pegar `DATABASE_URL` con la cadena de Neon y dar **Apply**.
 3. En Render → **Logs** del servicio, buscar las migraciones y el seed.
 4. Desde una terminal (sustituir `<servicio>` por la URL del servicio de **staging**):
@@ -108,7 +111,7 @@ Registro (llenar al ejecutar): fecha __ · URL de staging __ · salida de `curl`
 
 Estado: **pendiente: lo ejecuta un humano.**
 
-Precondiciones: DEP-01 en `OK`. Esperar al menos 15 minutos sin visitas al servicio (plan free: se duerme).
+Precondiciones: DEP-01 en `OK`, sobre el servicio de **staging** (`<servicio>` = staging, nunca producción). Esperar al menos 15 minutos sin visitas al servicio (plan free: se duerme).
 
 Pasos:
 1. Abrir `https://<servicio>/` en una ventana de incógnito, con la consola de DevTools abierta. Anotar la hora de la primera petición y la hora en que se ve la pantalla de inicio.
@@ -125,13 +128,13 @@ Registro: fecha __ · tiempo de primera carga __ s · errores en consola __ · r
 
 Estado: **pendiente: lo ejecuta un humano.**
 
-Precondiciones: DEP-01 en `OK`. En staging, `render.yaml` fija `MEDIA_STORAGE=database`: las imágenes van a la tabla `media_objects` en Neon, no al disco (el disco del plan free se borra en cada reinicio). Ver hallazgo H2.
+Precondiciones: DEP-01 en `OK`, sobre el servicio de **staging** (nunca producción). En staging, `render.yaml` fija `MEDIA_STORAGE=database`: las imágenes van a la tabla `media_objects` en Neon, no al disco (el disco del plan free se borra en cada reinicio). Ver hallazgo H2.
 
 Pasos:
 1. Iniciar sesión en staging con una cuenta de prueba (la contraseña temporal la da el superadmin; ver `docs/deploy-render.md` §3-4) y subir una imagen (avatar, portada o foto de blog).
 2. En Neon (SQL editor, solo lectura): `select count(*) from media_objects;` → anotar el número `N1`.
 3. Anotar la URL de la imagen (`/media/<tipo>/<archivo>.webp`) y confirmar `200` con `curl -sI https://<servicio>/media/<tipo>/<archivo>.webp`.
-4. Render → servicio → **Manual Deploy → Deploy latest commit**. Esperar a que quede `Live`.
+4. Render → servicio de **staging** (no el de producción) → **Manual Deploy → Deploy latest commit**. Esperar a que quede `Live`.
 5. Repetir el `curl` del paso 3 y el conteo del paso 2.
 
 Esperado: la imagen sigue respondiendo `200` con `Content-Type: image/webp` después del redeploy; `count(*)` no baja (`N2 >= N1`).
@@ -143,6 +146,8 @@ Registro: fecha __ · URL de la imagen __ · `curl` antes __ · `curl` después 
 ## DEP-04 · Deep links en producción (`/a/x/clases/1` al recargar)
 
 Estado: **pendiente: lo ejecuta un humano.**
+
+Precondiciones: DEP-01 en `OK`, sobre el servicio de **staging** (`<servicio>` = staging, nunca producción).
 
 Pasos:
 1. En una pestaña nueva, escribir directamente `https://<servicio>/a/x/clases/1` (no navegar desde la portada) y dar Enter.
@@ -187,4 +192,6 @@ Registro: fecha __ · tamaño del dump __ · exit de `pg_restore` __ · conteos 
 - **H1 · Número de migraciones.** `docs/PRUEBAS-CAMPUS.md` §0 (P0-06) dice "0001 a 0006"; el repo tiene 0001…0007 (`0007_lesson_segments`, UPS-045). La prueba se ejecutó con las 7. Corregir el texto de P0-06.
 - **H2 · Expectativa de DEP-03 desactualizada.** `docs/PRUEBAS-CAMPUS.md` §15 dice "El `MEDIA_DIR` es persistente (disco o almacenamiento externo)". El despliegue real (`render.yaml`, `docs/deploy-render.md`) usa `MEDIA_STORAGE=database`. La expectativa debe decir eso.
 - **H3 · Sin procedimiento de restore para Neon.** `docs/runbook.md` §5 solo describe el restore con `docker compose` (contenedor `db`), y `docs/deploy-render.md` §5 solo describe el `pg_dump`. Falta el restore de Neon documentado. DEP-05 usa los pasos de este documento hasta que exista.
-- **H4 · Proyecto de Compose fijo.** `docker-compose.yml` fija `name: upiixsol`. Sin `-p` dos stacks en la misma máquina chocan. Solo informativo; no bloquea nada.
+- **H4 · Informativo, no se registra como bug (diseño intencional).** `docker-compose.yml` fija `name: upiixsol` y etiquetas de imagen fijas (`upiixsol-api:latest`, `upiixsol-web:latest`). Sin `-p` dos stacks en la misma máquina chocan en contenedores, volúmenes y redes; las imágenes con etiqueta fija se comparten entre stacks, como pasó en esta prueba (ver P0-07). Usar `-p` y `APP_VERSION` distinto para pruebas paralelas.
+
+**Estado de los hallazgos:** H1, H2 y H3 no se corrigieron en esta tarea (fuera de sus Paths). `uak followup UPS-031` no se pudo usar porque `.uak/PROJECT.md` tiene `Plan-Channel` distinto de `claims` y el CLI pide un PR que añada la tarea a `.uak/TASKS.md`. Se avisó al humano con `uak msg human --kind request` (mensaje #401) para que decida si crea las tareas.
