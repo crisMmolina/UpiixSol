@@ -835,7 +835,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 150 min
-- **Rubric / Spec:** human brief 2026-11-10 (long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §3 (2026-11-10, long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
 - **Depends on:** None
 - **Uses contract:** None
 - **Related:** UPS-046, UPS-047, UPS-048
@@ -857,7 +857,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** spike
 - **Priority:** P0
 - **Estimate:** 120 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `ruta-ia-videos.md` §5 (catalog)
+- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `.uak/ruta-ia-videos.md` §5 (catalog)
 - **Depends on:** None
 - **Uses contract:** None
 - **Related:** UPS-047
@@ -865,7 +865,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Freeze-Allowed:** no
 - **Test-First:** no (research: the output is a verified document, not behavior)
 - **Acceptance:**
-  - `docs/spikes/ruta-ia-catalog.md` holds the brief's §5 catalog as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
+  - `docs/spikes/ruta-ia-catalog.md` holds the §5 catalog of `.uak/ruta-ia-videos.md` as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
   - Every `verificar` row is opened: its title, channel and availability are confirmed, or it is replaced and the reason noted. The "3Blue1Brown Español" dubbed URL is preferred when it exists (then `lang: es`).
   - Every `buscar` row gets a real YouTube URL (NumPy/pandas ES, Hugging Face course videos, RAG ES parts 1–2, Ollama ES) or a documented substitute.
   - Chapter timestamps are copied from the YouTube descriptions to split the Karpathy videos (module 5, 2–3 segments each) and "Deep Dive into LLMs" (module 7, 4 segments).
@@ -880,7 +880,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 150 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §3 · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
 - **Depends on:** UPS-045
 - **Uses contract:** UPS-045
 - **Related:** UPS-047
@@ -902,7 +902,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 120 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §4 (load) and §5 (catalog; links come from `docs/spikes/ruta-ia-catalog.md` once UPS-046 lands) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
 - **Depends on:** UPS-045, UPS-048, UPS-002, UPS-027 (integrated), UPS-031 (not yet integrated; it also writes app/seed.py, so this task starts after it)
 - **Uses contract:** UPS-046
 - **Related:** None
