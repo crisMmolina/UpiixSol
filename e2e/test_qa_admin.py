@@ -201,6 +201,37 @@ def test_sup05_home_text_shows_on_home(site: Site) -> None:
     site.shot("qa-admin-home")
 
 
+def test_sup05_home_title_shows_on_home(site: Site) -> None:
+    """UPS-065: the superadmin's hero_title is the home heading; an empty one falls back (no empty h1)."""
+    page = site.page
+    title = f"Título QA {site.name}"
+    page.goto(site.url("/admin?tab=inicio"))
+    page.get_by_label("Título principal").fill(title)
+    page.get_by_role("button", name="Guardar").click()
+    expect(page.get_by_text("Página principal actualizada.")).to_be_visible()
+    page.goto(site.url("/"))
+    expect(page.get_by_role("heading", level=1)).to_have_text(title)
+
+    site.shot("qa-admin-home-title")
+
+    # The API refuses an empty title (Title has a minimum length), but an old row could hold one: the home
+    # falls back to the default heading instead of an empty one.
+    def empty_title(route) -> None:
+        response = route.fetch()
+        body = response.json()
+        body["hero"]["hero_title"] = "   "
+        route.fulfill(response=response, json=body)
+
+    page.route("**/api/home", empty_title)
+    try:
+        page.goto(site.url("/"))
+        heading = page.get_by_role("heading", level=1)
+        expect(heading).to_have_count(1)
+        expect(heading).to_have_text("Tus clubs en un solo campus")
+    finally:
+        page.unroute("**/api/home")
+
+
 def _png() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (240, 64), "#1B5E20").save(buffer, format="PNG")
