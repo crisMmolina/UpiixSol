@@ -138,13 +138,16 @@ def test_completing_and_uncompleting_moves_the_route_percent(site: Site) -> None
     assert raised > before  # noqa: S101
     assert sidebar_percent(site) == str(raised)  # noqa: S101
 
-    # LRN-04: no control in the UI un-completes a lesson (it only completes when the video ends), so the
-    # browser's own session calls the API the client exposes for it.
-    undone = api(site, "DELETE", f"/api/lessons/{pending[0]}/complete", token(site))
-    assert undone.ok, undone.text()  # noqa: S101
-    site.page.reload()
-    assert percent(site, token(site)) == before  # noqa: S101
-    assert sidebar_percent(site) == str(before)  # noqa: S101
+    # LRN-04 (human decision 2026-11-12, UPS-052 decision record): a completed lesson stays completed.
+    # There is no UI or API to unmark it: the Player offers no such control, and the state survives a reload.
+    # Removing the DELETE endpoint is UPS-062; this test does not use it.
+    page = site.page
+    page.goto(site.url(f"/a/upiixia/clases/{pending[0]}"))
+    expect(page.get_by_text("Clase completada").first).to_be_visible()
+    unmark = re.compile(r"desmarcar|deshacer|no completada|marcar como pendiente", re.I)
+    expect(page.get_by_text(unmark)).to_have_count(0)
+    assert percent(site, token(site)) == raised  # noqa: S101
+    assert sidebar_percent(site) == str(raised)  # noqa: S101
 
 
 def test_completing_every_lesson_shows_100_and_a_finished_route(site: Site) -> None:
