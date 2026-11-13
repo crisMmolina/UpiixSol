@@ -65,3 +65,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794535950 | UPS-056 | QA-only test file, no app changes | Why: PRUEBAS-CAMPUS §RES/EVT/ACC/BLG coverage
 - 1794538274 | UPS-061 | keydown trap; skip controls in closed details via checkVisibility | Why: native showModal lets Tab leave; closed details links still report rects
 - 1794541776 | deadline decision/UPS-055-1794540132/1794541032 | REVERSIBLE_AND_LOG | Option: SUP-01/ADM-03 already covered by e2e/test_flow steps 6 and 2; ADM-09 has no analytics UI to test; SUP-06 and temp password not logged need backend tests outside Paths; Why: Paths is e2e/test_qa_admin.py only; avoid duplicate coverage; no money, accounts, publishing or scope expansion.
+- 1794542498 | UPS-063 | register media types in mimetypes at import | Why: Python 3.12 built-in table lacks .webp
