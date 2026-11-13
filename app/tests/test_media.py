@@ -8,7 +8,7 @@ from PIL import Image
 
 from app.config import get_settings
 from app.errors import AppError
-from app.services.media import MB, delete_media, save_image_bytes, save_upload
+from app.services.media import MB, delete_media, register_media_types, save_image_bytes, save_upload
 
 
 def _png(size=(2000, 1000), mode="RGBA") -> bytes:
@@ -179,3 +179,41 @@ def test_malformed_png_is_422_not_500(bad_crc: bool) -> None:
     with pytest.raises(AppError) as error:
         save_image_bytes(broken_png(bad_crc=bad_crc), "post")
     assert error.value.status == 422 and error.value.code == "invalid_image"
+
+
+# ── UPS-063: WebP served as image/webp on every OS ───────────
+
+
+@pytest.fixture
+def os_without_webp(monkeypatch: pytest.MonkeyPatch):
+    """Python's built-in mime table only (no OS files), as on Windows without the type or a slim image:
+    before Python 3.13 it has no .webp."""
+    import mimetypes
+
+    monkeypatch.setattr(mimetypes, "knownfiles", [])  # init() would read the OS files again otherwise
+    monkeypatch.setattr(mimetypes, "_db", None)  # and it would reuse the table already loaded
+    mimetypes.init(files=[])
+    assert mimetypes.guess_type("x.webp")[0] is None  # the simulated OS really lacks it (Python < 3.13)
+    yield
+    monkeypatch.undo()
+    mimetypes._db = None
+    mimetypes.init()  # back to this machine's table
+    register_media_types()
+
+
+def test_webp_is_served_as_image_webp_without_an_os_mime_table(client, os_without_webp) -> None:
+    url = save_image_bytes(_png(), "avatar")
+    register_media_types()  # what the app does when media loads
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/webp"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "sandbox" in response.headers["content-security-policy"]
+
+
+def test_svg_keeps_its_type_without_an_os_mime_table(client, os_without_webp) -> None:
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>'
+    url = save_image_bytes(svg, "logo")
+    register_media_types()
+    assert client.get(url).headers["content-type"].startswith("image/svg+xml")
+
