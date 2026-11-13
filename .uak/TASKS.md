@@ -1203,7 +1203,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P1
 - **Estimate:** 30 min
 - **Rubric / Spec:** found by the UPS-056 review (david-3, Windows): with `MEDIA_STORAGE=disk` (the default) `/media/*.webp` is served as `application/octet-stream`. Starlette's `StaticFiles` guesses the type with Python's `mimetypes`, whose built-in table has no `.webp` before Python 3.13; macOS and desktop Linux add it from the OS, Windows (registry without it) and likely `python:3.12-slim` (no `/etc/mime.types`, unverified) do not. With `nosniff`, browsers may refuse those avatars, covers and post images. `MEDIA_STORAGE=database` (Render) is not affected.
-- **Depends on:** UPS-030
+- **Depends on:** -
 - **Uses contract:** -
 - **Related:** UPS-056, UPS-058
 - **Paths:** app/services/media.py, app/tests/test_media.py
