@@ -740,7 +740,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 240 min
 - **Rubric / Spec:** human request 2026-10-09: the app looks odd on phones in many cases, above all the skeletons
-- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043, UPS-004
+- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043, UPS-004, UPS-061
 - **Uses contract:** UPS-033
 - **Related:** UPS-038
 - **Paths:** web/src/components/, web/src/layouts/, web/src/index.css, web/src/features/home/, web/src/features/academy/, web/src/features/auth/, web/src/features/account/, web/src/features/community/, web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, web/src/features/resources/, web/src/features/superadmin/, web/src/features/academy-admin/, e2e/test_mobile.py
@@ -1157,3 +1157,21 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Bottlenecks found (N+1 queries, missing indexes, images served from the database) become new tasks or `uak followup`, not fixes in this task.
 - **Verify:** `bash perf/run_local.sh 20 60s`
 - **Next step:** write the locustfile with seed accounts, then the local ramp with docker CPU/RAM limits.
+
+## UPS-061 · Drawers and modals keep Tab focus inside until they close
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** found by UPS-057 (docs/PRUEBAS-CAMPUS.md MOB-02): at 375 px, tabbing through the open "Más" drawer moves focus out of the dialog (native `showModal()` lets Tab leave the page after the last control). Follow-up of UPS-043 (same component).
+- **Depends on:** UPS-043
+- **Uses contract:** UPS-033
+- **Related:** UPS-057, UPS-040
+- **Paths:** web/src/components/Overlay.tsx, e2e/test_overlay_focus.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - In any open drawer or modal, Tab from the last control goes to the first and Shift+Tab from the first goes to the last: a full lap plus two extra presses never leaves the dialog, at 375 px and 1280 px.
+  - Escape and the close button still close it, and focus returns to the control that opened it.
+  - Drawer motion (UPS-043) and first-field focus rules (UPS-033) are unchanged.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_overlay_focus.py e2e/test_drawer_motion.py e2e/test_layout_stability.py`
+- **Next step:** red e2e that tabs through the "Más" drawer and the "Nuevo evento" modal, then a keydown trap in Overlay.tsx.
