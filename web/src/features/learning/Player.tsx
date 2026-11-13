@@ -127,10 +127,16 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
       className="relative aspect-video w-full overflow-hidden rounded-2xl bg-video bg-cover bg-center ring-1 ring-line"
       style={{ backgroundImage: `url("${lesson.thumbnail_url}")` }}
     >
+      {status === "loading" && (
+        // The iframe paints black until YouTube answers: keep the thumbnail visible with a quiet placeholder.
+        <div role="status" aria-label="Cargando video" className="absolute inset-0 grid place-items-center bg-video/40">
+          <PlayCircle size={64} weight="fill" className="animate-pulse text-white/80 motion-reduce:animate-none" aria-hidden />
+        </div>
+      )}
       {status !== "unavailable" && (
         <iframe
           ref={frame}
-          className="absolute inset-0 size-full"
+          className={`absolute inset-0 size-full transition-opacity duration-300 ${status === "ready" ? "opacity-100" : "opacity-0"}`}
           src={playerSrc(lesson.embed_url)}
           title={lesson.title}
           referrerPolicy="strict-origin-when-cross-origin"
@@ -166,21 +172,28 @@ function CourseSidebar({
   route,
   currentId,
   slug,
+  query,
+  onQuery,
   onNavigate,
 }: {
   route: RouteDetailOut;
   currentId: number;
   slug: string;
+  /** Owned by the player, so the sidebar and the drawer share it and it survives a lesson change. */
+  query: string;
+  onQuery: (query: string) => void;
   onNavigate?: () => void;
 }) {
-  const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const modules = useMemo(
     () =>
-      route.modules.map((module) => ({
-        ...module,
-        lessons: needle ? module.lessons.filter((l) => l.title.toLowerCase().includes(needle)) : module.lessons,
-      })),
+      route.modules
+        .map((module) => ({
+          ...module,
+          lessons: needle ? module.lessons.filter((l) => l.title.toLowerCase().includes(needle)) : module.lessons,
+        }))
+        // While searching, a module without matches is noise: the whole search says "no matches" once.
+        .filter((module) => !needle || module.lessons.length > 0),
     [route.modules, needle],
   );
   const percent = route.progress?.percent ?? 0;
@@ -207,7 +220,7 @@ function CourseSidebar({
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => onQuery(event.target.value)}
           placeholder="Buscar por el título de la lección"
           className="w-full rounded-[var(--radius-field)] border border-line bg-subtle py-2.5 pl-10 pr-3 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/25"
         />
@@ -257,13 +270,18 @@ function CourseSidebar({
                       </li>
                     );
                   })}
-                  {module.lessons.length === 0 && <li className="px-3 py-2 text-sm text-muted">Sin coincidencias.</li>}
+                  {module.lessons.length === 0 && <li className="px-3 py-2 text-sm text-muted">Este módulo aún no tiene clases.</li>}
                 </ol>
               </details>
             </li>
           );
         })}
       </ul>
+      {needle && modules.length === 0 && (
+        <p role="status" className="px-1 text-sm text-muted">
+          Sin coincidencias para «{query.trim()}».
+        </p>
+      )}
     </nav>
   );
 }
@@ -277,22 +295,34 @@ function Player({ academy }: { academy: AcademyBranding }) {
   const [route, setRoute] = useState<RouteDetailOut | null>(null);
   const [error, setError] = useState<{ message: string; notFound: boolean } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const load = useCallback(async () => {
-    try {
-      const current = await api<LessonOut>(`/lessons/${lessonId}`);
-      const detail = await api<RouteDetailOut>(`/routes/${current.route_id}`);
-      setLesson(current);
-      setRoute(detail);
-      setError(null);
-    } catch (err) {
-      setError({ message: errorMessage(err), notFound: err instanceof ApiError && err.status === 404 });
-    }
-  }, [lessonId]);
+  // `isCurrent` drops a response that arrives after the user already moved to another lesson.
+  const load = useCallback(
+    async (isCurrent: () => boolean = () => true) => {
+      try {
+        if (!/^\d+$/.test(lessonId ?? "")) throw new ApiError(404, "not_found", "Clase no encontrada");
+        const current = await api<LessonOut>(`/lessons/${lessonId}`);
+        const detail = await api<RouteDetailOut>(`/routes/${current.route_id}`);
+        if (!isCurrent()) return;
+        setLesson(current);
+        setRoute(detail);
+        setError(null);
+      } catch (err) {
+        if (!isCurrent()) return;
+        setError({ message: errorMessage(err), notFound: err instanceof ApiError && err.status === 404 });
+      }
+    },
+    [lessonId],
+  );
 
   useEffect(() => {
-    void load();
+    let active = true;
+    void load(() => active);
     window.scrollTo({ top: 0 });
+    return () => {
+      active = false;
+    };
   }, [load]);
 
   const complete = useCallback(async () => {
@@ -326,10 +356,13 @@ function Player({ academy }: { academy: AcademyBranding }) {
       </>
     );
   }
-  if (!lesson || !route || String(lesson.id) !== lessonId) return <PlayerSkeleton />;
+  // Only the first lesson shows the full skeleton; on next/previous the shell (bar, sidebar, search) stays
+  // and the previous lesson dims until the new one arrives.
+  if (!lesson || !route) return <PlayerSkeleton />;
+  const changing = String(lesson.id) !== lessonId;
 
   const sidebar = (onNavigate?: () => void) => (
-    <CourseSidebar route={route} currentId={lesson.id} slug={academy.slug} onNavigate={onNavigate} />
+    <CourseSidebar route={route} currentId={lesson.id} slug={academy.slug} query={query} onQuery={setQuery} onNavigate={onNavigate} />
   );
   const navClass = (enabled: boolean) => (enabled ? "" : "pointer-events-none opacity-40");
 
@@ -341,7 +374,11 @@ function Player({ academy }: { academy: AcademyBranding }) {
           {sidebar()}
         </aside>
 
-        <article className="enter mx-auto grid w-full min-w-0 max-w-5xl content-start gap-5 p-4 sm:p-8" style={{ "--i": 0 } as CSSProperties}>
+        <article
+          aria-busy={changing}
+          className={`enter mx-auto grid w-full min-w-0 max-w-5xl content-start gap-5 p-4 transition-opacity duration-200 sm:p-8 ${changing ? "opacity-60" : ""}`}
+          style={{ "--i": 0 } as CSSProperties}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="min-w-0 text-2xl sm:text-3xl">{lesson.title}</h1>
             <button

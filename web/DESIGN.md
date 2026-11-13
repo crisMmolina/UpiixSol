@@ -41,7 +41,7 @@ Un solo gris (frío, neutral). Nada de beige.
 - **Sin footer.** Es una app.
 
 ## Notificaciones
-`useNotifications().notify({...})`. Tarjetas que entran arriba a la derecha y se van solas (6 s); la campana muestra el número sin leer y abre un panel lateral derecho con todas. La contraseña provisional vive aquí (una vez por sesión como tarjeta, siempre en la campana).
+`useNotifications().notify({...})`. El aviso aparece como **una tarjeta compacta encima de la barra superior** (solo el más reciente: título + acción en una línea; el texto completo queda en la campana) y se va solo (6 s). En escritorio va centrado en la barra (26 rem); en teléfono va del borde izquierdo hasta antes de la campana y el menú de usuario, que siguen al alcance. Nunca tapa la página ni sus acciones (`layouts/Notifications.tsx`). La campana muestra el número sin leer y abre un panel lateral derecho con todas. La contraseña provisional vive aquí (una vez por sesión como tarjeta, siempre en la campana).
 
 ## Tipografía
 - Títulos: **Fredoka** 600 (marca, redondeada). Cuerpo y UI: **Inter Variable** 400/500/600. Números con `tabular-nums`.
@@ -54,8 +54,26 @@ Un solo gris (frío, neutral). Nada de beige.
 
 ## Movimiento (sutil)
 - Entrada de listas escalonada (`.enter` + `--i`, 40 ms por elemento, 260 ms).
-- Tarjetas de aviso deslizan desde la derecha; menús aparecen con un fade corto.
+- Tarjetas de aviso deslizan desde la derecha; menús aparecen con un fade corto; modales entran con fade + escala y los paneles laterales se deslizan (ver abajo).
 - Skeleton con brillo suave. Todo se apaga con `prefers-reduced-motion`.
+
+## Movimiento y estabilidad
+Regla: **un mensaje nunca mueve el layout** y lo que aparece o cambia de tamaño **se anima**, nunca "salta". Todo en `@/components`.
+
+| Primitiva | Cuándo | Uso |
+|---|---|---|
+| `TextField`/`TextArea`/`SelectField` con `reserve` | Campo que puede mostrar error y no tiene `hint` (con `hint` la línea ya existe: el error la reemplaza) | `<TextField label="Correo" reserve error={errors.email} />` |
+| `FormMessage` | Error o resultado de un formulario, bajo el botón de enviar; también el "por qué" de un botón deshabilitado (`hint`) | `<FormMessage message={error} tone="error" hint={motivo} lines={1} />` |
+| `AnimatedHeight` | Contenedor cuyo contenido cambia de alto (pestañas, pasos, cuerpo de un modal) | `<AnimatedHeight>{tab === "a" ? <A /> : <B />}</AnimatedHeight>` |
+| `Stagger` + `StaggerItem` | Campos o tarjetas nuevos tras un cambio (no en la primera carga: `play={cambio}`) | `<Stagger play={switched}><StaggerItem>…</StaggerItem></Stagger>` |
+| `Modal` / `Drawer` | Diálogos y paneles; ya animan entrada y salida | `<Modal open={abierto} onClose={…} title="…">` |
+
+- **Espacio reservado:** `FormMessage` guarda `lines` líneas (1 por defecto; 2 donde el texto puede partirse en 390 px). Mensajes cortos en español que quepan en esa línea. Un mensaje nuevo **reemplaza** al anterior (un solo estado por pestaña o formulario), y escribir en el campo borra su error.
+- **Anclar arriba:** pantallas cuyo alto cambia (login, modales) se anclan con padding arriba, nunca con centrado flex: así el borde superior nunca salta y lo que crece, crece hacia abajo. Excepción, el login desde `lg` (UPS-042): ese padding se calcula una vez, antes del primer pintado, para centrar el bloque en la vista (`useCenteredTop`), y solo se recalcula al cambiar el tamaño de la ventana; cambiar de pestaña o mostrar un mensaje no lo mueve. En teléfonos y ventanas bajas queda el padding fijo.
+- **Modales:** cuelgan a `max(1rem, 8dvh)` del borde superior. Para que se vea la salida, déjalos montados y cambia `open` (`{abierto && <Modal open …>}` cierra sin animación). Enfocan su primer campo solo en escritorio; los `Drawer` enfocan el botón Cerrar (en teléfono un campo abriría el teclado).
+- **Duraciones y curva** (`DURATION`, `EASE_OUT`, `EASE_IN`): mensajes 160 ms · entrada de campos y overlays 220 ms · cambio de alto 260 ms · salida 160 ms · escalonado 40 ms. Entrar/crecer con `EASE_OUT` `cubic-bezier(.2,.8,.2,1)` (la misma de `.enter`), salir con `EASE_IN`. Solo `opacity`, `transform` y el alto del contenedor.
+- **Movimiento reducido:** cada primitiva usa `useReducedMotion()`: con `prefers-reduced-motion` todo cambia al instante (sin desplazamientos), pero el espacio reservado sigue igual.
+- **No usar** `AnimatedHeight` alrededor de menús flotantes (recorta su contenido) ni animar `top`/`margin`/`width`.
 
 ## Estados
 Cada vista de datos tiene skeleton con la forma final (`SkeletonText`, `CardSkeleton`, `ListSkeleton`, `GridSkeleton`, `SkeletonAvatar`), vacío con la mascota del club y error con reintentar.

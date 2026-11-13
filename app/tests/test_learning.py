@@ -131,3 +131,19 @@ def test_admin_sees_draft_routes_of_own_academy(as_admin_ia: TestClient, db: Ses
     db.flush()
     titles = [r["title"] for r in as_admin_ia.get("/api/academies/upiixia/routes").json()["items"]]
     assert titles == ["Fundamentos de IA con Python", "Borrador"]
+
+
+def test_lesson_out_exposes_segment(as_member: TestClient, db: Session) -> None:
+    """UPS-045: the player gets the segment and an embed that starts and ends there."""
+    lesson = _lessons(db)[0]
+    plain = as_member.get(f"/api/lessons/{lesson.id}").json()
+    assert (plain["start_s"], plain["end_s"]) == (None, None)
+    assert "?" not in plain["embed_url"]
+    lesson.start_s, lesson.end_s = 850, 1500
+    db.flush()
+    body = as_member.get(f"/api/lessons/{lesson.id}").json()
+    assert (body["start_s"], body["end_s"]) == (850, 1500)
+    assert (
+        body["embed_url"]
+        == f"https://www.youtube-nocookie.com/embed/{lesson.youtube_video_id}?start=850&end=1500"
+    )

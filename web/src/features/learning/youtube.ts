@@ -2,15 +2,18 @@
 // with `enablejsapi=1`, we ask it to report its state over postMessage and listen for "ended" (0).
 // Only messages from the YouTube origin AND from our own iframe count.
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 export const YOUTUBE_ORIGIN = "https://www.youtube-nocookie.com";
 const ENDED = 0;
 
-/** Embed URL with the JS API enabled for this page's origin. */
+/** Embed URL with the JS API enabled for this page's origin. Merges into any query the API already set
+ * (a lesson segment's ?start=&end=, UPS-045) instead of appending a second "?". */
 export function playerSrc(embedUrl: string): string {
-  const params = new URLSearchParams({ enablejsapi: "1", rel: "0", modestbranding: "1", origin: window.location.origin });
-  return `${embedUrl}?${params}`;
+  const url = new URL(embedUrl);
+  const params = { enablejsapi: "1", rel: "0", modestbranding: "1", origin: window.location.origin };
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.toString();
 }
 
 function playerState(data: unknown): number | null {
@@ -34,6 +37,13 @@ function playerState(data: unknown): number | null {
 
 /** Calls `onEnded` once when the video in `frame` finishes. */
 export function useVideoEnded(frame: RefObject<HTMLIFrameElement | null>, onEnded: () => void, enabled = true): void {
+  // The latest callback, read when the video ends: a new `onEnded` each render must not re-subscribe (and
+  // postMessage to an iframe that has not loaded yet).
+  const latest = useRef(onEnded);
+  useEffect(() => {
+    latest.current = onEnded;
+  }, [onEnded]);
+
   useEffect(() => {
     if (!enabled) return;
     let fired = false;
@@ -49,7 +59,7 @@ export function useVideoEnded(frame: RefObject<HTMLIFrameElement | null>, onEnde
       if (event.origin !== YOUTUBE_ORIGIN || !frame.current || event.source !== frame.current.contentWindow) return;
       if (!fired && playerState(event.data) === ENDED) {
         fired = true;
-        onEnded();
+        latest.current();
       }
     };
 
@@ -61,5 +71,5 @@ export function useVideoEnded(frame: RefObject<HTMLIFrameElement | null>, onEnde
       window.removeEventListener("message", onMessage);
       node?.removeEventListener("load", subscribe);
     };
-  }, [frame, onEnded, enabled]);
+  }, [frame, enabled]);
 }

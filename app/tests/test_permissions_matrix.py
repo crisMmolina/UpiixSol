@@ -39,6 +39,8 @@ ANY = {"member", "admin_own", "admin_other", "superadmin"}
 OWN = {"admin_own", "superadmin"}
 SUPER = {"superadmin"}
 PUBLIC = set(ROLES)
+CLUB = {"member", "admin_own", "superadmin"}  # UPS-035: the club's members (enrolled) and admins
+AUTHOR = {"member"}  # UPS-035: only the author (the seeded member wrote the target post and comment)
 
 
 @dataclass
@@ -152,8 +154,32 @@ MATRIX: list[Rule] = [
     Rule("PATCH", "/api/admin/users/{user_id}", SUPER, _json(lambda _w: {"nickname": "nuevo"})),
     Rule("POST", "/api/admin/users/{user_id}/reset-password", SUPER),
     Rule("PUT", "/api/admin/home", SUPER, _json(lambda _w: {"hero_title": "UpiixSol Campus"})),
+    # ── Site brand (UPS-041); its read, GET /api/site, is public ──
+    Rule(
+        "PUT",
+        "/api/admin/site",
+        SUPER,
+        _json(
+            lambda _w: {
+                "name": "UpiixSol",
+                "color_primary": "#00BF63",
+                "color_secondary": "#04944F",
+                "color_accent": "#F28034",
+            }
+        ),
+    ),
+    Rule("POST", "/api/admin/site/logo", SUPER, _file()),
+    Rule("POST", "/api/admin/site/mascot", SUPER, _file()),
+    Rule("DELETE", "/api/admin/site/logo", SUPER, note="no logo → the name as a three-color wordmark"),
+    Rule("DELETE", "/api/admin/site/mascot", SUPER, note="no mascot anywhere"),
     # ── Community ────────────────────────────────────────────
-    Rule("POST", "/api/channels/{channel_id}/posts", ANY, lambda _w: {"data": {"body": "Hola"}}),
+    Rule(
+        "POST",
+        "/api/channels/{channel_id}/posts",
+        CLUB,
+        lambda _w: {"data": {"body": "Hola"}},
+        note="club channel: its members and admins (UPS-035); General: anyone",
+    ),
     Rule("POST", "/api/posts/{post_id}/comments", ANY, _json(lambda _w: {"body": "Comentario"})),
     Rule("POST", "/api/posts/{post_id}/hide", OWN, note="moderation: academy channel"),
     Rule("POST", "/api/comments/{comment_id}/hide", OWN, note="moderation: academy channel"),
@@ -215,6 +241,17 @@ MATRIX: list[Rule] = [
         ),
         note="also requires the current password",
     ),
+    # ── Usage analytics (UPS-037): the caller's own events ───
+    Rule(
+        "POST",
+        "/api/analytics/events",
+        ANY,
+        _json(lambda _w: {"session_id": "matrix-0001", "events": [{"name": "page.view"}]}),
+        note="usage analytics, 30/min per user (UPS-037)",
+    ),
+    # ── Community: authors delete their own (UPS-035) ────────
+    Rule("DELETE", "/api/posts/{post_id}", AUTHOR, note="author only; moderators hide instead"),
+    Rule("DELETE", "/api/comments/{comment_id}", AUTHOR, note="author only; moderators hide instead"),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}
@@ -363,6 +400,54 @@ def test_matrix(rule: Rule, clients: dict[str, TestClient], world: World, db: Se
     assert actual == expected, f"{rule.method} {url}: {results}"
 
 
+# ── Sensitive reads (UPS-036): club content and enrollees ───
+# Kept apart from MATRIX (writes): these GETs return drafts and the enrollees' email and boleta, so an
+# admin of another club or a member must get 403 like on the writes.
+
+READ_MATRIX: list[Rule] = [
+    Rule("GET", "/api/academies/{academy_id}/content", OWN, note="drafts included"),
+    Rule("GET", "/api/academies/{academy_id}/enrollments", OWN, note="email and boleta of each enrollee"),
+    Rule("GET", "/api/admin/academies", SUPER, note="inactive clubs included"),
+    Rule("GET", "/api/admin/users", SUPER),
+    Rule("GET", "/api/admin/home", SUPER),
+]
+
+
+def app_read_endpoints() -> set[tuple[str, str]]:
+    return {("GET", path) for path, operations in app.openapi()["paths"].items() if "get" in operations}
+
+
+def test_read_matrix_endpoints_exist() -> None:
+    missing = sorted({(rule.method, rule.path) for rule in READ_MATRIX} - app_read_endpoints())
+    assert not missing, f"READ_MATRIX rules without an endpoint: {missing}"
+
+
+@pytest.mark.parametrize("rule", READ_MATRIX, ids=lambda r: f"{r.method} {r.path}")
+def test_read_matrix(rule: Rule, clients: dict[str, TestClient], world: World, db: Session) -> None:
+    url = _path(rule, world, db)
+    results = {role: clients[role].get(url).status_code for role in ROLES}
+    expected = {role: (200 if role in rule.allowed else 403) for role in ROLES}
+    expected["anon"] = 401
+    assert results == expected, f"GET {url}: {results}"
+
+
+def render_reads_markdown() -> str:
+    lines = [
+        "",
+        "## Lecturas sensibles",
+        "",
+        "`READ_MATRIX`: lecturas con borradores o datos personales (correo, boleta), "
+        "verificadas igual que las escrituras.",
+        "",
+        "| Método | Ruta | " + " | ".join(LABELS[r] for r in ROLES) + " | Nota |",
+        "|---|---|" + "---|" * len(ROLES) + "---|",
+    ]
+    for rule in READ_MATRIX:
+        cells = ["🔒" if r == "anon" else ("✅" if r in rule.allowed else "❌") for r in ROLES]
+        lines.append(f"| {rule.method} | `{rule.path}` | " + " | ".join(cells) + f" | {rule.note} |")
+    return "\n".join(lines) + "\n"
+
+
 # ── docs/permissions-matrix.md ──────────────────────────────
 
 LABELS = {"anon": "Anónimo", "member": "Miembro", "admin_own": "Admin (su club)",
@@ -392,7 +477,7 @@ def render_markdown() -> str:
         else:
             cells = ["🔒" if r == "anon" else ("✅" if r in rule.allowed else "❌") for r in ROLES]
         lines.append(f"| {rule.method} | `{rule.path}` | " + " | ".join(cells) + f" | {rule.note} |")
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n" + render_reads_markdown()
 
 
 DOC = Path(__file__).resolve().parents[2] / "docs" / "permissions-matrix.md"

@@ -1,4 +1,4 @@
-// Flow step 2 (UPS-006): UpiixSol campus home + clubs list.
+// Flow step 2 (UPS-006): campus home + clubs list.
 import { ArrowRight, CalendarBlank, CheckCircle, PlayCircle, Sparkle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, type RouteObject } from "react-router";
@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { EmptyState, ErrorState } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
+import { LOGO_HEIGHT, useSite, Wordmark } from "@/lib/brand";
 import { AcademyTheme, safeAssetPath } from "@/lib/theme";
 import type { AcademyCardOut, ContinueOut, EventOut, HomeContentOut, Page, PostOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
@@ -70,31 +71,42 @@ function useData<T>(path: string) {
   return { ...state, retry: useCallback(() => setAttempt((n) => n + 1), []) };
 }
 
+/**
+ * Club card in the club's colors. With a logo: logo band + name heading. Without one, the band shows the
+ * name as a wordmark and that wordmark is the heading, so the name never shows twice.
+ */
 export function AcademyCard({ academy }: { academy: AcademyCardOut }) {
   const logo = safeAssetPath(academy.logo_url);
+  const badge = academy.is_enrolled && (
+    <Badge tone="primary" icon={<CheckCircle weight="bold" />}>
+      Miembro
+    </Badge>
+  );
   return (
-    <AcademyTheme branding={academy}>
+    <AcademyTheme branding={academy} className="min-w-0">
       <Link to={`/a/${academy.slug}`} className="block h-full no-underline" aria-label={`Entrar a ${academy.name}`}>
         <Card interactive className="flex h-full flex-col">
-          <div className="flex h-24 items-center justify-center bg-primary/10 px-5">
+          <div className="flex min-h-24 items-center justify-center bg-primary/10 px-5 py-4">
             {logo ? (
-              <img src={logo} alt="" className="max-h-14 w-auto" loading="lazy" />
+              <img src={logo} alt="" className={`max-h-(--logo-h) w-auto ${LOGO_HEIGHT.card}`} loading="lazy" />
             ) : (
-              <span className="font-display text-2xl font-bold text-ink">{academy.name}</span>
+              <h3 className="min-w-0 max-w-full text-center">
+                <Wordmark name={academy.name} colors={academy} className={`line-clamp-2 break-words ${LOGO_HEIGHT.card}`} />
+              </h3>
             )}
           </div>
           <div aria-hidden className="h-1 bg-primary" />
           <div className="flex flex-1 flex-col gap-2 p-5">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="text-xl">{academy.name}</h3>
-              {academy.is_enrolled && (
-                <Badge tone="primary" icon={<CheckCircle weight="bold" />}>
-                  Miembro
-                </Badge>
-              )}
-            </div>
-            <p className="flex-1 text-sm text-muted">{academy.short_description}</p>
-            <span className="inline-flex items-center gap-1 font-semibold text-link">
+            {logo ? (
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="min-w-0 break-words text-xl">{academy.name}</h3>
+                {badge}
+              </div>
+            ) : (
+              badge && <div className="self-start">{badge}</div>
+            )}
+            <p className="text-sm text-muted">{academy.short_description || "Rutas, recursos y comunidad del club."}</p>
+            <span className="mt-auto inline-flex items-center gap-1 pt-1 font-semibold text-link">
               Entrar <ArrowRight weight="bold" aria-hidden />
             </span>
           </div>
@@ -144,7 +156,7 @@ interface ClubHomeLite {
 /** Same silhouette as ContinueCard so the block does not jump when it resolves. */
 function ContinueSkeleton() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Cargando tu avance">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Cargando tu avance">
       {[0, 1, 2].map((i) => (
         <div key={i} className="rounded-card border border-line bg-surface p-5 shadow-soft">
           <Skeleton className="mb-3 h-8 w-24" />
@@ -162,9 +174,13 @@ function ContinueTile({ club }: { club: ClubHomeLite }) {
   const logo = safeAssetPath(club.academy.logo_url);
   const done = info.percent === 100;
   return (
-    <AcademyTheme branding={club.academy}>
+    <AcademyTheme branding={club.academy} className="min-w-0">
       <Card interactive className="flex h-full flex-col gap-3 p-5">
-        {logo ? <img src={logo} alt={club.academy.name} className="h-8 w-auto self-start" loading="lazy" /> : <p className="font-display font-bold text-ink">{club.academy.name}</p>}
+        {logo ? (
+          <img src={logo} alt={club.academy.name} className={`h-(--logo-h) w-auto self-start ${LOGO_HEIGHT.tile}`} loading="lazy" />
+        ) : (
+          <Wordmark name={club.academy.name} colors={club.academy} className={`block max-w-full self-start truncate ${LOGO_HEIGHT.tile}`} />
+        )}
         <p className="text-lg font-semibold text-ink">
           Clase {info.lesson_number} · {info.lesson_title}
         </p>
@@ -201,7 +217,7 @@ function ContinueLearning({ clubs }: { clubs: AcademyCardOut[] }) {
       {items === null && enrolled.length > 0 ? (
         <ContinueSkeleton />
       ) : items && items.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((club) => (
             <ContinueTile key={club.academy.id} club={club} />
           ))}
@@ -234,18 +250,45 @@ function ListSkeleton({ rows }: { rows: number }) {
   );
 }
 
+/** Room for up to 3 lines of the hero text on phones and 2 from sm, loading or not, so nothing below jumps
+ * when /home answers (UPS-040). */
+const HERO_TEXT = "mt-4 min-h-[5.25rem] max-w-xl text-lg text-muted sm:min-h-[3.5rem]";
+
+/** Greeting, title and mascot need no data: they render right away; only the text waits for /home. */
+function HomeHero({ text }: { text: string | null }) {
+  const { user } = useAuth();
+  const site = useSite();
+  return (
+    <section className="grid items-center gap-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
+      <div>
+        <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
+          <Sparkle weight="fill" aria-hidden /> ¡Hola, {user?.nickname}!
+        </p>
+        <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
+        {text === null ? (
+          <div aria-hidden className={`${HERO_TEXT} grid content-start gap-2 pt-1`}>
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-3/4" />
+          </div>
+        ) : (
+          <p className={HERO_TEXT}>{text}</p>
+        )}
+      </div>
+      {site.hasMascot && (
+        <img src={site.mascotUrl} alt={`Mascota de ${site.name}`} {...site.mascotSize} className="mx-auto h-auto w-full max-w-xs" />
+      )}
+    </section>
+  );
+}
+
 function HomeSkeleton() {
   return (
-    <div role="status" aria-label="Cargando inicio" className="grid gap-10">
-      <div className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
-        <div>
-          <Skeleton className="mb-3 h-4 w-32" />
-          <Skeleton className="mb-3 h-12 w-4/5" />
-          <Skeleton className="h-5 w-3/5" />
-        </div>
-        <Skeleton className="mx-auto hidden h-40 w-full max-w-xs lg:block" />
-      </div>
-      <ContinueSkeleton />
+    <div role="status" aria-label="Cargando inicio" className="grid grid-cols-1 gap-10">
+      <HomeHero text={null} />
+      <section aria-hidden>
+        <Skeleton className="mb-4 h-8 w-64 max-w-full" />
+        <ContinueSkeleton />
+      </section>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-card border border-line bg-surface p-6 shadow-soft">
           <Skeleton className="mb-5 h-7 w-44" />
@@ -261,7 +304,6 @@ function HomeSkeleton() {
 }
 
 function HomePage() {
-  const { user } = useAuth();
   const { data, error, loading, retry } = useData<HomeOut>("/home");
 
   if (loading) return <HomeSkeleton />;
@@ -271,19 +313,8 @@ function HomePage() {
   const heroText = data.hero?.hero_text || "Retoma tus clases donde te quedaste y conversa con tu comunidad.";
 
   return (
-    <div className="grid gap-10">
-      <section className="grid items-center gap-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
-        <div>
-          <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
-            <Sparkle weight="fill" aria-hidden /> ¡Hola, {user?.nickname}!
-          </p>
-          <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
-          <p className="mt-4 max-w-xl text-lg text-muted">
-            {heroText}
-          </p>
-        </div>
-        <img src="/brand/upiixsol/mascot.png" alt="Ajolote de UpiixSol" className="mx-auto w-full max-w-xs" />
-      </section>
+    <div className="grid grid-cols-1 gap-10">
+      <HomeHero text={heroText} />
 
       <ContinueLearning clubs={data.academies} />
 
@@ -317,7 +348,7 @@ function HomePage() {
       <section aria-labelledby="clubes">
         <SectionTitle title="Clubes" subtitle="Elige uno y entra: el campus toma su identidad." action={<Link to="/clubes">Ver todos</Link>} />
         {data.academies.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.academies.map((academy) => (
               <AcademyCard key={academy.id} academy={academy} />
             ))}
@@ -387,7 +418,7 @@ function ClubsPage() {
       <h1 className="mb-2 text-3xl sm:text-4xl">Clubes</h1>
       <p className="mb-8 text-muted">Todos los clubes activos del campus. Entra a cualquiera y sigue tu progreso.</p>
       {state === "loading" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <ClubCardSkeleton />
           <ClubCardSkeleton />
           <ClubCardSkeleton />
@@ -404,7 +435,7 @@ function ClubsPage() {
         <EmptyState title="Aún no hay clubes" description="La mesa directiva está preparando los primeros." />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((academy) => (
               <AcademyCard key={academy.id} academy={academy} />
             ))}

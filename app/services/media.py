@@ -7,6 +7,11 @@ element/attribute allowlist (parsed as XML); `/media` is also served with a `san
 
 Storage (UPS-030): files go to MEDIA_DIR, or to the `media_objects` table with MEDIA_STORAGE=database on
 hosts whose disk is wiped on every restart (Render free). The URL is the same either way.
+
+Withdrawn uploads (UPS-035, e.g. the image of a post hidden by moderation) leave the public namespace:
+`withdraw_media` keeps a copy in `media_objects` under `hidden/<kind>/<name>` (both storage modes) and the
+caller then drops the public copy with `delete_media`. `/media` never serves that key: the database route
+only accepts MEDIA_KEY and the disk mount only reads MEDIA_DIR. Moderators read it with `load_withdrawn`.
 """
 
 import io
@@ -20,7 +25,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -55,6 +60,7 @@ RULES: dict[str, Rule] = {
 RASTER_FORMATS = {"PNG", "JPEG", "WEBP"}
 CONTENT_TYPES = {"webp": "image/webp", "svg": "image/svg+xml"}
 MEDIA_KEY = re.compile(r"[a-z]+/[0-9a-f]{32}\.(?:webp|svg)")  # what _store writes: <kind>/<uuid>.<ext>
+WITHDRAWN = "hidden/"  # prefix of moderator-only copies; never matches MEDIA_KEY
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
 SVG_ELEMENTS = {
@@ -127,6 +133,8 @@ SVG_ATTRIBUTES = {
 }
 _LOCAL_REF = re.compile(r"^#[A-Za-z][\w.-]*$")
 _URL_FUNC = re.compile(r"url\(\s*(?!#)", re.IGNORECASE)
+_XML_DECLARATION = re.compile(rb"\A\s*<\?xml\s[^>]*\?>", re.IGNORECASE)
+MAX_USE_ELEMENTS = 20  # `use` copies render once each: a small cap keeps a logo cheap to paint
 
 
 def _too_large(rule: Rule) -> AppError:
@@ -175,13 +183,37 @@ def _split(name: str) -> tuple[str | None, str]:
     return None, name
 
 
+def _use_is_cheap(root: ET.Element) -> bool:
+    """At most MAX_USE_ELEMENTS `use`, and none points at something that holds another `use` (no fan-out)."""
+    uses = [element for element in root.iter() if _split(element.tag)[1] == "use"]
+    if len(uses) > MAX_USE_ELEMENTS:
+        return False
+    ids = [element.get("id") for element in root.iter() if element.get("id")]
+    if len(ids) != len(set(ids)):  # renderers pick the first of two equal ids: the check below must not guess
+        return False
+    by_id = {element.get("id"): element for element in root.iter() if element.get("id")}
+    for use in uses:
+        for name, value in use.attrib.items():
+            if _split(name)[1] != "href":
+                continue
+            target = by_id.get(value.strip().removeprefix("#"))
+            if target is not None and any(_split(inner.tag)[1] == "use" for inner in target.iter()):
+                return False
+    return True
+
+
 def _svg_is_safe(data: bytes) -> bool:
     """Allowlist: SVG-namespace shapes only, no scripts/styles/events, references only to local ids."""
     if re.search(rb"<!(DOCTYPE|ENTITY)", data, re.IGNORECASE):
         return False
+    # ElementTree drops processing instructions but the raw bytes are stored: only the declaration has `<?`.
+    if b"<?" in _XML_DECLARATION.sub(b"", data, count=1):
+        return False
     try:
         root = ET.fromstring(data)  # noqa: S314 (no DTD → no entity expansion)
     except ET.ParseError:
+        return False
+    if not _use_is_cheap(root):
         return False
     for element in root.iter():
         namespace, tag = _split(element.tag)
@@ -212,19 +244,23 @@ def save_image_bytes(data: bytes, kind: Kind) -> str:
             raise AppError(422, "El SVG contiene elementos no permitidos.", code="invalid_image")
         return _store(data, kind, "svg")
 
+    invalid = AppError(422, "El archivo no es una imagen válida.", code="invalid_image")
     try:
         with Image.open(io.BytesIO(data)) as probe:
             fmt = probe.format
             probe.verify()
-        if fmt not in RASTER_FORMATS:
-            raise AppError(422, "Formato no permitido: usa PNG, JPG, WebP o SVG.", code="invalid_image")
+    except Exception as exc:  # any failure on untrusted bytes: bomb, bad CRC (SyntaxError)…
+        raise invalid from exc
+    if fmt not in RASTER_FORMATS:
+        raise AppError(422, "Formato no permitido: usa PNG, JPG, WebP o SVG.", code="invalid_image")
+    try:
         with Image.open(io.BytesIO(data)) as image:
             image.thumbnail((rule.max_side, rule.max_side))
             output = io.BytesIO()
             mode = "RGBA" if image.mode in ("RGBA", "LA", "P") else "RGB"
             image.convert(mode).save(output, "WEBP", quality=85, method=4)
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise AppError(422, "El archivo no es una imagen válida.", code="invalid_image") from exc
+    except Exception as exc:  # verify() does not decode pixels: broken data fails here
+        raise invalid from exc
     return _store(output.getvalue(), kind, "webp")
 
 
@@ -254,3 +290,38 @@ def delete_media(url: str | None) -> None:
     target = (base / url.removeprefix("/media/")).resolve()
     if base in target.parents and target.is_file():
         target.unlink()
+
+
+def _public_key(url: str | None) -> str | None:
+    key = url.removeprefix("/media/") if url and url.startswith("/media/") else None
+    return key if key and MEDIA_KEY.fullmatch(key) else None
+
+
+def withdraw_media(db: Session, url: str | None) -> None:
+    """Keeps a moderator-only copy of an upload in the caller's session (committed with its change).
+
+    With MEDIA_STORAGE=database the public row is removed in that same transaction; on disk the caller
+    unlinks the file with delete_media(url) after committing. Unknown or foreign URLs are ignored.
+    """
+    key = _public_key(url)
+    if key is None:
+        return
+    if media_storage() == "database":
+        stored = db.get(MediaObject, key)
+        if stored is None:
+            return
+        data, content_type = stored.data, stored.content_type
+        db.delete(stored)
+    else:
+        path = Path(get_settings().media_dir) / key
+        if not path.is_file():
+            return
+        data, content_type = path.read_bytes(), CONTENT_TYPES[key.rsplit(".", 1)[1]]
+    db.merge(MediaObject(key=WITHDRAWN + key, content_type=content_type, data=data))
+    db.flush()
+
+
+def load_withdrawn(db: Session, url: str | None) -> MediaObject | None:
+    """The moderator-only copy kept by withdraw_media, or None."""
+    key = _public_key(url)
+    return db.get(MediaObject, WITHDRAWN + key) if key else None

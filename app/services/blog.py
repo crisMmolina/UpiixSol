@@ -33,8 +33,9 @@ def outs(db: Session, posts: list[BlogPost]) -> list[BlogPostOut]:
 
 
 def list_stmt(drafts: bool) -> Select:
-    stmt = select(BlogPost)
-    return stmt if drafts else stmt.where(BlogPost.published_at.is_not(None))
+    """Published posts, or only the drafts (`drafts=True`, superadmins): never both mixed."""
+    published = BlogPost.published_at.is_not(None)
+    return select(BlogPost).where(~published if drafts else published)
 
 
 def get_by_slug(db: Session, slug: str, user: User | None) -> BlogPostOut:

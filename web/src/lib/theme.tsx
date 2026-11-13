@@ -6,34 +6,25 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { api, ApiError } from "./api";
+import { contrastRatio, SITE } from "./brand";
 import type { AcademyBranding } from "./types";
 
+/** The campus as a "club": name, logo and palette from the site brand (lib/brand.tsx). */
 export const CAMPUS_BRANDING: AcademyBranding = {
-  slug: "upiixsol",
-  name: "UpiixSol",
-  logo_url: "/brand/upiixsol/wordmark.png",
-  mascot_url: "/brand/upiixsol/mascot.png",
-  color_primary: "#00BF63",
-  color_secondary: "#04944F",
-  color_accent: "#F28034",
-  color_accent_2: "#B4422F",
+  slug: "campus",
+  name: SITE.name,
+  logo_url: SITE.logoUrl,
+  mascot_url: SITE.mascotUrl,
+  color_primary: SITE.colors.primary,
+  color_secondary: SITE.colors.secondary,
+  color_accent: SITE.colors.accent,
+  color_accent_2: SITE.colors.accent2,
 };
+
+export { contrastRatio };
 
 const DARK_TEXT = "#1F2A24";
 const LIGHT_TEXT = "#FFFFFF";
-
-function luminance(hex: string): number {
-  const value = hex.replace("#", "");
-  const channels = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
-  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG contrast ratio between two #RRGGBB colors. */
-export function contrastRatio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
 
 /** Dark or white text, whichever reads better on `background` (DESIGN.md: never white on #00BF63). */
 export function readableTextOn(background: string): string {
@@ -43,6 +34,26 @@ export function readableTextOn(background: string): string {
 /** True when the best text color on `background` reaches WCAG AA for normal text (4.5:1). */
 export function meetsAA(background: string): boolean {
   return contrastRatio(readableTextOn(background), background) >= 4.5;
+}
+
+function mix(hex: string, toward: number, amount: number): string {
+  const value = hex.replace("#", "");
+  const channel = (i: number) => {
+    const c = parseInt(value.slice(i, i + 2), 16);
+    return Math.round(c + (toward - c) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(2)}${channel(4)}`;
+}
+
+/** The club primary, darkened (light surfaces) or lightened (dark surfaces) until text reaches AA. */
+function linkShade(primary: string, surface: string, toward: number): string {
+  for (let step = 0; step <= 20; step += 1) {
+    const shade = mix(primary, toward, step / 20);
+    if (contrastRatio(shade, surface) >= 4.5) return shade;
+  }
+  return toward === 0 ? "#000000" : "#FFFFFF";
 }
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -63,6 +74,7 @@ export function themeVariables(branding: AcademyBranding): CSSProperties {
   const secondary = safeColor(branding.color_secondary, CAMPUS_BRANDING.color_secondary);
   const accent = safeColor(branding.color_accent, CAMPUS_BRANDING.color_accent);
   const logo = safeAssetPath(branding.logo_url);
+  const campus = primary.toUpperCase() === SITE.colors.primary;
   return {
     "--academy-primary": primary,
     "--academy-secondary": secondary,
@@ -70,6 +82,9 @@ export function themeVariables(branding: AcademyBranding): CSSProperties {
     "--academy-accent-2": safeColor(branding.color_accent_2, secondary),
     "--academy-on-primary": readableTextOn(primary),
     "--academy-on-accent": readableTextOn(accent),
+    // Links (index.css picks the shade for the surface): the campus keeps its tuned greens.
+    "--academy-link-light": campus ? SITE.colors.link : linkShade(primary, "#F5F6F7", 0),
+    "--academy-link-dark": campus ? SITE.colors.linkDark : linkShade(primary, "#1B1E22", 255),
     "--academy-logo": logo ? `url("${logo}")` : "none",
   } as CSSProperties;
 }

@@ -3,6 +3,7 @@
 //   /panel/academia/:slug    → any academy (superadmin)
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   DotsSixVertical,
   Eye,
@@ -16,18 +17,21 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useParams, useSearchParams, type RouteObject } from "react-router";
+import { useParams, useSearchParams, type RouteObject } from "react-router";
 
 import { Badge } from "@/components/Badge";
 import { Button, ButtonLink } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { TextArea, TextField, fieldErrors } from "@/components/Field";
+import { FormMessage } from "@/components/FormMessage";
+import { AnimatedHeight } from "@/components/Motion";
 import { Modal } from "@/components/Overlay";
 import { ProgressBar } from "@/components/ProgressBar";
-import { PageSkeleton } from "@/components/Skeleton";
+import { PageSkeleton, Skeleton, SkeletonText } from "@/components/Skeleton";
 import { EmptyState, ErrorState, Notice } from "@/components/States";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { RequireRole, useAuth } from "@/lib/auth";
+import { SITE, Wordmark } from "@/lib/brand";
 import { AcademyTheme, contrastRatio, meetsAA, readableTextOn, safeAssetPath } from "@/lib/theme";
 import type { AcademyOut, BrandingUpdateIn, LessonLinkOut, Page } from "@/lib/types";
 import { ResourceBoard } from "@/features/resources/ResourceBoard";
@@ -103,7 +107,7 @@ function IconButton({ label, onClick, children, disabled, danger }: {
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`grid size-10 place-items-center rounded-full transition hover:bg-line/60 disabled:opacity-30 ${danger ? "text-accent-2" : "text-ink"}`}
+      className={`grid size-11 place-items-center rounded-full transition hover:bg-line/60 disabled:opacity-30 ${danger ? "text-accent-2" : "text-ink"}`}
     >
       {children}
     </button>
@@ -250,12 +254,8 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
           })}
         </Card>
 
-        {message && (
-          <p role="status" className={`rounded-xl px-3 py-2 text-sm font-semibold ${message.tone === "ok" ? "bg-primary/15 text-ink" : "bg-accent-2/10 text-accent-2"}`}>
-            {message.text}
-          </p>
-        )}
-        <div className="flex gap-3">
+        <FormMessage message={message?.text} tone={message?.tone === "ok" ? "success" : "error"} lines={{ base: 2, sm: 1 }} />
+        <div className="-mt-3 flex gap-3">
           <Button type="submit" loading={busy} disabled={!dirty}>
             Guardar identidad
           </Button>
@@ -272,7 +272,7 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
             {safeAssetPath(draft.logo_url) ? (
               <img src={safeAssetPath(draft.logo_url)!} alt="" className="h-9 w-auto self-start" />
             ) : (
-              <span className="font-display text-2xl font-bold">{draft.name}</span>
+              <Wordmark name={draft.name} colors={draft} className="block truncate text-2xl" />
             )}
             <p className="text-sm text-muted">{draft.short_description || "Descripción corta"}</p>
             <ProgressBar percent={62} label="Ejemplo de progreso" />
@@ -330,8 +330,18 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <TextField label="Título de la clase" name="title" defaultValue={editing?.title} required maxLength={120} error={errors.title} />
+    <form
+      onSubmit={submit}
+      onChange={(event) => {
+        // Editing clears that field's error and the form message (one message at a time, web/DESIGN.md).
+        const name = (event.target as Element).getAttribute("name");
+        setError(null);
+        if (name && name in errors) setErrors(Object.fromEntries(Object.entries(errors).filter(([key]) => key !== name)));
+      }}
+      className="grid gap-4"
+      noValidate
+    >
+      <TextField label="Título de la clase" name="title" defaultValue={editing?.title} required maxLength={120} reserve error={errors.title} />
       <TextField
         label="URL de YouTube"
         name="youtube_url"
@@ -341,8 +351,17 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
         hint="Acepta watch, youtu.be, shorts o embed."
         error={errors.youtube_url}
       />
-      <TextArea label="Descripción (markdown)" name="description" defaultValue={editing?.description} rows={4} />
-      <TextField label="Duración (minutos)" name="duration_min" type="number" min={1} max={600} defaultValue={editing?.duration_min ?? ""} />
+      <TextArea label="Descripción (markdown)" name="description" defaultValue={editing?.description} rows={4} reserve error={errors.description} />
+      <TextField
+        label="Duración (minutos)"
+        name="duration_min"
+        type="number"
+        min={1}
+        max={600}
+        defaultValue={editing?.duration_min ?? ""}
+        reserve
+        error={errors.duration_min}
+      />
       <fieldset className="grid gap-2">
         <legend className="text-sm font-semibold">Recursos de la clase (links)</legend>
         {links.map((link, i) => (
@@ -352,14 +371,14 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
               placeholder="Etiqueta"
               value={link.label}
               onChange={(e) => setLinks(links.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))}
-              className="rounded-xl border border-line px-3 py-2"
+              className="min-w-0 rounded-xl border border-line px-3 py-2"
             />
             <input
               aria-label={`URL del link ${i + 1}`}
               placeholder="https://…"
               value={link.url}
               onChange={(e) => setLinks(links.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))}
-              className="rounded-xl border border-line px-3 py-2"
+              className="min-w-0 rounded-xl border border-line px-3 py-2"
             />
             <IconButton label="Quitar link" danger onClick={() => setLinks(links.filter((_, j) => j !== i))}>
               <Trash weight="bold" />
@@ -374,18 +393,16 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
         <input type="checkbox" name="is_published" defaultChecked={editing?.is_published ?? true} className="size-4" />
         Publicada (visible para los miembros)
       </label>
-      {error && (
-        <p role="alert" className="rounded-xl bg-accent-2/10 px-3 py-2 text-sm font-semibold text-accent-2">
-          {error}
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" loading={busy}>
-          {editing ? "Guardar clase" : "Agregar clase"}
-        </Button>
+      <div className="grid gap-2">
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={busy}>
+            {editing ? "Guardar clase" : "Agregar clase"}
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -417,7 +434,16 @@ function TitlePrompt({ title, initial, onSubmit, onClose }: {
         }
       }}
     >
-      <TextField label={title} name="title" defaultValue={initial} maxLength={120} autoFocus error={error ?? undefined} />
+      <TextField
+        label={title}
+        name="title"
+        defaultValue={initial}
+        maxLength={120}
+        autoFocus
+        reserve
+        error={error ?? undefined}
+        onChange={() => setError(null)}
+      />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>
           Cancelar
@@ -432,13 +458,67 @@ function TitlePrompt({ title, initial, onSubmit, onClose }: {
 
 type Dialog =
   | { kind: "lesson"; state: LessonFormState }
-  | { kind: "title"; title: string; initial?: string; submit: (value: string) => Promise<void> }
+  | { kind: "title"; heading: string; title: string; initial?: string; submit: (value: string) => Promise<void> }
   | null;
+
+function dialogTitle(dialog: Exclude<Dialog, null>): string {
+  if (dialog.kind === "title") return dialog.heading;
+  return dialog.state.lesson ? "Editar clase" : "Nueva clase";
+}
+
+/** Same footprint as a route card with one module, so the list does not jump when it loads. */
+function ContentSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando contenido" className="grid gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-4 w-full max-w-md" />
+        <Skeleton className="h-11 w-36 rounded-full" />
+      </div>
+      {[0, 1].map((i) => (
+        <div key={i} className="grid gap-4 rounded-card border border-line bg-surface p-5">
+          <Skeleton className="h-7 w-1/2" />
+          <div className="grid gap-2 rounded-2xl border border-line p-3">
+            <Skeleton className="h-5 w-2/3" />
+            <SkeletonText lines={3} />
+          </div>
+          <Skeleton className="h-9 w-40 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Like the enrollees card: the boleta form and a few table rows. */
+function EnrolleesSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando inscritos" className="grid gap-3 rounded-card border border-line bg-surface p-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-4 py-2">
+          <div className="grid flex-1 gap-2">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <Skeleton className="hidden h-3.5 w-24 sm:block" />
+          <Skeleton className="size-11 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A 403/404 cannot be fixed by retrying: show the message without the "Reintentar" button. */
+function retryable(err: unknown): boolean {
+  return !(err instanceof ApiError && (err.status === 403 || err.status === 404));
+}
 
 function ContentTab({ academy }: { academy: AcademyOut }) {
   const [content, setContent] = useState<ContentOut | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(true);
   const [dialog, setDialog] = useState<Dialog>(null);
+  // The modal keeps showing the last dialog while it animates out: keep its title too.
+  const [lastDialog, setLastDialog] = useState<Exclude<Dialog, null> | null>(null);
+  if (dialog && dialog !== lastDialog) setLastDialog(dialog);
   const sortable = useSortable();
 
   const load = useCallback(
@@ -448,7 +528,10 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
           setContent(data);
           setError(null);
         })
-        .catch((err) => setError(errorMessage(err))),
+        .catch((err) => {
+          setCanRetry(retryable(err));
+          setError(errorMessage(err));
+        }),
     [academy.id],
   );
   useEffect(() => {
@@ -469,7 +552,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
   };
   const reorder = (path: string, ids: number[]) => void run(() => api(path, { method: "PUT", json: { ids } }));
 
-  if (!content) return error ? <ErrorState message={error} onRetry={() => void load()} /> : <PageSkeleton />;
+  if (!content) return error ? <ErrorState message={error} onRetry={canRetry ? () => void load() : undefined} /> : <ContentSkeleton />;
 
   return (
     <div className="grid gap-5">
@@ -483,6 +566,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
           onClick={() =>
             setDialog({
               kind: "title",
+              heading: "Nueva ruta",
               title: "Título de la nueva ruta",
               submit: (title) => api(`/academies/${academy.id}/routes`, { method: "POST", json: { title } }).then(load),
             })
@@ -499,6 +583,8 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="mr-auto text-xl">{route.title}</h3>
             <Badge tone={route.is_published ? "primary" : "alert"}>{route.is_published ? "Publicada" : "Borrador"}</Badge>
+            {/* One unit, as in the module rows: on a phone the whole toolbar moves under the title, never one icon. */}
+            <span className="ml-auto flex shrink-0 items-center">
             <IconButton label="Subir ruta" disabled={routeIndex === 0} onClick={() => reorder(`/academies/${academy.id}/routes/order`, move(content.routes, routeIndex, -1))}>
               <ArrowUp weight="bold" />
             </IconButton>
@@ -520,6 +606,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
               onClick={() =>
                 setDialog({
                   kind: "title",
+                  heading: "Renombrar ruta",
                   title: "Título de la ruta",
                   initial: route.title,
                   submit: (title) => api(`/routes/${route.id}`, { method: "PATCH", json: { title } }).then(load),
@@ -531,6 +618,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
             <IconButton label="Eliminar ruta" danger onClick={() => confirmDelete(`la ruta "${route.title}"`, `/routes/${route.id}`)}>
               <Trash weight="bold" />
             </IconButton>
+            </span>
           </div>
 
           <ol className="grid gap-3">
@@ -565,6 +653,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                       onClick={() =>
                         setDialog({
                           kind: "title",
+                          heading: "Renombrar módulo",
                           title: "Título del módulo",
                           initial: module.title,
                           submit: (title) => api(`/modules/${module.id}`, { method: "PATCH", json: { title } }).then(load),
@@ -632,6 +721,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
             onClick={() =>
               setDialog({
                 kind: "title",
+                heading: "Nuevo módulo",
                 title: "Título del nuevo módulo",
                 submit: (title) =>
                   api(`/academies/${academy.id}/routes/${route.id}/modules`, { method: "POST", json: { title } }).then(load),
@@ -643,7 +733,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
         </Card>
       ))}
 
-      <Modal open={dialog !== null} onClose={() => setDialog(null)} title={dialog?.kind === "lesson" ? (dialog.state.lesson ? "Editar clase" : "Nueva clase") : "Guardar"}>
+      <Modal open={dialog !== null} onClose={() => setDialog(null)} title={lastDialog ? dialogTitle(lastDialog) : ""}>
         {dialog?.kind === "lesson" && <LessonForm state={dialog.state} onClose={() => setDialog(null)} onSaved={() => void load()} />}
         {dialog?.kind === "title" && <TitlePrompt title={dialog.title} initial={dialog.initial} onSubmit={dialog.submit} onClose={() => setDialog(null)} />}
       </Modal>
@@ -657,7 +747,9 @@ function EnrolleesTab({ academy }: { academy: AcademyOut }) {
   const [items, setItems] = useState<EnrolleeOut[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(true);
+  const [result, setResult] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(
     async (after: string | null) => {
@@ -667,6 +759,7 @@ function EnrolleesTab({ academy }: { academy: AcademyOut }) {
         setCursor(page.next_cursor);
         setError(null);
       } catch (err) {
+        setCanRetry(retryable(err));
         setError(errorMessage(err));
       }
     },
@@ -680,14 +773,16 @@ function EnrolleesTab({ academy }: { academy: AcademyOut }) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const boleta = String(new FormData(formElement).get("boleta")).trim();
+    setBusy(true);
     try {
       const added = await api<EnrolleeOut>(`/academies/${academy.id}/enrollments`, { method: "POST", json: { boleta } });
-      setNotice(`${added.full_name} quedó inscrito.`);
+      setResult({ tone: "success", text: `${added.full_name} quedó inscrito.` });
       formElement.reset();
       await load(null);
     } catch (err) {
-      setNotice(null);
-      setError(errorMessage(err));
+      setResult({ tone: "error", text: errorMessage(err) });
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -703,20 +798,31 @@ function EnrolleesTab({ academy }: { academy: AcademyOut }) {
 
   return (
     <div className="grid gap-5">
-      <Card className="p-5">
+      <Card className="grid gap-2 p-5">
         <form onSubmit={enroll} className="flex flex-wrap items-end gap-3">
           <div className="min-w-56 flex-1">
-            <TextField label="Inscribir por número de boleta" name="boleta" inputMode="numeric" maxLength={10} required />
+            <TextField
+              label="Inscribir por número de boleta"
+              name="boleta"
+              inputMode="numeric"
+              maxLength={10}
+              required
+              onChange={() => setResult(null)}
+            />
           </div>
-          <Button type="submit" icon={<UserPlus weight="bold" />}>
+          <Button type="submit" loading={busy} icon={<UserPlus weight="bold" />}>
             Inscribir
           </Button>
         </form>
-        {notice && <p className="mt-3 text-sm font-semibold text-link">{notice}</p>}
+        <FormMessage message={result?.text} tone={result?.tone} lines={{ base: 2, sm: 1 }} />
       </Card>
-      {error && <Notice tone="alert">{error}</Notice>}
+      {error && items && <Notice tone="alert">{error}</Notice>}
       {!items ? (
-        <PageSkeleton />
+        error ? (
+          <ErrorState message={error} onRetry={canRetry ? () => void load(null) : undefined} />
+        ) : (
+          <EnrolleesSkeleton />
+        )
       ) : items.length === 0 ? (
         <EmptyState title="Aún no hay inscritos" mascotUrl={academy.mascot_url} />
       ) : (
@@ -765,27 +871,80 @@ function EnrolleesTab({ academy }: { academy: AcademyOut }) {
 
 // ── Page ─────────────────────────────────────────────────────
 
+type PanelLoad =
+  | { slug: string; academy: AcademyOut }
+  | { slug: string; blocked: "forbidden" | "missing" }
+  | { slug: string; error: string };
+
+/** Full-page answer instead of the panel: no club header, tabs or retry (retrying a 403 or a 404 cannot help). */
+function PanelBlocked({ kind, slug, ownPanel }: { kind: "forbidden" | "missing"; slug: string; ownPanel: { to: string; label: string } }) {
+  const forbidden = kind === "forbidden";
+  return (
+    <div className="mx-auto grid w-full max-w-xl justify-items-center gap-4 rounded-card border border-line bg-surface px-6 py-12 text-center">
+      <img src={SITE.mascotUrl} alt="" className="h-28 w-auto object-contain" />
+      <h1 className="text-2xl sm:text-3xl">{forbidden ? "No administras este club" : "Este club no existe"}</h1>
+      <p className="max-w-md text-muted">
+        {forbidden
+          ? "Tu cuenta solo puede editar el panel de tu club. Si necesitas administrar otro, pídelo a la mesa directiva."
+          : `No encontramos un club con la dirección “${slug}”. Revisa el enlace o vuelve a tu panel.`}
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <ButtonLink to={ownPanel.to} icon={<ArrowLeft weight="bold" />}>
+          {ownPanel.label}
+        </ButtonLink>
+        {forbidden && (
+          <ButtonLink to={`/a/${slug}`} variant="ghost" icon={<Eye weight="bold" />}>
+            Ver el club como miembro
+          </ButtonLink>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AcademyPanel() {
   const { user } = useAuth();
   const params = useParams<{ slug?: string }>();
   const [search, setSearch] = useSearchParams();
   const slug = params.slug ?? user?.academy_slug ?? null;
-  const [academy, setAcademy] = useState<AcademyOut | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [load, setLoad] = useState<PanelLoad | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const tab: Tab = (["identidad", "contenido", "recursos", "inscritos"] as const).find((t) => t === search.get("tab")) ?? "contenido";
+  // An academy admin can only manage their own club: say so instead of opening a panel whose tabs all 403.
+  const ownAcademyId = user?.role === "academy_admin" ? (user.academy_id ?? -1) : null;
 
   useEffect(() => {
     if (!slug) return;
+    let current = true;
     api<AcademyOut>(`/academies/${slug}`)
-      .then(setAcademy)
-      .catch((err) => setError(errorMessage(err)));
-  }, [slug]);
+      .then((academy) => {
+        if (!current) return;
+        setLoad(ownAcademyId !== null && academy.id !== ownAcademyId ? { slug, blocked: "forbidden" } : { slug, academy });
+      })
+      .catch((err) => {
+        if (!current) return;
+        if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+          setLoad({ slug, blocked: err.status === 403 ? "forbidden" : "missing" });
+        } else setLoad({ slug, error: errorMessage(err) });
+      });
+    return () => {
+      current = false;
+    };
+  }, [slug, ownAcademyId, attempt]);
 
   if (!slug) {
     return <EmptyState title="Tu cuenta no tiene un club asignado" description="Pide a la mesa directiva que te asigne uno." />;
   }
-  if (error) return <ErrorState message={error} />;
-  if (!academy) return <PageSkeleton />;
+  const ownPanel =
+    user?.role === "superadmin"
+      ? { to: "/admin?tab=academias", label: "Ir a los clubes" }
+      : { to: "/panel/academia", label: "Ir al panel de mi club" };
+  // Never show the previous club's data under a new address: until this slug loads, it is a skeleton.
+  if (!load || load.slug !== slug) return <PageSkeleton />;
+  if ("blocked" in load) return <PanelBlocked kind={load.blocked} slug={slug} ownPanel={ownPanel} />;
+  if ("error" in load) return <ErrorState message={load.error} onRetry={() => setAttempt((n) => n + 1)} />;
+  const { academy } = load;
+  const setAcademy = (saved: AcademyOut) => setLoad({ slug, academy: saved });
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "contenido", label: "Contenido" },
@@ -820,17 +979,17 @@ function AcademyPanel() {
             </button>
           ))}
         </div>
-        <section role="tabpanel">
-          {tab === "identidad" && <IdentityTab academy={academy} onSaved={setAcademy} />}
-          {tab === "contenido" && <ContentTab academy={academy} />}
-          {tab === "recursos" && (
-            <ResourceBoard slug={academy.slug} academyId={academy.id} canManage mascotUrl={academy.mascot_url} />
-          )}
-          {tab === "inscritos" && <EnrolleesTab academy={academy} />}
-        </section>
-        <p className="text-sm text-muted">
-          ¿Algo no se ve bien? Revisa la vista de miembro en <Link to={`/a/${academy.slug}/rutas`}>Rutas</Link>.
-        </p>
+        {/* The panel grows or shrinks to each tab's height instead of jumping (nothing sits under it). */}
+        <AnimatedHeight>
+          <section role="tabpanel">
+            {tab === "identidad" && <IdentityTab academy={academy} onSaved={setAcademy} />}
+            {tab === "contenido" && <ContentTab academy={academy} />}
+            {tab === "recursos" && (
+              <ResourceBoard slug={academy.slug} academyId={academy.id} canManage mascotUrl={academy.mascot_url} />
+            )}
+            {tab === "inscritos" && <EnrolleesTab academy={academy} />}
+          </section>
+        </AnimatedHeight>
       </div>
     </AcademyTheme>
   );

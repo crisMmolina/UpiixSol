@@ -23,6 +23,7 @@ from app.config import get_settings
 from app.db import engine, get_db
 from app.errors import AppError, error_response, internal_error, log_unhandled, register_error_handlers
 from app.ratelimit import limiter
+from app.services import analytics
 from app.services.media import load_media, media_storage
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -78,6 +79,8 @@ def create_app() -> FastAPI:
         except Exception as exc:  # 500s still get request id, security headers and an access log
             log_unhandled(request, exc)
             response = internal_error()
+        # Usage analytics (UPS-037): 2xx on a mapped route → event written after the response is sent.
+        analytics.capture(request, response)
         response.headers["X-Request-ID"] = request_id
         for name, value in SECURITY_HEADERS.items():
             response.headers.setdefault(name, value)

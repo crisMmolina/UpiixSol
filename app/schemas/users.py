@@ -1,7 +1,8 @@
+import re
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, EmailStr, Field, StringConstraints
+from pydantic import AfterValidator, EmailStr, Field, StringConstraints, model_validator
 
 from app.models.common import Role
 from app.schemas.common import InModel, OutModel
@@ -58,9 +59,35 @@ class RegisterIn(InModel):
     nickname: Nickname | None = None
 
 
+BOLETA_PATTERN = re.compile(r"^\d{10}$")
+LoginKey = Annotated[str, StringConstraints(min_length=1, max_length=254)]
+
+
 class LoginIn(InModel):
-    email: Email
+    """One field for every role (UPS-044): exactly 10 digits is a boleta, anything else an email.
+
+    Superadmins and club admins have no boleta, so they keep using their email. `email` is the key that
+    clients sent before UPS-044."""
+
+    identifier: LoginKey | None = None
+    email: LoginKey | None = None
     password: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+    @model_validator(mode="after")
+    def _needs_an_identifier(self) -> "LoginIn":
+        if not (self.identifier or self.email):
+            raise ValueError("Escribe tu boleta o correo.")
+        return self
+
+    @property
+    def key(self) -> str:
+        """The account key: the boleta as typed, or the email lower-cased."""
+        value = self.identifier or self.email or ""
+        return value if BOLETA_PATTERN.fullmatch(value) else value.lower()
+
+    @property
+    def is_boleta(self) -> bool:
+        return BOLETA_PATTERN.fullmatch(self.key) is not None
 
 
 class TokenOut(OutModel):

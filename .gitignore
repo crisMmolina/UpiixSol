@@ -23,3 +23,8 @@ e2e/artifacts/
 # Web
 node_modules/
 web/dist/
+*.pyc
+.next/
+dist/
+.DS_Store
+.uak-shots/

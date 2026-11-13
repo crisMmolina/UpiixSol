@@ -95,6 +95,49 @@ def test_svg_only_for_logos_and_must_be_clean() -> None:
             save_image_bytes(evil, "logo")
 
 
+def test_svg_rejects_processing_instruction() -> None:
+    # ElementTree drops processing instructions, so the raw bytes would keep the PI inside (UPS-050).
+    body = SVG_OPEN + b'<path d="M0 0"/></svg>'
+    pi = b'<?xml-stylesheet type="text/xsl" href="https://evil.example/x.xsl"?>'
+    declaration = b'<?xml version="1.0"?>\n'
+    for evil in (pi + body, declaration + pi + body, declaration + SVG_OPEN + pi + b"</svg>"):
+        with pytest.raises(AppError) as error:
+            save_image_bytes(evil, "logo")
+        assert error.value.status == 422
+
+
+def test_svg_rejects_use_fan_out() -> None:
+    many = SVG_OPEN + b'<defs><path id="p" d="M0 0"/></defs>' + b'<use href="#p"/>' * 21 + b"</svg>"
+    # A `use` that points at a group holding another `use` multiplies the work at every level.
+    nested = (
+        SVG_OPEN + b'<defs><g id="a"><use href="#b"/><use href="#b"/></g>'
+        b'<g id="b"><path d="M0 0"/></g></defs><use href="#a"/></svg>'
+    )
+    chained = SVG_OPEN + b'<defs><use id="a" href="#b"/><path id="b" d="M0 0"/></defs><use href="#a"/></svg>'
+    # Renderers resolve a duplicated id to the first element: a check that keeps the last is blind to it.
+    duplicated = (
+        SVG_OPEN + b'<g id="a"><use href="#b"/></g><g id="a"><path d="M0 0"/></g><path id="b" d="M0 0"/>'
+        b'<use href="#a"/></svg>'
+    )
+    for evil in (many, nested, chained, duplicated):
+        with pytest.raises(AppError) as error:
+            save_image_bytes(evil, "logo")
+        assert error.value.status == 422
+
+
+def test_svg_plain_logo_still_accepted() -> None:
+    svg = (
+        b'<?xml version="1.0" encoding="UTF-8"?>\n'
+        + SVG_OPEN
+        + b'<defs><symbol id="s"><path d="M0 0h5v5z"/></symbol>'
+        + b'<linearGradient id="g"><stop offset="0"/></linearGradient></defs>'
+        + b'<g><use href="#s"/><use href="#s" x="6"/></g><circle r="5" fill="url(#g)"/>'
+        + b'<use href="#g"/>' * 18  # 20 `use` in all: exactly at the cap
+        + b"</svg>"
+    )
+    assert save_image_bytes(svg, "logo").endswith(".svg")
+
+
 def test_save_upload_reads_at_most_the_limit() -> None:
     upload = UploadFile(io.BytesIO(_png((40, 40))), filename="x.png")
     assert asyncio.run(save_upload(upload, "post")).endswith(".webp")
@@ -114,3 +157,25 @@ def test_delete_media_only_inside_media_dir(tmp_path: Path) -> None:
     delete_media("https://evil.com/x.png")
     delete_media(None)
     assert outside.exists()
+
+
+def broken_png(*, bad_crc: bool) -> bytes:
+    """1x1 PNG with a valid header and a broken IDAT: bad checksum (verify() raises SyntaxError, not
+    OSError: was a 500) or a valid checksum over bytes that are not zlib (fails only when decoding)."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, data: bytes, crc: int | None = None) -> bytes:
+        checksum = zlib.crc32(kind + data) & 0xFFFFFFFF if crc is None else crc
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", checksum)
+
+    header = chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+    idat = chunk(b"IDAT", b"garbage-not-zlib", 0 if bad_crc else None)
+    return b"\x89PNG\r\n\x1a\n" + header + idat + chunk(b"IEND", b"")
+
+
+@pytest.mark.parametrize("bad_crc", [True, False])
+def test_malformed_png_is_422_not_500(bad_crc: bool) -> None:
+    with pytest.raises(AppError) as error:
+        save_image_bytes(broken_png(bad_crc=bad_crc), "post")
+    assert error.value.status == 422 and error.value.code == "invalid_image"

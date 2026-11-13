@@ -65,7 +65,7 @@ def register(
 @router.post("/login", response_model=TokenOut, dependencies=[Depends(require_fetch_header)])
 @limiter.limit(LOGIN_LIMIT)
 def login(request: Request, response: Response, data: LoginIn, db: Session = Depends(get_db)) -> TokenOut:
-    hit_login_email(data.email)  # per account too, not only per IP
+    hit_login_email(data.key)  # per account (boleta or email) too, not only per IP
     user = service.authenticate(db, data)
     token, raw = service.issue_session(db, user)
     db.commit()
