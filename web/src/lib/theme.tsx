@@ -79,7 +79,9 @@ export function themeVariables(branding: AcademyBranding): CSSProperties {
     "--academy-primary": primary,
     "--academy-secondary": secondary,
     "--academy-accent": accent,
-    "--academy-accent-2": safeColor(branding.color_accent_2, secondary),
+    // Every accent-2 consumer is an alert (errors, invalid fields, delete buttons): a club without its own
+    // falls back to the site's alert red, never to its secondary color (UPS-064: green read as success).
+    "--academy-accent-2": safeColor(branding.color_accent_2, SITE.colors.accent2),
     "--academy-on-primary": readableTextOn(primary),
     "--academy-on-accent": readableTextOn(accent),
     // Links (index.css picks the shade for the surface): the campus keeps its tuned greens.
