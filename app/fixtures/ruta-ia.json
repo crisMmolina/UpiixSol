@@ -1,0 +1,690 @@
+{
+  "route": {
+    "title": "De cero a LLMs",
+    "description": "Ruta de UpiixIA: de Python desde cero a construir y usar modelos de lenguaje, clase por clase.",
+    "modules": [
+      {
+        "title": "Python desde cero",
+        "lessons": [
+          {
+            "title": "Configuración y Hola Mundo",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 850,
+            "end_s": 2938,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Variables",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 2938,
+            "end_s": 5665,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Operadores",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 5665,
+            "end_s": 8643,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Strings",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 8643,
+            "end_s": 10872,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Listas",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 10872,
+            "end_s": 14711,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Diccionarios",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 18506,
+            "end_s": 21442,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Condicionales",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 21442,
+            "end_s": 23822,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Bucles",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 23822,
+            "end_s": 26619,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Funciones",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 26619,
+            "end_s": 29327,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Clases y objetos",
+            "youtube_url": "https://youtu.be/Kp4Mvapo5kc",
+            "start_s": 29327,
+            "end_s": 32030,
+            "lang": "es",
+            "status": "ok",
+            "links": [
+              {
+                "label": "Tuplas",
+                "url": "https://youtu.be/Kp4Mvapo5kc?t=14711"
+              },
+              {
+                "label": "Sets",
+                "url": "https://youtu.be/Kp4Mvapo5kc?t=16335"
+              },
+              {
+                "label": "Excepciones",
+                "url": "https://youtu.be/Kp4Mvapo5kc?t=32030"
+              },
+              {
+                "label": "Módulos",
+                "url": "https://youtu.be/Kp4Mvapo5kc?t=34583"
+              },
+              {
+                "label": "tutorial oficial",
+                "url": "https://docs.python.org/es/3/tutorial/"
+              },
+              {
+                "label": "código",
+                "url": "https://github.com/mouredev/Hello-Python"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Matemáticas con intuición",
+        "lessons": [
+          {
+            "title": "Vectores, ¿qué son?",
+            "youtube_url": "https://www.youtube.com/watch?v=wiuEEkP_XuM",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Combinaciones lineales y base",
+            "youtube_url": "https://www.youtube.com/watch?v=RqQqFx4xUjk",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Matrices como transformaciones",
+            "youtube_url": "https://www.youtube.com/watch?v=YJfS4_m_0Z8",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Multiplicación de matrices",
+            "youtube_url": "https://www.youtube.com/watch?v=8f7UUnbLqp0",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "La esencia del cálculo",
+            "youtube_url": "https://www.youtube.com/watch?v=ykwjb-OGimE",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Qué es una derivada",
+            "youtube_url": "https://www.youtube.com/watch?v=byYkHqabnKM",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Derivadas con geometría",
+            "youtube_url": "https://www.youtube.com/watch?v=nQruR83shIA",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Regla de la cadena",
+            "youtube_url": "https://www.youtube.com/watch?v=YG15m2VwSjA",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          }
+        ]
+      },
+      {
+        "title": "Datos y Machine Learning práctico",
+        "lessons": [
+          {
+            "title": "NumPy",
+            "youtube_url": "https://www.youtube.com/watch?v=fczpaVSwGCA",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "pandas",
+            "youtube_url": "https://www.youtube.com/watch?v=GpdPvpV7MkA",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "¿Qué es el Machine Learning?",
+            "youtube_url": "https://www.youtube.com/watch?v=elojMnjn4kk",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Preparar Python: scikit-learn y Jupyter",
+            "youtube_url": "https://www.youtube.com/watch?v=IsXXlYVBt1M",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Primeros pasos con el dataset iris",
+            "youtube_url": "https://www.youtube.com/watch?v=hd1W4CyPX58",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Entrenar un modelo",
+            "youtube_url": "https://www.youtube.com/watch?v=RlQuVL6-qe8",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Comparar modelos",
+            "youtube_url": "https://www.youtube.com/watch?v=0pP4EwWJgIU",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "pandas, seaborn y scikit-learn",
+            "youtube_url": "https://www.youtube.com/watch?v=3ZWuPVWq7p4",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Validación cruzada",
+            "youtube_url": "https://www.youtube.com/watch?v=6dbrR-WymjI",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Buscar los mejores parámetros",
+            "youtube_url": "https://www.youtube.com/watch?v=Gol_qOgRqfA",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Evaluar un clasificador",
+            "youtube_url": "https://www.youtube.com/watch?v=85dtiMz9tSo",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Flujo de trabajo completo",
+            "youtube_url": "https://www.youtube.com/watch?v=irHhDMbw3xo",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": [
+              {
+                "label": "StatQuest A Gentle Introduction to Machine Learning",
+                "url": "https://www.youtube.com/watch?v=Gv9_4yMHFhI"
+              },
+              {
+                "label": "Lista Data School",
+                "url": "https://www.youtube.com/playlist?list=PL5-da3qGB5ICeMbQuqbbCOQWcS6OYBr5A"
+              },
+              {
+                "label": "notebooks",
+                "url": "https://github.com/justmarkham/scikit-learn-videos"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Redes neuronales",
+        "lessons": [
+          {
+            "title": "¿Qué es una red neuronal?",
+            "youtube_url": "https://www.youtube.com/watch?v=jKCQsndqEGQ",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Descenso del gradiente",
+            "youtube_url": "https://www.youtube.com/watch?v=mwHiaTrQOiI",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Backpropagation: la idea",
+            "youtube_url": "https://www.youtube.com/watch?v=ScVpPS_CFYc",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Backpropagation: el cálculo",
+            "youtube_url": "https://www.youtube.com/watch?v=CyPjDPKtycM",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          }
+        ]
+      },
+      {
+        "title": "Construirlo en código",
+        "lessons": [
+          {
+            "title": "micrograd: derivadas y el objeto Value",
+            "youtube_url": "https://www.youtube.com/watch?v=VMj-3S1tku0",
+            "start_s": 0,
+            "end_s": 3172,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "micrograd: backpropagation de una neurona",
+            "youtube_url": "https://www.youtube.com/watch?v=VMj-3S1tku0",
+            "start_s": 3172,
+            "end_s": 5971,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "micrograd: PyTorch y una red multicapa",
+            "youtube_url": "https://www.youtube.com/watch?v=VMj-3S1tku0",
+            "start_s": 5971,
+            "end_s": 8752,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore: bigramas contando",
+            "youtube_url": "https://www.youtube.com/watch?v=PaCmpygFfXo",
+            "start_s": 0,
+            "end_s": 3777,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore: bigramas con una red neuronal",
+            "youtube_url": "https://www.youtube.com/watch?v=PaCmpygFfXo",
+            "start_s": 3777,
+            "end_s": 7065,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 2: MLP, el modelo",
+            "youtube_url": "https://www.youtube.com/watch?v=TCH_1BHY58I",
+            "start_s": 0,
+            "end_s": 1937,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 2: MLP, entrenamiento y experimentos",
+            "youtube_url": "https://www.youtube.com/watch?v=TCH_1BHY58I",
+            "start_s": 1937,
+            "end_s": 4539,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 3: pérdida inicial y activaciones",
+            "youtube_url": "https://www.youtube.com/watch?v=P6sfmUTpUmc",
+            "start_s": 0,
+            "end_s": 2440,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 3: BatchNorm",
+            "youtube_url": "https://www.youtube.com/watch?v=P6sfmUTpUmc",
+            "start_s": 2440,
+            "end_s": 4715,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 3: visualizar activaciones y gradientes",
+            "youtube_url": "https://www.youtube.com/watch?v=P6sfmUTpUmc",
+            "start_s": 4715,
+            "end_s": 6957,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 4: backprop a mano, parte 1 (opcional)",
+            "youtube_url": "https://www.youtube.com/watch?v=q8SA3rM6ckI",
+            "start_s": 0,
+            "end_s": 3917,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 4: backprop a mano, parte 2 (opcional)",
+            "youtube_url": "https://www.youtube.com/watch?v=q8SA3rM6ckI",
+            "start_s": 3917,
+            "end_s": 6924,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "makemore 5: WaveNet",
+            "youtube_url": "https://www.youtube.com/watch?v=t3YJ5hKiMQ0",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          }
+        ]
+      },
+      {
+        "title": "Transformers: entender y construir un GPT",
+        "lessons": [
+          {
+            "title": "Transformers, la tecnología detrás de los LLMs",
+            "youtube_url": "https://www.youtube.com/watch?v=wjZofJX0v4M",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "La atención en los transformers",
+            "youtube_url": "https://www.youtube.com/watch?v=eMlx5fFNoYc",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Construyamos GPT desde cero",
+            "youtube_url": "https://www.youtube.com/watch?v=kCc8FmEb1nY",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Construir el tokenizador de GPT",
+            "youtube_url": "https://www.youtube.com/watch?v=zduSFxRajkE",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Cómo guardan datos los LLMs",
+            "youtube_url": "https://www.youtube.com/watch?v=9-Jl0dxWQs8",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          }
+        ]
+      },
+      {
+        "title": "De GPT a ChatGPT",
+        "lessons": [
+          {
+            "title": "Preentrenamiento: datos, tokens y red neuronal",
+            "youtube_url": "https://www.youtube.com/watch?v=7xTGNNLPyMI",
+            "start_s": 0,
+            "end_s": 3563,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Post-entrenamiento y alucinaciones",
+            "youtube_url": "https://www.youtube.com/watch?v=7xTGNNLPyMI",
+            "start_s": 3563,
+            "end_s": 7648,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Aprendizaje por refuerzo: DeepSeek-R1 y AlphaGo",
+            "youtube_url": "https://www.youtube.com/watch?v=7xTGNNLPyMI",
+            "start_s": 7648,
+            "end_s": 10106,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "RLHF y qué esperar",
+            "youtube_url": "https://www.youtube.com/watch?v=7xTGNNLPyMI",
+            "start_s": 10106,
+            "end_s": 12683,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          }
+        ]
+      },
+      {
+        "title": "Usar LLMs: Hugging Face, RAG y modelos locales",
+        "lessons": [
+          {
+            "title": "Hugging Face: la función pipeline",
+            "youtube_url": "https://www.youtube.com/watch?v=tiZFewofSLM",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Hugging Face: la arquitectura Transformer",
+            "youtube_url": "https://www.youtube.com/watch?v=H39Z_720T5s",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Hugging Face: tokenizadores, visión general",
+            "youtube_url": "https://www.youtube.com/watch?v=VFp38yj8h3A",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Hugging Face: la API Trainer",
+            "youtube_url": "https://www.youtube.com/watch?v=nvBXf7s7vTI",
+            "start_s": null,
+            "end_s": null,
+            "lang": "en",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "RAG de punta a punta, parte 1",
+            "youtube_url": "https://www.youtube.com/watch?v=qjgQUs4eJ34",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "RAG de punta a punta, parte 2",
+            "youtube_url": "https://www.youtube.com/watch?v=cIf-ITLsYBk",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          },
+          {
+            "title": "Ollama: LLMs locales",
+            "youtube_url": "https://www.youtube.com/watch?v=xE_msdWg3Pg",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "sustituto",
+            "links": [],
+            "note": "Sustituto propuesto en UPS-046: verlo antes de publicar."
+          },
+          {
+            "title": "LM Studio en español",
+            "youtube_url": "https://www.youtube.com/watch?v=X95qSmkigco",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": []
+          }
+        ]
+      },
+      {
+        "title": "LLMs en la Jetson",
+        "lessons": [
+          {
+            "title": "Primeros pasos con el kit de desarrollo Jetson Orin Nano",
+            "youtube_url": "https://www.youtube.com/watch?v=VWdJ4BCtam8",
+            "start_s": null,
+            "end_s": null,
+            "lang": "es",
+            "status": "ok",
+            "links": [
+              {
+                "label": "tutoriales oficiales",
+                "url": "https://www.jetson-ai-lab.com/tutorials/"
+              },
+              {
+                "label": "Ollama en Jetson",
+                "url": "https://www.jetson-ai-lab.com/tutorials/ollama"
+              },
+              {
+                "label": "Paul McWhorter",
+                "url": "https://toptechboy.com/tag/llm/"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

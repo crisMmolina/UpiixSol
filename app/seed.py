@@ -6,10 +6,12 @@ seeded account was never used, a new SEED_DEFAULT_PASSWORD replaces its provisio
 """
 
 import json
+import math
+import sys
 from datetime import timedelta, timezone
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -129,8 +131,109 @@ def _seed_route(db: Session, academy: Academy, data: dict) -> list[Lesson]:
     return lessons
 
 
-def seed(db: Session) -> dict:
-    """Load accounts + demo data. Flushes but does not commit (the caller owns the transaction)."""
+RUTA_IA = Path(__file__).parent / "fixtures" / "ruta-ia.json"
+
+
+SUFFIX = {"es": "*Video en español.*", "en": "*Video en inglés (activa subtítulos en español).*"}
+
+
+def _ruta_ia_values(data: dict, position: int) -> dict:
+    """Seed-owned fields of a lesson: the canonical URL, the segment, the language suffix, the draft flag."""
+    video_id = extract_video_id(data["youtube_url"])
+    if video_id is None:  # pragma: no cover - guarded by test_ruta_ia_fixture_valid
+        raise ValueError(f"invalid ruta-ia video: {data['youtube_url']}")
+    start_s, end_s = data["start_s"], data["end_s"]
+    description = "\n\n".join(part for part in (data.get("note", ""), SUFFIX[data["lang"]]) if part)
+    return {
+        "youtube_url": f"https://www.youtube.com/watch?v={video_id}",
+        "youtube_video_id": video_id,
+        "start_s": start_s,
+        "end_s": end_s,
+        "duration_min": math.ceil((end_s - start_s) / 60)
+        if start_s is not None and end_s is not None
+        else None,
+        "description": clean_markdown(description),
+        "position": position,
+        "is_published": data["status"] == "ok",
+    }
+
+
+def _set_ruta_ia_links(db: Session, lesson: Lesson, links: list[dict]) -> None:
+    for old in db.scalars(select(LessonLink).where(LessonLink.lesson_id == lesson.id)):
+        db.delete(old)
+    db.flush()
+    for j, link in enumerate(links):
+        db.add(LessonLink(lesson_id=lesson.id, label=link["label"], url=link["url"], position=j))
+
+
+def seed_ruta_ia(db: Session) -> dict:
+    """The UpiixIA route "De cero a LLMs" from app/fixtures/ruta-ia.json (UPS-047, spec 002).
+
+    Matched by title (route, module, lesson): creates what is missing, refreshes only lessons that are still
+    unpublished, never edits a published lesson and never deletes. A lesson is published only when its catalog
+    status is `ok`. The demo route is not touched. Prints a one-line summary.
+    """
+    data = json.loads(RUTA_IA.read_text(encoding="utf-8"))["route"]
+    slug = json.loads(DEMO.read_text(encoding="utf-8"))["academy"]["slug"]
+    academy = db.scalar(select(Academy).where(Academy.slug == slug))
+    counts = {"modules": 0, "lessons": 0, "updated": 0, "drafts": 0}
+    route = db.scalar(
+        select(LearningRoute).where(
+            LearningRoute.academy_id == academy.id, LearningRoute.title == data["title"]
+        )
+    )
+    if route is None:
+        position = db.scalar(
+            select(func.count(LearningRoute.id)).where(LearningRoute.academy_id == academy.id)
+        )
+        route = LearningRoute(
+            academy_id=academy.id,
+            title=data["title"],
+            description=data["description"],
+            is_published=True,
+            position=position,
+        )
+        db.add(route)
+        db.flush()
+    for m, module_data in enumerate(data["modules"]):
+        module = db.scalar(
+            select(Module).where(Module.route_id == route.id, Module.title == module_data["title"])
+        )
+        if module is None:
+            module = Module(route_id=route.id, title=module_data["title"], position=m)
+            db.add(module)
+            db.flush()
+            counts["modules"] += 1
+        for i, lesson_data in enumerate(module_data["lessons"]):
+            values = _ruta_ia_values(lesson_data, i)
+            lesson = db.scalar(
+                select(Lesson).where(Lesson.module_id == module.id, Lesson.title == lesson_data["title"])
+            )
+            if lesson is None:
+                lesson = Lesson(module_id=module.id, title=lesson_data["title"], **values)
+                db.add(lesson)
+                db.flush()
+                _set_ruta_ia_links(db, lesson, lesson_data["links"])
+                counts["lessons"] += 1
+            elif not lesson.is_published:  # published lessons belong to the admins now
+                for field, value in values.items():
+                    setattr(lesson, field, value)
+                _set_ruta_ia_links(db, lesson, lesson_data["links"])
+                counts["updated"] += 1
+            counts["drafts"] += not lesson.is_published
+    db.flush()
+    print(  # noqa: T201 (operator summary, no personal data)
+        f"ruta-ia: +{counts['modules']} modules, +{counts['lessons']} lessons, "
+        f"{counts['updated']} updated, {counts['drafts']} drafts"
+    )
+    return counts
+
+
+def seed(db: Session, ruta_ia: bool = False) -> dict:
+    """Load accounts + demo data. Flushes but does not commit (the caller owns the transaction).
+
+    `ruta_ia=True` also seeds the UpiixIA route "De cero a LLMs" (UPS-047): `python -m app.seed --ruta-ia`.
+    """
     demo = json.loads(DEMO.read_text(encoding="utf-8"))
     seed_password = get_settings().seed_default_password
     password_hash = hash_password(seed_password)
@@ -218,6 +321,9 @@ def seed(db: Session) -> dict:
                 )
             )
 
+    if ruta_ia:  # on request only (human decision 2026-11-13): tests and e2e keep the single demo route
+        seed_ruta_ia(db)
+
     projects = []
     for item in demo["projects"]:
         project, _ = _get_or_create(
@@ -265,7 +371,7 @@ def main() -> None:  # pragma: no cover - thin CLI wrapper, exercised manually /
     from app.db import SessionLocal
 
     with SessionLocal() as db:
-        result = seed(db)
+        result = seed(db, ruta_ia="--ruta-ia" in sys.argv[1:])
         db.commit()
     print(f"SEED_OK academy_id={result['academy_id']} accounts={len(ACCOUNTS)}")  # noqa: T201 (no secrets printed)
 
