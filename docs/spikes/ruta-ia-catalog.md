@@ -1,6 +1,6 @@
 # Catálogo verificado · Ruta UpiixIA "De cero a LLMs" (UPS-046)
 
-Fuente de verdad de los enlaces para `app/fixtures/ruta-ia.json` (UPS-047). Parte del §5 del brief humano (`docs/specs/002-ruta-ia-videos/ruta-ia-videos.md`) y lo corrige con lo que se comprobó el **2026-11-12**.
+Fuente de verdad de los enlaces para `app/fixtures/ruta-ia.json` (UPS-047). Parte del §5 del brief humano (`.uak/ruta-ia-videos.md`, que sube el PR 91) y lo corrige con lo que se comprobó el **2026-11-12**.
 
 ## Cómo se verificó
 
