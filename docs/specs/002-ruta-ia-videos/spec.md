@@ -1,6 +1,6 @@
 # Spec 002 · UpiixIA route "De cero a LLMs" with sequential video segments
 - Status: approved (human, 2026-11-10) · Owner: @crisMmolina · PROJECT principles: 1, 3, 4, 5
-- Source: human brief `ruta-ia-videos.md` (2026-11-10). Content catalog (§5 of the brief) is copied into `docs/spikes/ruta-ia-catalog.md` by UPS-046 and becomes the source of truth for links.
+- Source: human brief `.uak/ruta-ia-videos.md` (2026-11-10). Content catalog (§5 of the brief) is copied into `docs/spikes/ruta-ia-catalog.md` by UPS-046 and becomes the source of truth for links.
 
 ## Problem
 UpiixIA only has the demo route "Fundamentos de IA con Python" (`app/fixtures/demo.json`): 2 modules, 4 standalone freeCodeCamp videos that overlap and do not form a sequence. The club needs a real route **from zero to building and using an LLM**, where each lesson picks up exactly where the previous one ended and no lesson is a 10-hour video. Today the player cannot do this: `embed_url()` drops any timestamp, `Lesson` has no start/end, and the admin save path canonicalizes the URL to `watch?v=ID`, discarding `t=`.

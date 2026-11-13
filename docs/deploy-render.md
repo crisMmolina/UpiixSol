@@ -34,7 +34,7 @@ Reemplaza `<servicio>` por la URL que te dio Render, p. ej. `upiixsol.onrender.c
    - `superadmin2`, `superadmin3` y `superadmin4`;
    - `admin.ia`;
    - `alumno.demo`.
-3. Cambia también `SEED_DEFAULT_PASSWORD` a un valor nuevo. Las cuentas que ya existen no cambian con esto: solo evita que un seed accidental use el valor que ya se compartió. Cada cuenta cambia su contraseña desde la app.
+3. Cambia también `SEED_DEFAULT_PASSWORD` a un valor nuevo. Con `SEED_ON_START=false` esto no cambia ninguna cuenta: solo evita que un seed accidental use el valor que ya se compartió. Si el seed vuelve a correr, las cuentas sembradas que nadie ha usado toman el valor nuevo. Cada cuenta cambia su contraseña desde la app.
 
 ### Si nadie puede entrar con la contraseña inicial
 Puede pasar si cambiaste `SEED_DEFAULT_PASSWORD` antes del primer login: las cuentas se crearon con el valor anterior.

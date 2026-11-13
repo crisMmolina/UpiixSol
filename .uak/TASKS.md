@@ -740,7 +740,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 240 min
 - **Rubric / Spec:** human request 2026-10-09: the app looks odd on phones in many cases, above all the skeletons
-- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043, UPS-004
+- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043, UPS-004, UPS-061
 - **Uses contract:** UPS-033
 - **Related:** UPS-038
 - **Paths:** web/src/components/, web/src/layouts/, web/src/index.css, web/src/features/home/, web/src/features/academy/, web/src/features/auth/, web/src/features/account/, web/src/features/community/, web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, web/src/features/resources/, web/src/features/superadmin/, web/src/features/academy-admin/, e2e/test_mobile.py
@@ -835,7 +835,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 150 min
-- **Rubric / Spec:** human brief 2026-11-10 (long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §3 (2026-11-10, long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
 - **Depends on:** None
 - **Uses contract:** None
 - **Related:** UPS-046, UPS-047, UPS-048
@@ -857,7 +857,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** spike
 - **Priority:** P0
 - **Estimate:** 120 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `ruta-ia-videos.md` §5 (catalog)
+- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `.uak/ruta-ia-videos.md` §5 (catalog)
 - **Depends on:** None
 - **Uses contract:** None
 - **Related:** UPS-047
@@ -865,7 +865,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Freeze-Allowed:** no
 - **Test-First:** no (research: the output is a verified document, not behavior)
 - **Acceptance:**
-  - `docs/spikes/ruta-ia-catalog.md` holds the brief's §5 catalog as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
+  - `docs/spikes/ruta-ia-catalog.md` holds the §5 catalog of `.uak/ruta-ia-videos.md` as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
   - Every `verificar` row is opened: its title, channel and availability are confirmed, or it is replaced and the reason noted. The "3Blue1Brown Español" dubbed URL is preferred when it exists (then `lang: es`).
   - Every `buscar` row gets a real YouTube URL (NumPy/pandas ES, Hugging Face course videos, RAG ES parts 1–2, Ollama ES) or a documented substitute.
   - Chapter timestamps are copied from the YouTube descriptions to split the Karpathy videos (module 5, 2–3 segments each) and "Deep Dive into LLMs" (module 7, 4 segments).
@@ -880,7 +880,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 150 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §3 · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
 - **Depends on:** UPS-045
 - **Uses contract:** UPS-045
 - **Related:** UPS-047
@@ -902,7 +902,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 120 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §4 (load) and §5 (catalog; links come from `docs/spikes/ruta-ia-catalog.md` once UPS-046 lands) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
 - **Depends on:** UPS-045, UPS-048, UPS-002, UPS-027 (integrated), UPS-031 (not yet integrated; it also writes app/seed.py, so this task starts after it)
 - **Uses contract:** UPS-046
 - **Related:** None
@@ -1157,3 +1157,42 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Bottlenecks found (N+1 queries, missing indexes, images served from the database) become new tasks or `uak followup`, not fixes in this task.
 - **Verify:** `bash perf/run_local.sh 20 60s`
 - **Next step:** write the locustfile with seed accounts, then the local ramp with docker CPU/RAM limits.
+
+## UPS-061 · Drawers and modals keep Tab focus inside until they close
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** found by UPS-057 (docs/PRUEBAS-CAMPUS.md MOB-02): at 375 px, tabbing through the open "Más" drawer moves focus out of the dialog (native `showModal()` lets Tab leave the page after the last control). Follow-up of UPS-043 (same component).
+- **Depends on:** UPS-043
+- **Uses contract:** UPS-033
+- **Related:** UPS-057, UPS-040
+- **Paths:** web/src/components/Overlay.tsx, e2e/test_overlay_focus.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - In any open drawer or modal, Tab from the last control goes to the first and Shift+Tab from the first goes to the last: a full lap plus two extra presses never leaves the dialog, at 375 px and 1280 px.
+  - Escape and the close button still close it, and focus returns to the control that opened it.
+  - Drawer motion (UPS-043) and first-field focus rules (UPS-033) are unchanged.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_overlay_focus.py e2e/test_drawer_motion.py e2e/test_layout_stability.py`
+- **Next step:** red e2e that tabs through the "Más" drawer and the "Nuevo evento" modal, then a keydown trap in Overlay.tsx.
+
+## UPS-062 · Remove DELETE /lessons/{id}/complete: a completed lesson stays completed
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** human decision 2026-11-12 (chat): a lesson is marked completed when the member watches the whole video and it stays that way; there is no UI and no API to unmark it. Found in review of UPS-052: LRN-04 of docs/PRUEBAS-CAMPUS.md ("Desmarcar la clase completada") contradicts it.
+- **Depends on:** UPS-052
+- **Uses contract:** None
+- **Related:** UPS-007, UPS-010, UPS-052
+- **Paths:** app/routers/learning.py, app/services/learning.py, app/services/progress.py, app/tests/test_learning.py, app/tests/test_analytics.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, docs/PRUEBAS-CAMPUS.md, e2e/test_qa_learning.py
+- **Freeze-Allowed:** no
+- **Tests:** test_uncomplete_endpoint_is_gone, test_completed_lesson_stays_completed, test_progress_never_goes_down
+- **Acceptance:**
+  - `DELETE /api/lessons/{id}/complete` no longer exists: the router, the `completed=False` branch of `set_completed` and `uncomplete_lesson` in progress.py are removed (no dead code). The call answers 405.
+  - Completing twice still changes nothing, and a lesson never leaves the completed state; the route progress percentage never goes down.
+  - The permission matrix test and docs/permissions-matrix.md drop the DELETE row. Tests that used DELETE to reset state (test_learning.py, test_analytics.py, the LRN-04 e2e) set up their state another way or assert there is no way to unmark.
+  - LRN-04 in docs/PRUEBAS-CAMPUS.md is rewritten: "una clase completada no se puede desmarcar" (the Player offers no control for it).
+  - A member who completed lessons before this change keeps them completed; no migration.
+- **Verify:** `uv run pytest -q app/tests/test_learning.py app/tests/test_analytics.py app/tests/test_permissions_matrix.py`
+- **Next step:** red test that DELETE answers 405, then remove the endpoint and the dead code, then fix the tests that used it.

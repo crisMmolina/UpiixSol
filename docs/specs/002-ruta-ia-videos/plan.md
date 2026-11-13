@@ -32,7 +32,7 @@ There are two independent parts, joined by one contract (the lesson fields `star
    - Update: only lessons that are still unpublished get the seed-owned fields refreshed (url, id, segment, description, links, position, published flag from status). Published lessons are left alone. Nothing is deleted.
    - `buscar` rows have no URL yet, so they are **not** created. They live in the spike document until UPS-046 fills them in, because `youtube_url` is required.
 
-   **Why a JSON fixture plus the seed** rather than an admin import endpoint: it needs no new write surface (no new permission-matrix rows, no upload parsing), and the human brief asks for it. Admins edit afterwards in the existing panel.
+   **Why a JSON fixture plus the seed** rather than an admin import endpoint: it needs no new write surface (no new permission-matrix rows, no upload parsing), and the human brief (`.uak/ruta-ia-videos.md` §4) asks for it. Admins edit afterwards in the existing panel.
 
 No ADR: everything here is additive and cheap to reverse (nullable columns, a reversible migration, a fixture). It follows ADR 0001's stack and auth unchanged.
 
