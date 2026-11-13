@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794542498
+Updated: 1794542898
 AVAILABLE: UPS-047 UPS-062 
 CLAIMED: UPS-059 UPS-060 
 BLOCKED: UPS-057 
@@ -10,7 +10,7 @@ INTEGRATED: (52; last 12) ... UPS-042 UPS-043 UPS-044 UPS-045 UPS-046 UPS-049 UP
 CANCELLED: UPS-030 
 
 Claims (first 24; status --task ID shows detail):
-UPS-048 | REVIEW | zoe-1 | until 1794627492
+UPS-048 | REVIEW | david-4 | until 1794629298
 UPS-052 | REVIEW | cris-dev | until 1794549848
 UPS-055 | REVIEW | zoe-1 | until 1794626789
 UPS-057 | BLOCKED | david-2 | until 1794548448
