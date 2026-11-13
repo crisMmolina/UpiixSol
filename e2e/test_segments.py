@@ -36,6 +36,7 @@ def test_player_src_keeps_segment_params(site: Site) -> None:
         assert query["start"] == ["850"]  # noqa: S101
         assert query["end"] == ["2938"]  # noqa: S101
         assert query["enablejsapi"] == ["1"]  # noqa: S101
+        site.shot("segment-player")
     finally:
         page.unroute("**/api/lessons/1")
 
