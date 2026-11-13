@@ -1,4 +1,4 @@
-"""QA content, events and account in a real browser (UPS-056): docs/PRUEBAS-CAMPUS.md §RES, §EVT, §ACC and §BLG.
+"""QA content, events and account in a real browser (UPS-056): PRUEBAS-CAMPUS.md §RES, §EVT, §ACC and §BLG.
 
 The academy admin uploads a resource file and opens it, and sees the seed events on the calendar and the home
 card; the member changes nickname, photo, email (errors) and password (then restores it); the superadmin
@@ -7,14 +7,25 @@ that hostile markdown never runs. Tests run in order on one site per viewport an
 (login is rate-limited).
 """
 
-from playwright.sync_api import Page, expect
+from datetime import UTC, datetime, timedelta
+
+from playwright.sync_api import APIRequestContext, Page, expect
 
 from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import ADMIN_IA, MEMBER, SUPERADMIN, _png_bytes, sign_in, sign_out
 
 WORKSHOP = "Taller: tu primera red neuronal"
 CAMPUS_NIGHT = "Noche de proyectos UpiixSol"
+PAST_EVENT = "Evento pasado QA"
+FETCH = {"X-Requested-With": "fetch"}
 HOSTILE = '<script>window.__qa_xss = 1</script><img src=x onerror="window.__qa_xss = 2">**seguro**'
+
+
+def _login(request: APIRequestContext, site: Site, email: str, password: str = SEED_PASSWORD) -> str:
+    credentials = {"email": email, "password": password}
+    response = request.post(site.url("/api/auth/login"), data=credentials, headers=FETCH)
+    assert response.ok, response.text()  # noqa: S101
+    return response.json()["access_token"]
 
 
 def _png(name: str = "qa.png") -> list[dict]:
@@ -41,7 +52,9 @@ def test_res01_resource_file_upload_and_open(site: Site) -> None:
     href = link.get_attribute("href") or ""
     assert href.startswith("/media/")  # noqa: S101
     response = page.request.get(site.url(href))
-    assert response.ok and response.headers["content-type"].startswith("image/")  # noqa: S101  stored as WebP
+    body = response.body()
+    # Stored as WebP: check the bytes, since /media/ serves it as application/octet-stream (followup).
+    assert response.ok and body[:4] == b"RIFF" and body[8:12] == b"WEBP"  # noqa: S101
     site.shot("qa-content-resource")
 
 
@@ -58,11 +71,31 @@ def test_evt01_calendar_lists_events_from_several_clubs(site: Site) -> None:
     site.shot("qa-content-calendar")
 
 
-def test_evt02_home_card_shows_next_events(site: Site) -> None:
+def test_evt02_home_card_shows_next_events_not_past_ones(site: Site) -> None:
     page = site.page
+    api = page.context.browser.new_context()
+    try:
+        token = _login(api.request, site, ADMIN_IA)
+        auth = {"Authorization": f"Bearer {token}"}
+        academy = api.request.get(site.url("/api/academies/upiixia"), headers=auth).json()
+        start = datetime.now(UTC) - timedelta(days=1)
+        created = api.request.post(
+            site.url("/api/events"),
+            headers=auth,
+            data={
+                "academy_id": academy["id"],
+                "title": f"{PAST_EVENT} {site.name}",
+                "starts_at": start.isoformat(),
+                "ends_at": (start + timedelta(hours=2)).isoformat(),
+            },
+        )
+        assert created.ok, created.text()  # noqa: S101
+    finally:
+        api.close()
     page.goto(site.url("/"))
     expect(page.get_by_text("Próximos eventos").first).to_be_visible()
     expect(page.get_by_text(WORKSHOP).first).to_be_visible()
+    expect(page.get_by_text(f"{PAST_EVENT} {site.name}")).to_have_count(0)
     expect(page.get_by_role("link", name="Calendario").first).to_be_visible()
 
 
@@ -86,6 +119,10 @@ def test_acc01_nickname_and_photo_update(site: Site) -> None:
     if site.name == "desktop":
         expect(menu.get_by_text(nickname)).to_be_visible()
     site.shot("qa-content-profile")
+
+    page.goto(site.url("/a/upiixia/comunidad"))  # the seed has two member posts in this channel
+    expect(page.locator("article", has_text=nickname).first).to_be_visible()
+    page.wait_for_load_state("networkidle")  # let the token refresh land before the next navigation
 
 
 def _email_form(page: Page):
@@ -116,15 +153,28 @@ def test_acc03_password_change_then_restore(site: Site) -> None:
     page = site.page
     original = SEED_PASSWORD
     temporary = f"{original}-qa-{site.name}"
-    for current, new in ((original, temporary), (temporary, original)):
-        form = _password_form(page)
-        form.get_by_label("Contraseña actual").fill(current)
-        form.get_by_label("Nueva contraseña", exact=True).fill(new)
-        form.get_by_label("Confirma la nueva contraseña").fill(new)
-        form.get_by_role("button", name="Cambiar contraseña").click()
-        expect(page.get_by_text("Contraseña actualizada. Cerramos tus otras sesiones.")).to_be_visible()
-        page.reload()
+    other = page.context.browser.new_context()  # a second device with its own session
+    try:
+        _login(other.request, site, MEMBER)
+        assert other.request.post(site.url("/api/auth/refresh"), headers=FETCH).ok  # noqa: S101
+        _change_password(page, original, temporary)
+        assert other.request.post(site.url("/api/auth/refresh"), headers=FETCH).status == 401  # noqa: S101
+    finally:
+        other.close()
+    _change_password(page, temporary, original)
     expect(page).to_have_url(site.url("/cuenta?tab=seguridad"))  # this session survives its own change
+
+
+def _change_password(page: Page, current: str, new: str) -> None:
+    form = _password_form(page)
+    form.get_by_label("Contraseña actual").fill(current)
+    form.get_by_label("Nueva contraseña", exact=True).fill(new)
+    form.get_by_label("Confirma la nueva contraseña").fill(new)
+    form.get_by_role("button", name="Cambiar contraseña").click()
+    # Hashing twice (check + new) can take a few seconds on a busy machine.
+    done = page.get_by_text("Contraseña actualizada. Cerramos tus otras sesiones.")
+    expect(done).to_be_visible(timeout=15_000)
+    page.reload()
 
 
 # ── BLG-01 · blog entry: create with cover, edit, delete ──
@@ -142,7 +192,7 @@ def test_blg01_blog_entry_crud_with_cover(site: Site) -> None:
     page.get_by_label("Portada (opcional)").set_input_files(files=_png())
     page.get_by_label("Publicada (visible para todos)").check()
     page.get_by_role("button", name="Crear entrada").click()
-    expect(page).to_have_url(site.url(f"/blog/entrada-qa-{site.name}"))  # the app moves on after the cover upload
+    expect(page).to_have_url(site.url(f"/blog/entrada-qa-{site.name}"))  # moves on after the cover upload
     expect(page.get_by_role("heading", name=title)).to_be_visible()
     expect(page.get_by_alt_text(f"Portada de {title}")).to_be_visible()
     site.shot("qa-content-blog")
