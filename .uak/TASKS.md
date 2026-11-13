@@ -1175,3 +1175,24 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Drawer motion (UPS-043) and first-field focus rules (UPS-033) are unchanged.
 - **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_overlay_focus.py e2e/test_drawer_motion.py e2e/test_layout_stability.py`
 - **Next step:** red e2e that tabs through the "Más" drawer and the "Nuevo evento" modal, then a keydown trap in Overlay.tsx.
+
+## UPS-062 · Remove DELETE /lessons/{id}/complete: a completed lesson stays completed
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** human decision 2026-11-12 (chat): a lesson is marked completed when the member watches the whole video and it stays that way; there is no UI and no API to unmark it. Found in review of UPS-052: LRN-04 of docs/PRUEBAS-CAMPUS.md ("Desmarcar la clase completada") contradicts it.
+- **Depends on:** UPS-052
+- **Uses contract:** None
+- **Related:** UPS-007, UPS-010, UPS-052
+- **Paths:** app/routers/learning.py, app/services/learning.py, app/services/progress.py, app/tests/test_learning.py, app/tests/test_analytics.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, docs/PRUEBAS-CAMPUS.md, e2e/test_qa_learning.py
+- **Freeze-Allowed:** no
+- **Tests:** test_uncomplete_endpoint_is_gone, test_completed_lesson_stays_completed, test_progress_never_goes_down
+- **Acceptance:**
+  - `DELETE /api/lessons/{id}/complete` no longer exists: the router, the `completed=False` branch of `set_completed` and `uncomplete_lesson` in progress.py are removed (no dead code). The call answers 405.
+  - Completing twice still changes nothing, and a lesson never leaves the completed state; the route progress percentage never goes down.
+  - The permission matrix test and docs/permissions-matrix.md drop the DELETE row. Tests that used DELETE to reset state (test_learning.py, test_analytics.py, the LRN-04 e2e) set up their state another way or assert there is no way to unmark.
+  - LRN-04 in docs/PRUEBAS-CAMPUS.md is rewritten: "una clase completada no se puede desmarcar" (the Player offers no control for it).
+  - A member who completed lessons before this change keeps them completed; no migration.
+- **Verify:** `uv run pytest -q app/tests/test_learning.py app/tests/test_analytics.py app/tests/test_permissions_matrix.py`
+- **Next step:** red test that DELETE answers 405, then remove the endpoint and the dead code, then fix the tests that used it.
