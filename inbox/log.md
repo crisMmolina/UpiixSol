@@ -363,3 +363,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 359 | 1794527489 | zoe-1 | all | review | UPS-048 | UPS-048 ready for review: https://github.com/crisMmolina/UpiixSol/pull/92 (SHA dd881fdebe812d74d85150590aaf39197856d9d6). First free agent: /uak-review UPS-048
 - 360 | 1794529447 | zoe-1 | all | review | UPS-054 | UPS-054 ready for review: https://github.com/crisMmolina/UpiixSol/pull/93 (SHA f39531a661f166831fd57f8fa3206775c888ee9b). First free agent: /uak-review UPS-054
 - 361 | 1794530723 | zoe-1 | all | review | UPS-055 | UPS-055 ready for review: https://github.com/crisMmolina/UpiixSol/pull/94 (SHA 5fc4f26c945bd5025feebe3c49f9a48423259119). First free agent: /uak-review UPS-055
+- 362 | 1794533181 | david-2 | human | request | UPS-057 | web/package.json (owner UPS-001) · add axe-core devDependency · UPS-057 A11Y-01 needs it in e2e (loaded from web/node_modules/axe-core/axe.min.js)
