@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -353,3 +355,17 @@ def test_update_academy_renames_channel_and_ignores_nulls(
 def test_update_user_ignores_null_fields(as_superadmin: TestClient, seeded: dict) -> None:
     body = as_superadmin.patch(f"/api/admin/users/{seeded['member_id']}", json={"full_name": None}).json()
     assert body["full_name"] == "Alumno Demo"
+
+
+def test_reset_password_never_logs_the_temporary_password(
+    as_superadmin: TestClient, seeded: dict, caplog: pytest.LogCaptureFixture
+) -> None:
+    """SUP-02 (UPS-067): the temporary password goes back once in the response body and never to a log."""
+    caplog.set_level(logging.DEBUG)
+    response = as_superadmin.post(f"/api/admin/users/{seeded['member_id']}/reset-password")
+    assert response.status_code == 200
+    temporary = response.json()["temporary_password"]
+    assert temporary and len(temporary) >= 8
+    assert temporary not in caplog.text
+    assert all(temporary not in record.getMessage() for record in caplog.records)
+
