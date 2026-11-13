@@ -1,12 +1,12 @@
 # worklog/WL-1794455252-cris-dev2-UPS-046-hack.xeOVmN.md · UPS-046
 
 ## Live summary
-- Done: catalog: 65 lessons, 64 ok + 1 sustituto (8.4), 46 ids 200 on oembed, chapters copied
+- Done: Verify test -s catalog && no bare verificar/buscar cell: exit 0; 46 youtube ids 200 on oembed 2026-11-12; 65 lessons 64 ok 1 sustituto
 - Decision: brief copied to docs/specs/002 (human said add it there); status sustituto instead of verificar because Verify greps bare verificar cells
 - Why: Verify forbids bare verificar/buscar cells
 - Failing: -
 - Commands: test -s docs/spikes/ruta-ia-catalog.md && ! grep -nE '[|] *(verificar|buscar) *[|]' docs/spikes/ruta-ia-catalog.md
-- Next: uak done, human opens every link in the PR
+- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/99; run .uak/bin/smoke
 
 ## History
 - 1794455252 | CLAIMED | cris-dev2 | claim; next: copy the §5 catalog, then go module by module starting with modules 2, 4 and 8.
@@ -20,3 +20,4 @@
 - 1794533283 | AVAILABLE | david-claude | release; claim released by david-claude; reason: -; summary kept
 - 1794533299 | CLAIMED | david-claude | claim; next: Get ruta-ia-videos.md from the human (add it under docs/specs/002-ruta-ia-videos/ or paste §5), then copy the catalog and verify modules 2, 4 and 8 first
 - 1794535363 | CLAIMED | david-claude | checkpoint; next: uak done, human opens every link in the PR
+- 1794536166 | REVIEW | david-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/99; evidence: Verify test -s catalog && no bare verificar/buscar cell: exit 0; 46 youtube ids 200 on oembed 2026-11-12; 65 lessons 64 ok 1 sustituto; reviewer: -
