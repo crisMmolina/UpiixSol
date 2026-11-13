@@ -1,9 +1,9 @@
 # STATE
 
 Phase: execution
-Updated: 1794552134
-AVAILABLE: UPS-065 UPS-067 UPS-068 UPS-069 
-CLAIMED: UPS-060 
+Updated: 1794552170
+AVAILABLE: UPS-065 UPS-067 UPS-068 
+CLAIMED: UPS-060 UPS-069 
 BLOCKED: UPS-057 
 REVIEW: UPS-059 UPS-064 
 INTEGRATED: (59; last 12) ... UPS-049 UPS-050 UPS-051 UPS-052 UPS-053 UPS-054 UPS-055 UPS-056 UPS-058 UPS-061 UPS-062 UPS-063 
@@ -14,14 +14,15 @@ UPS-057 | BLOCKED | david-2 | until 1794548448 (EXPIRED: release --expired --rea
 UPS-059 | REVIEW | david-8 | until 1794629590
 UPS-060 | CLAIMED | david-3 | until 1794551315 (EXPIRED: release --expired --read-summary TOKEN)
 UPS-064 | REVIEW | cris-dev | until 1794637294
+UPS-069 | CLAIMED | cris-dev | until 1794566570
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794549106 | deadline decision/UPS-055-1794546461/1794547361 | BLOCKED_OTHER_TASK | Option: Drop UPS-066: the superadmin does NOT change user roles for now; ROL-07 stays unimplem
 - 1794549106 | deadline decision/UPS-062-1794545555/1794546455 | REVERSIBLE_AND_LOG | Option: UPS-062 also edits app/services/analytics.py and docs/analytics.md (drop the lesson.un
 - 1794550083 | UPS-047 | human: seed the route only with --ruta-ia | Why: default seeding broke 11 tests and e2e
 - 1794550788 | deadline decision/UPS-047-1794549671/1794550571 | REVERSIBLE_AND_LOG | Option: Human 2026-11-13: the De cero a LLMs route is seeded only on request (python -m app.se
 - 1794550894 | UPS-064 | fallback to SITE.colors.accent2 | Why: all accent-2 consumers are alerts
+- 1794552170 | deadline lease/UPS-060/1794551315 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.

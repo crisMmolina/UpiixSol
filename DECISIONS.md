@@ -82,3 +82,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794550083 | UPS-047 | human: seed the route only with --ruta-ia | Why: default seeding broke 11 tests and e2e
 - 1794550788 | deadline decision/UPS-047-1794549671/1794550571 | REVERSIBLE_AND_LOG | Option: Human 2026-11-13: the De cero a LLMs route is seeded only on request (python -m app.seed --ruta-ia / seed(db, ruta_ia=True)), not by default inside seed(); Why: seeding it by default breaks 11 existing tests and the e2e that rely on one route in UpiixIA (spec open question 1); the human chose the flag in chat; prod runbook keeps it a human step; no money, accounts, publishing or scope expansion.
 - 1794550894 | UPS-064 | fallback to SITE.colors.accent2 | Why: all accent-2 consumers are alerts
+- 1794552170 | deadline lease/UPS-060/1794551315 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
