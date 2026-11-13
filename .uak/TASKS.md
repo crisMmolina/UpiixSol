@@ -1287,3 +1287,20 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Option (b): ADM-09 in docs/PRUEBAS-CAMPUS.md names app/tests/test_analytics.py as its check and says it is not e2e.
 - **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_admin.py app/tests/test_analytics.py`
 - **Next step:** human picks (a) or (b); then the red test.
+
+## UPS-069 · e2e LRN-02: the fake YouTube embed answers like the real one
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 20 min
+- **Rubric / Spec:** `e2e/test_qa_learning.py::test_player_loads_the_video_with_its_thumbnail` is red on main (desktop and mobile) since UPS-048: the Player now shows the video only once the embed answers over `postMessage` (a blocked embed still fires `onLoad`), and this test's fake embed never posts anything, so "Cargando video" stays. Found while verifying UPS-064; it fails the same with or without UPS-064. The product behavior is right; the test fixture is stale.
+- **Depends on:** UPS-052
+- **Uses contract:** UPS-048
+- **Related:** UPS-048, UPS-062
+- **Paths:** e2e/test_qa_learning.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The fake embed in e2e/test_qa_learning.py posts a YouTube-like state message to the page (as e2e/test_segments.py does), so LRN-02 sees the iframe shown and "Cargando video" gone, at 1280 and 390.
+  - No assertion of LRN-01…08 is weakened: only the fake embed changes.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_learning.py`
+- **Next step:** make the FAKE_EMBED post an `infoDelivery` message to its parent, then run the module twice.
