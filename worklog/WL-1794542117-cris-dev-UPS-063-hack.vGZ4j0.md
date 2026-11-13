@@ -6,9 +6,10 @@
 - Why: Python 3.12 built-in table lacks .webp
 - Failing: none
 - Commands: Verify; pytest --cov=app; smoke
-- Next: Wait for review
+- Next: Integrated in main: ebf29d9f98f7248a959b97443d029c282d2480e8 (recorded by NAME)
 
 ## History
 - 1794542117 | CLAIMED | cris-dev | claim; next: red test with `mimetypes.init(files=[])`, then register the types in app/services/media.py.
 - 1794542473 | REVIEW | cris-dev | done; PR https://github.com/crisMmolina/UpiixSol/pull/106; evidence: Verify exit 0; pytest --cov=app 100%; smoke PRODUCT_PASS · red at c54df7e: E   AssertionError: assert 'application/octet-stream' == 'image/webp'; reviewer: -
 - 1794542498 | REVIEW | cris-dev | checkpoint; next: Wait for review
+- 1794543708 | INTEGRATED | NAME | integrate; recorded by NAME; PR https://github.com/crisMmolina/UpiixSol/pull/106; merged ebf29d9f98f7248a959b97443d029c282d2480e8; proof ancestry
