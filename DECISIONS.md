@@ -85,3 +85,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794552170 | deadline lease/UPS-060/1794551315 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794552492 | UPS-069 | neutral state -1, never ended | Why: Player waits for postMessage since UPS-048
 - 1794552740 | UPS-067 | caplog at DEBUG | Why: e2e cannot read server output
+- 1794553652 | UPS-065 | skeleton title with 2 reserved lines at every width | Why: UPS-040 no-jump rule; the title wraps on desktop too
