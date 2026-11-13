@@ -253,9 +253,15 @@ function ListSkeleton({ rows }: { rows: number }) {
 /** Room for up to 3 lines of the hero text on phones and 2 from sm, loading or not, so nothing below jumps
  * when /home answers (UPS-040). */
 const HERO_TEXT = "mt-4 min-h-[5.25rem] max-w-xl text-lg text-muted sm:min-h-[3.5rem]";
+/** Room for 2 lines of the title at every width (it wraps in the half-width hero column on desktop too),
+ * loading or not: UPS-065 keeps UPS-040's no-jump rule. */
+const HERO_TITLE = "min-h-[4.5rem] text-3xl sm:min-h-[6rem] sm:text-5xl";
+/** Shown when the superadmin leaves "Título principal" empty: never an empty heading. */
+const DEFAULT_HERO_TITLE = "Tus clubs en un solo campus";
 
 /** Greeting, title and mascot need no data: they render right away; only the text waits for /home. */
-function HomeHero({ text }: { text: string | null }) {
+/** `title`/`text` null = /home has not answered yet: same boxes, filled with placeholders. */
+function HomeHero({ title, text }: { title: string | null; text: string | null }) {
   const { user } = useAuth();
   const site = useSite();
   return (
@@ -264,7 +270,14 @@ function HomeHero({ text }: { text: string | null }) {
         <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
           <Sparkle weight="fill" aria-hidden /> ¡Hola, {user?.nickname}!
         </p>
-        <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
+        {title === null ? (
+          <div aria-hidden className={`${HERO_TITLE} grid content-start gap-2 pt-1`}>
+            <Skeleton className="h-8 w-full sm:h-11 sm:w-4/5" />
+            <Skeleton className="h-8 w-2/3 sm:h-11" />
+          </div>
+        ) : (
+          <h1 className={HERO_TITLE}>{title}</h1>
+        )}
         {text === null ? (
           <div aria-hidden className={`${HERO_TEXT} grid content-start gap-2 pt-1`}>
             <Skeleton className="h-5 w-full" />
@@ -284,7 +297,7 @@ function HomeHero({ text }: { text: string | null }) {
 function HomeSkeleton() {
   return (
     <div role="status" aria-label="Cargando inicio" className="grid grid-cols-1 gap-10">
-      <HomeHero text={null} />
+      <HomeHero title={null} text={null} />
       <section aria-hidden>
         <Skeleton className="mb-4 h-8 w-64 max-w-full" />
         <ContinueSkeleton />
@@ -311,10 +324,12 @@ function HomePage() {
 
   // The superadmin's text always wins (the seed copy says "clubs" since UPS-027).
   const heroText = data.hero?.hero_text || "Retoma tus clases donde te quedaste y conversa con tu comunidad.";
+  // The superadmin's title (UPS-065: it was saved but never shown); empty falls back.
+  const heroTitle = data.hero?.hero_title?.trim() || DEFAULT_HERO_TITLE;
 
   return (
     <div className="grid grid-cols-1 gap-10">
-      <HomeHero text={heroText} />
+      <HomeHero title={heroTitle} text={heroText} />
 
       <ContinueLearning clubs={data.academies} />
 
