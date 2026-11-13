@@ -54,15 +54,8 @@ def lesson_detail(
 def complete(
     lesson_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> learning.CompletionOut:
-    result = learning.set_completed(db, lesson_id, user, completed=True)
-    db.commit()
-    return result
-
-
-@router.delete("/lessons/{lesson_id}/complete", response_model=learning.CompletionOut)
-def uncomplete(
-    lesson_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)
-) -> learning.CompletionOut:
-    result = learning.set_completed(db, lesson_id, user, completed=False)
+    """Marks the lesson completed when its video ends. It stays completed: there is no way to unmark it
+    (human decision 2026-11-12, UPS-062)."""
+    result = learning.complete(db, lesson_id, user)
     db.commit()
     return result

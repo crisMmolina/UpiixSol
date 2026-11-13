@@ -196,7 +196,6 @@ MATRIX: list[Rule] = [
         ANY,
         note="any signed-in user (enrolls on first progress)",
     ),
-    Rule("DELETE", "/api/lessons/{lesson_id}/complete", ANY),
     # ── Gallery and blog (UPS-017) ───────────────────────────
     Rule("POST", "/api/projects", SUPER, _json(lambda _w: {"title": "Proyecto", "slug": "proyecto-matriz"})),
     Rule(

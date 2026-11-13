@@ -64,10 +64,10 @@ def test_complete_lesson_moves_progress_50_to_75(as_member: TestClient, db: Sess
     # Persisted: a fresh read (like a page reload) still says 75 %.
     assert as_member.get(f"/api/routes/{_route(db).id}").json()["progress"]["percent"] == 75
     assert as_member.get("/api/academies/upiixia/home").json()["continue"]["lesson_number"] == 4
-    # Idempotent, and undo goes back to 50 %.
+    # Idempotent, and there is no undo (UPS-062): it stays at 75 %.
     assert as_member.post(f"/api/lessons/{third.id}/complete").json()["progress"]["percent"] == 75
-    undo = as_member.delete(f"/api/lessons/{third.id}/complete").json()
-    assert undo["progress"]["percent"] == 50 and undo["completed"] is False
+    assert as_member.delete(f"/api/lessons/{third.id}/complete").status_code == 405
+    assert as_member.get(f"/api/routes/{_route(db).id}").json()["progress"]["percent"] == 75
 
 
 def test_unpublished_content_is_404_for_members_but_visible_to_its_admin(
@@ -123,7 +123,7 @@ def test_learning_requires_login_and_unknown_ids_are_404(client: TestClient, as_
     assert client.post("/api/lessons/1/complete").status_code == 401
     assert as_member.get("/api/routes/999").status_code == 404
     assert as_member.get("/api/lessons/999").status_code == 404
-    assert as_member.delete("/api/lessons/999/complete").status_code == 404
+    assert as_member.post("/api/lessons/999/complete").status_code == 404
 
 
 def test_admin_sees_draft_routes_of_own_academy(as_admin_ia: TestClient, db: Session, seeded: dict) -> None:
@@ -147,3 +147,35 @@ def test_lesson_out_exposes_segment(as_member: TestClient, db: Session) -> None:
         body["embed_url"]
         == f"https://www.youtube-nocookie.com/embed/{lesson.youtube_video_id}?start=850&end=1500"
     )
+
+
+# ── UPS-062: a completed lesson stays completed ──────────────
+
+
+def test_uncomplete_endpoint_is_gone(as_member: TestClient, db: Session) -> None:
+    third = _lessons(db)[2]
+    assert as_member.post(f"/api/lessons/{third.id}/complete").status_code == 200
+    assert as_member.delete(f"/api/lessons/{third.id}/complete").status_code == 405
+    assert as_member.get(f"/api/lessons/{third.id}").json()["completed"] is True
+
+
+def test_completed_lesson_stays_completed(as_member: TestClient, db: Session) -> None:
+    third = _lessons(db)[2]
+    first = as_member.post(f"/api/lessons/{third.id}/complete").json()
+    second = as_member.post(f"/api/lessons/{third.id}/complete").json()  # completing twice changes nothing
+    assert first == second and second["completed"] is True
+    for method in ("DELETE", "PATCH", "PUT"):
+        assert as_member.request(method, f"/api/lessons/{third.id}/complete").status_code == 405
+    body = as_member.get(f"/api/lessons/{third.id}").json()
+    assert body["completed"] is True and body["completed_at"] is not None
+
+
+def test_progress_never_goes_down(as_member: TestClient, db: Session) -> None:
+    route_id = _route(db).id
+    seen = [as_member.get(f"/api/routes/{route_id}").json()["progress"]["percent"]]
+    for lesson in _lessons(db):
+        as_member.post(f"/api/lessons/{lesson.id}/complete")
+        as_member.delete(f"/api/lessons/{lesson.id}/complete")  # no way back: 405
+        seen.append(as_member.get(f"/api/routes/{route_id}").json()["progress"]["percent"])
+    assert seen == sorted(seen) and seen[-1] == 100
+
