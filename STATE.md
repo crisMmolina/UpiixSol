@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794552730
+Updated: 1794552740
 AVAILABLE: UPS-065 UPS-068 
 CLAIMED: UPS-060 
 BLOCKED: UPS-057 
@@ -14,16 +14,16 @@ UPS-057 | BLOCKED | david-2 | until 1794548448 (EXPIRED: release --expired --rea
 UPS-059 | REVIEW | david-8 | until 1794629590
 UPS-060 | CLAIMED | david-3 | until 1794551315 (EXPIRED: release --expired --read-summary TOKEN)
 UPS-064 | REVIEW | cris-dev | until 1794637294
-UPS-067 | REVIEW | cris-dev | until 1794639130
+UPS-067 | REVIEW | cris-dev | until 1794639140
 UPS-069 | REVIEW | cris-dev | until 1794638892
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794550083 | UPS-047 | human: seed the route only with --ruta-ia | Why: default seeding broke 11 tests and e2e
 - 1794550788 | deadline decision/UPS-047-1794549671/1794550571 | REVERSIBLE_AND_LOG | Option: Human 2026-11-13: the De cero a LLMs route is seeded only on request (python -m app.se
 - 1794550894 | UPS-064 | fallback to SITE.colors.accent2 | Why: all accent-2 consumers are alerts
 - 1794552170 | deadline lease/UPS-060/1794551315 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794552492 | UPS-069 | neutral state -1, never ended | Why: Player waits for postMessage since UPS-048
+- 1794552740 | UPS-067 | caplog at DEBUG | Why: e2e cannot read server output
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
