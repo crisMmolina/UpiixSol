@@ -13,7 +13,15 @@ from playwright.sync_api import Page, expect
 from e2e.conftest import Site
 from e2e.test_flow import ADMIN_IA, MEMBER, VIDEO_ENDED, sign_in, sign_out
 
-FAKE_EMBED = "<!doctype html><title>video</title>"
+# Stands in for the YouTube embed. Since UPS-048 the Player shows the video only once the embed answers
+# over postMessage, so it answers the page's handshake with a neutral state (-1, unstarted): never "ended"
+# (0), which would complete lessons on its own; tests send VIDEO_ENDED themselves when they mean it (UPS-069).
+FAKE_EMBED = """<!doctype html><title>video</title><script>
+const state = JSON.stringify({ event: "infoDelivery", info: { playerState: -1 } });
+const answer = () => parent.postMessage(state, "*");
+addEventListener("message", answer);
+answer();
+</script>"""
 
 
 def fake_youtube(page: Page) -> None:
