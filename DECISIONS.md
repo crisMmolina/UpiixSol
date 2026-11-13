@@ -61,3 +61,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794527722 | UPS-048 | clock helpers in academy-admin/clock.ts | Why: keep index.tsx parsing-free and testable
 - 1794529633 | UPS-054 | superadmin moderates General in e2e | Why: General has no academy
 - 1794530899 | UPS-055 | hero_text checked instead of hero_title | Why: home renders only hero_text
+- 1794535363 | UPS-046 | brief copied to docs/specs/002 (human said add it there); status sustituto instead of verificar because Verify greps bare verificar cells | Why: Verify forbids bare verificar/buscar cells

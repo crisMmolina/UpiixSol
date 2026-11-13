@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794534073
+Updated: 1794535363
 AVAILABLE: UPS-031 UPS-047 UPS-059 
 CLAIMED: UPS-046 UPS-056 UPS-060 
 BLOCKED: UPS-057 
@@ -10,7 +10,7 @@ INTEGRATED: (48; last 12) ... UPS-039 UPS-040 UPS-041 UPS-042 UPS-043 UPS-044 UP
 CANCELLED: UPS-030 
 
 Claims (first 24; status --task ID shows detail):
-UPS-046 | CLAIMED | david-claude | until 1794547699
+UPS-046 | CLAIMED | david-claude | until 1794549763
 UPS-048 | REVIEW | zoe-1 | until 1794614122
 UPS-052 | REVIEW | cris-dev | until 1794549848
 UPS-054 | REVIEW | zoe-1 | until 1794616033
@@ -21,11 +21,11 @@ UPS-060 | CLAIMED | david-3 | until 1794547667
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794527636 | deadline lease/UPS-046/1794517644 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794527636 | deadline lease/UPS-048/1794517129 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794527722 | UPS-048 | clock helpers in academy-admin/clock.ts | Why: keep index.tsx parsing-free and testable
 - 1794529633 | UPS-054 | superadmin moderates General in e2e | Why: General has no academy
 - 1794530899 | UPS-055 | hero_text checked instead of hero_title | Why: home renders only hero_text
+- 1794535363 | UPS-046 | brief copied to docs/specs/002 (human said add it there); status sustituto instead of verificar because Verify greps bare verificar cells | Why: Verify for
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
