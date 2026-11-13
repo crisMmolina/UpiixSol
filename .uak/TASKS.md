@@ -1213,3 +1213,22 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - A test resets `mimetypes` to Python's built-in table (no OS files) and still gets `image/webp` for a stored WebP; `nosniff` and the media CSP stay.
 - **Verify:** `uv run pytest -q app/tests/test_media.py && uv run ruff check app`
 - **Next step:** red test with `mimetypes.init(files=[])`, then register the types in app/services/media.py.
+
+## UPS-064 · Alert color: clubs without color_accent_2 show errors and delete buttons in green
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 30 min
+- **Rubric / Spec:** design-critic of UPS-048 (P1-1), human accepted it as a followup on 2026-11-12: on UpiixIA a validation error reads as success. `web/src/lib/theme.tsx:82` sets `--academy-accent-2` to `safeColor(branding.color_accent_2, secondary)`; a club with `color_accent_2` null falls back to its secondary color (green #04944F on UpiixIA, 3.92:1 on white, fails AA). Every consumer of `accent-2` in web/ is an alert (FormMessage error, Field aria-invalid border, States alert, Badge alert, delete buttons in community, events and resources), and the campus default is the alert red #B4422F (5.58:1, `SITE.colors.accent2`).
+- **Depends on:** UPS-048
+- **Uses contract:** None
+- **Related:** UPS-048, UPS-032
+- **Paths:** web/src/lib/theme.tsx, web/src/lib/theme.test.ts, e2e/test_theme_alert.py
+- **Freeze-Allowed:** no
+- **Tests:** test_accent2_falls_back_to_alert_red, test_accent2_keeps_a_club_color, test_error_message_is_red_on_upiixia
+- **Acceptance:**
+  - When a club has no `color_accent_2`, `--academy-accent-2` is the site alert red (`SITE.colors.accent2`), never the club secondary color. A club that sets `color_accent_2` keeps it (after `safeColor`).
+  - On UpiixIA, the invalid-field border and the FormMessage error are red and meet 4.5:1 on the light surface; checked in a real browser at 1280 and 390 wide, with a screenshot in `.uak-shots/`.
+  - No other color token changes: the secondary color of every club is untouched.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_theme_alert.py`
+- **Next step:** red test that UpiixIA shows a red error on the lesson form, then change the fallback on theme.tsx:82.
