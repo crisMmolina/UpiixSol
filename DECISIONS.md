@@ -63,3 +63,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794530899 | UPS-055 | hero_text checked instead of hero_title | Why: home renders only hero_text
 - 1794535363 | UPS-046 | brief copied to docs/specs/002 (human said add it there); status sustituto instead of verificar because Verify greps bare verificar cells | Why: Verify forbids bare verificar/buscar cells
 - 1794535950 | UPS-056 | QA-only test file, no app changes | Why: PRUEBAS-CAMPUS §RES/EVT/ACC/BLG coverage
+- 1794538274 | UPS-061 | keydown trap; skip controls in closed details via checkVisibility | Why: native showModal lets Tab leave; closed details links still report rects
