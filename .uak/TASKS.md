@@ -1232,3 +1232,58 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - No other color token changes: the secondary color of every club is untouched.
 - **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_theme_alert.py`
 - **Next step:** red test that UpiixIA shows a red error on the lesson form, then change the fallback on theme.tsx:82.
+
+## UPS-065 · Home shows the superadmin's hero title (saved, never rendered)
+
+- **Type:** fix
+- **Priority:** P2
+- **Estimate:** 30 min
+- **Rubric / Spec:** review of UPS-055 (PR #94, rejected 2026-11-12). `PUT /api/admin/home` saves `hero_title` (superadmin tab "Página principal", field "Título principal") and `GET /api/home` returns it in `hero.hero_title`, but `web/src/features/home/index.tsx` renders only `hero_text` (`heroText`, line 313). `test_sup05_home_text_shows_on_home` in e2e/test_qa_admin.py documents the gap.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-055
+- **Paths:** web/src/features/home/index.tsx, e2e/test_qa_admin.py
+- **Freeze-Allowed:** no
+- **Tests:** test_sup05_home_title_shows_on_home
+- **Acceptance:**
+  - The superadmin's `hero_title` shows on the home hero at 1280 and 390 wide. An empty `hero_title` renders no empty heading.
+  - `test_sup05_home_title_shows_on_home` asserts the title is visible; the existing hero_text assertion stays.
+  - The hero keeps its reserved lines while /home loads (no layout jump, see DESIGN.md).
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_admin.py`
+- **Next step:** red: assert the title on the home in test_sup05, then render it in the hero.
+
+## UPS-067 · Backend test: the temporary password never reaches the server log
+
+- **Type:** test
+- **Priority:** P2
+- **Estimate:** 30 min
+- **Rubric / Spec:** review of UPS-055: SUP-02 asks that the temporary password "no se muestra en logs". The e2e run cannot read server output (e2e/conftest.py sends uvicorn stdout and stderr to DEVNULL), so the server-side check belongs in the backend tests. Today `reset_password` in app/services/admin.py returns the password and has no logger call; this test keeps it that way.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-055
+- **Paths:** app/tests/test_admin.py
+- **Freeze-Allowed:** no
+- **Tests:** test_reset_password_never_logs_the_temporary_password
+- **Acceptance:**
+  - With `caplog` at DEBUG, `POST /api/admin/users/{id}/reset-password` answers 200 with the password in its body, and the password appears in no log record (`caplog.text`).
+  - The test passes on today's code. Prove it can fail: log the password in a scratch change, see the red, then drop that change (never committed).
+- **Verify:** `bash .uak/bin/q uv run pytest -q app/tests/test_admin.py -k reset_password`
+- **Next step:** write the caplog test next to test_reset_password, then the scratch check.
+
+## UPS-068 · PROPOSAL, needs human approval: academy analytics (ADM-09) has no screen or endpoint
+
+- **Type:** feature
+- **Priority:** P3
+- **Estimate:** 120 min
+- **Rubric / Spec:** PROPUESTA: a human picks one option before work starts. (a) `GET /api/academies/{slug}/analytics` for academy admins plus an "Analíticas" tab in `/panel/academia` (a new screen is scope). (b) Keep ADM-09 a backend-only check (app/tests/test_analytics.py) and mark it as not e2e in `docs/PRUEBAS-CAMPUS.md`. Evidence: ADM-09 ("Los números cuadran con los datos del seed", marked ❌). `app/routers/analytics.py` only has `POST /api/analytics/events` (ingest). Found in review of UPS-055.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-055
+- **Paths:** app/routers/analytics.py, app/services/analytics.py, app/tests/test_analytics.py, web/src/features/academy-admin/index.tsx, e2e/test_qa_admin.py, docs/PRUEBAS-CAMPUS.md
+- **Freeze-Allowed:** no
+- **Tests:** test_academy_analytics_match_seed (option a only)
+- **Acceptance (after human picks the option):**
+  - Option (a): the panel numbers equal the seed counts from the same query the backend test uses, at 1280 and 390 wide.
+  - Option (b): ADM-09 in docs/PRUEBAS-CAMPUS.md names app/tests/test_analytics.py as its check and says it is not e2e.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_admin.py app/tests/test_analytics.py`
+- **Next step:** human picks (a) or (b); then the red test.
