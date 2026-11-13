@@ -6,7 +6,7 @@
 - Why: Verify forbids bare verificar/buscar cells
 - Failing: -
 - Commands: test -s docs/spikes/ruta-ia-catalog.md && ! grep -nE '[|] *(verificar|buscar) *[|]' docs/spikes/ruta-ia-catalog.md
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/99; run .uak/bin/smoke
+- Next: Integrated in main: c54df7ef7e2b242c3e5b10bb1d2b20ee267617c0 (recorded by saus)
 
 ## History
 - 1794455252 | CLAIMED | cris-dev2 | claim; next: copy the §5 catalog, then go module by module starting with modules 2, 4 and 8.
@@ -21,3 +21,4 @@
 - 1794533299 | CLAIMED | david-claude | claim; next: Get ruta-ia-videos.md from the human (add it under docs/specs/002-ruta-ia-videos/ or paste §5), then copy the catalog and verify modules 2, 4 and 8 first
 - 1794535363 | CLAIMED | david-claude | checkpoint; next: uak done, human opens every link in the PR
 - 1794536166 | REVIEW | david-claude | done; PR https://github.com/crisMmolina/UpiixSol/pull/99; evidence: Verify test -s catalog && no bare verificar/buscar cell: exit 0; 46 youtube ids 200 on oembed 2026-11-12; 65 lessons 64 ok 1 sustituto; reviewer: -
+- 1794541369 | INTEGRATED | saus | integrate; recorded by saus; PR https://github.com/crisMmolina/UpiixSol/pull/99; merged c54df7ef7e2b242c3e5b10bb1d2b20ee267617c0; proof ancestry
