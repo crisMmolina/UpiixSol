@@ -18,3 +18,4 @@
 - 1794502304 | CLAIMED | david-claude | heartbeat; lease until 1794516704
 - 1794503244 | CLAIMED | david-claude | heartbeat; lease until 1794517644
 - 1794533283 | AVAILABLE | david-claude | release; claim released by david-claude; reason: -; summary kept
+- 1794533299 | CLAIMED | david-claude | claim; next: Get ruta-ia-videos.md from the human (add it under docs/specs/002-ruta-ia-videos/ or paste §5), then copy the catalog and verify modules 2, 4 and 8 first
