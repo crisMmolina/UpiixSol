@@ -8,6 +8,7 @@ Fuente de verdad de los enlaces para `app/fixtures/ruta-ia.json` (UPS-047). Part
 - **Capítulos y duración:** campos `shortDescription` y `lengthSeconds` de la página del video (los capítulos que el autor escribió en la descripción).
 - **Tiempos de MoureDev:** comparados contra el README de `mouredev/Hello-Python`.
 - **Enlaces que no son de YouTube:** `curl` con código HTTP final.
+- **Columna URL y tramos:** en las clases con `start_s` mayor que 0, la URL lleva `t=<start_s>` para que al hacer clic abra en el minuto de la clase (así se revisa a mano). Es solo para revisión: el fixture de UPS-047 guarda el video y los segundos en `start_s`/`end_s`, no el `t=`; el servidor lo descarta al guardar (`plan.md` §Design 1). Las clases que empiezan en 0 no llevan `t=`.
 - Nadie vio los videos completos: `ok` significa título, canal y disponibilidad confirmados, no que el contenido se revisó clase por clase. Un humano abre cada enlace en el PR (criterio de aceptación).
 
 ## Estados
@@ -35,16 +36,16 @@ Un solo video, `Kp4Mvapo5kc`, "Curso COMPLETO de PYTHON desde CERO para PRINCIPI
 
 | # | Clase | URL | start_s | end_s | lang | status | fecha |
 |---|---|---|---|---|---|---|---|
-| 1.1 | Configuración y Hola Mundo | https://youtu.be/Kp4Mvapo5kc | 850 | 2938 | es | ok | 2026-11-12 |
-| 1.2 | Variables | https://youtu.be/Kp4Mvapo5kc | 2938 | 5665 | es | ok | 2026-11-12 |
-| 1.3 | Operadores | https://youtu.be/Kp4Mvapo5kc | 5665 | 8643 | es | ok | 2026-11-12 |
-| 1.4 | Strings | https://youtu.be/Kp4Mvapo5kc | 8643 | 10872 | es | ok | 2026-11-12 |
-| 1.5 | Listas | https://youtu.be/Kp4Mvapo5kc | 10872 | 14711 | es | ok | 2026-11-12 |
-| 1.6 | Diccionarios | https://youtu.be/Kp4Mvapo5kc | 18506 | 21442 | es | ok | 2026-11-12 |
-| 1.7 | Condicionales | https://youtu.be/Kp4Mvapo5kc | 21442 | 23822 | es | ok | 2026-11-12 |
-| 1.8 | Bucles | https://youtu.be/Kp4Mvapo5kc | 23822 | 26619 | es | ok | 2026-11-12 |
-| 1.9 | Funciones | https://youtu.be/Kp4Mvapo5kc | 26619 | 29327 | es | ok | 2026-11-12 |
-| 1.10 | Clases y objetos | https://youtu.be/Kp4Mvapo5kc | 29327 | 32030 | es | ok | 2026-11-12 |
+| 1.1 | Configuración y Hola Mundo | https://youtu.be/Kp4Mvapo5kc?t=850 | 850 | 2938 | es | ok | 2026-11-12 |
+| 1.2 | Variables | https://youtu.be/Kp4Mvapo5kc?t=2938 | 2938 | 5665 | es | ok | 2026-11-12 |
+| 1.3 | Operadores | https://youtu.be/Kp4Mvapo5kc?t=5665 | 5665 | 8643 | es | ok | 2026-11-12 |
+| 1.4 | Strings | https://youtu.be/Kp4Mvapo5kc?t=8643 | 8643 | 10872 | es | ok | 2026-11-12 |
+| 1.5 | Listas | https://youtu.be/Kp4Mvapo5kc?t=10872 | 10872 | 14711 | es | ok | 2026-11-12 |
+| 1.6 | Diccionarios | https://youtu.be/Kp4Mvapo5kc?t=18506 | 18506 | 21442 | es | ok | 2026-11-12 |
+| 1.7 | Condicionales | https://youtu.be/Kp4Mvapo5kc?t=21442 | 21442 | 23822 | es | ok | 2026-11-12 |
+| 1.8 | Bucles | https://youtu.be/Kp4Mvapo5kc?t=23822 | 23822 | 26619 | es | ok | 2026-11-12 |
+| 1.9 | Funciones | https://youtu.be/Kp4Mvapo5kc?t=26619 | 26619 | 29327 | es | ok | 2026-11-12 |
+| 1.10 | Clases y objetos | https://youtu.be/Kp4Mvapo5kc?t=29327 | 29327 | 32030 | es | ok | 2026-11-12 |
 
 Enlaces extra (LessonLink): Tuplas https://youtu.be/Kp4Mvapo5kc?t=14711 · Sets https://youtu.be/Kp4Mvapo5kc?t=16335 · Excepciones https://youtu.be/Kp4Mvapo5kc?t=32030 · Módulos https://youtu.be/Kp4Mvapo5kc?t=34583 · tutorial oficial https://docs.python.org/es/3/tutorial/ (200) · código https://github.com/mouredev/Hello-Python (200).
 
@@ -106,17 +107,17 @@ Cada video se parte en 2–3 clases en los capítulos de su descripción de YouT
 | # | Clase | URL | start_s | end_s | lang | status | fecha |
 |---|---|---|---|---|---|---|---|
 | 5.1a | micrograd: derivadas y el objeto Value | https://www.youtube.com/watch?v=VMj-3S1tku0 | 0 | 3172 | en | ok | 2026-11-12 |
-| 5.1b | micrograd: backpropagation de una neurona | https://www.youtube.com/watch?v=VMj-3S1tku0 | 3172 | 5971 | en | ok | 2026-11-12 |
-| 5.1c | micrograd: PyTorch y una red multicapa | https://www.youtube.com/watch?v=VMj-3S1tku0 | 5971 | 8752 | en | ok | 2026-11-12 |
+| 5.1b | micrograd: backpropagation de una neurona | https://www.youtube.com/watch?v=VMj-3S1tku0&t=3172 | 3172 | 5971 | en | ok | 2026-11-12 |
+| 5.1c | micrograd: PyTorch y una red multicapa | https://www.youtube.com/watch?v=VMj-3S1tku0&t=5971 | 5971 | 8752 | en | ok | 2026-11-12 |
 | 5.2a | makemore: bigramas contando | https://www.youtube.com/watch?v=PaCmpygFfXo | 0 | 3777 | en | ok | 2026-11-12 |
-| 5.2b | makemore: bigramas con una red neuronal | https://www.youtube.com/watch?v=PaCmpygFfXo | 3777 | 7065 | en | ok | 2026-11-12 |
+| 5.2b | makemore: bigramas con una red neuronal | https://www.youtube.com/watch?v=PaCmpygFfXo&t=3777 | 3777 | 7065 | en | ok | 2026-11-12 |
 | 5.3a | makemore 2: MLP, el modelo | https://www.youtube.com/watch?v=TCH_1BHY58I | 0 | 1937 | en | ok | 2026-11-12 |
-| 5.3b | makemore 2: MLP, entrenamiento y experimentos | https://www.youtube.com/watch?v=TCH_1BHY58I | 1937 | 4539 | en | ok | 2026-11-12 |
+| 5.3b | makemore 2: MLP, entrenamiento y experimentos | https://www.youtube.com/watch?v=TCH_1BHY58I&t=1937 | 1937 | 4539 | en | ok | 2026-11-12 |
 | 5.4a | makemore 3: pérdida inicial y activaciones | https://www.youtube.com/watch?v=P6sfmUTpUmc | 0 | 2440 | en | ok | 2026-11-12 |
-| 5.4b | makemore 3: BatchNorm | https://www.youtube.com/watch?v=P6sfmUTpUmc | 2440 | 4715 | en | ok | 2026-11-12 |
-| 5.4c | makemore 3: visualizar activaciones y gradientes | https://www.youtube.com/watch?v=P6sfmUTpUmc | 4715 | 6957 | en | ok | 2026-11-12 |
+| 5.4b | makemore 3: BatchNorm | https://www.youtube.com/watch?v=P6sfmUTpUmc&t=2440 | 2440 | 4715 | en | ok | 2026-11-12 |
+| 5.4c | makemore 3: visualizar activaciones y gradientes | https://www.youtube.com/watch?v=P6sfmUTpUmc&t=4715 | 4715 | 6957 | en | ok | 2026-11-12 |
 | 5.5a | makemore 4: backprop a mano, parte 1 (opcional) | https://www.youtube.com/watch?v=q8SA3rM6ckI | 0 | 3917 | en | ok | 2026-11-12 |
-| 5.5b | makemore 4: backprop a mano, parte 2 (opcional) | https://www.youtube.com/watch?v=q8SA3rM6ckI | 3917 | 6924 | en | ok | 2026-11-12 |
+| 5.5b | makemore 4: backprop a mano, parte 2 (opcional) | https://www.youtube.com/watch?v=q8SA3rM6ckI&t=3917 | 3917 | 6924 | en | ok | 2026-11-12 |
 | 5.6 | makemore 5: WaveNet | https://www.youtube.com/watch?v=t3YJ5hKiMQ0 | - | - | en | ok | 2026-11-12 |
 
 Capítulos usados (de la descripción): 5.1 `00:52:52` neurona · `01:39:31` comparación con PyTorch · 5.2 `01:02:57` PART 2 · 5.3 `00:32:17` resumen de la red · 5.4 `00:40:40` batch normalization · `01:18:35` PyTorch-ificar el código · 5.5 `01:05:17` digresión de Bessel · 5.6 dura 3381 s (56 min), se deja entera. Código: https://github.com/karpathy/nn-zero-to-hero (200) · https://karpathy.ai/zero-to-hero.html (200).
@@ -140,9 +141,9 @@ Capítulos usados (de la descripción): 5.1 `00:52:52` neurona · `01:39:31` com
 | # | Clase | URL | start_s | end_s | lang | status | fecha |
 |---|---|---|---|---|---|---|---|
 | 7.1 | Preentrenamiento: datos, tokens y red neuronal | https://www.youtube.com/watch?v=7xTGNNLPyMI | 0 | 3563 | en | ok | 2026-11-12 |
-| 7.2 | Post-entrenamiento y alucinaciones | https://www.youtube.com/watch?v=7xTGNNLPyMI | 3563 | 7648 | en | ok | 2026-11-12 |
-| 7.3 | Aprendizaje por refuerzo: DeepSeek-R1 y AlphaGo | https://www.youtube.com/watch?v=7xTGNNLPyMI | 7648 | 10106 | en | ok | 2026-11-12 |
-| 7.4 | RLHF y qué esperar | https://www.youtube.com/watch?v=7xTGNNLPyMI | 10106 | 12683 | en | ok | 2026-11-12 |
+| 7.2 | Post-entrenamiento y alucinaciones | https://www.youtube.com/watch?v=7xTGNNLPyMI&t=3563 | 3563 | 7648 | en | ok | 2026-11-12 |
+| 7.3 | Aprendizaje por refuerzo: DeepSeek-R1 y AlphaGo | https://www.youtube.com/watch?v=7xTGNNLPyMI&t=7648 | 7648 | 10106 | en | ok | 2026-11-12 |
+| 7.4 | RLHF y qué esperar | https://www.youtube.com/watch?v=7xTGNNLPyMI&t=10106 | 10106 | 12683 | en | ok | 2026-11-12 |
 
 Capítulos: `00:59:23` pretraining to post-training · `02:07:28` supervised finetuning to reinforcement learning · `02:48:26` reinforcement learning from human feedback (RLHF).
 
