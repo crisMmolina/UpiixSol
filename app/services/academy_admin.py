@@ -4,6 +4,7 @@ Every write resolves the academy from the database row being changed and calls e
 an academy_admin can only touch their own academy; superadmins can touch any.
 """
 
+import math
 from datetime import datetime
 
 from fastapi import UploadFile
@@ -29,7 +30,7 @@ from app.schemas.learning import (
 from app.schemas.users import Boleta
 from app.security import ensure_academy_scope
 from app.services import media
-from app.services.youtube import extract_video_id
+from app.services.youtube import extract_video_id, parse_start
 
 # ── Feature-local response models ────────────────────────────
 
@@ -42,6 +43,8 @@ class LessonAdminOut(OutModel):
     youtube_video_id: str
     description: str
     duration_min: int | None
+    start_s: int | None = None
+    end_s: int | None = None
     position: int
     is_published: bool
     links: list[LessonLinkOut] = []
@@ -177,6 +180,8 @@ def _lesson_out(lesson: Lesson) -> LessonAdminOut:
         youtube_video_id=lesson.youtube_video_id,
         description=lesson.description,
         duration_min=lesson.duration_min,
+        start_s=lesson.start_s,
+        end_s=lesson.end_s,
         position=lesson.position,
         is_published=lesson.is_published,
         links=[LessonLinkOut.model_validate(link) for link in lesson.links],
@@ -303,14 +308,32 @@ def _reload_lesson(db: Session, lesson_id: int) -> LessonAdminOut:
     return _lesson_out(lesson)
 
 
+INVALID_SEGMENT = "El fin del tramo debe ser mayor que el inicio."
+
+
+def _segment(start_s: int | None, end_s: int | None, duration_min: int | None) -> int | None:
+    """Check a merged segment (UPS-045) and return the lesson's duration: derived from the segment when it has
+    both ends (an explicit duration is ignored then), otherwise the admin's value."""
+    if end_s is not None and end_s <= (start_s or 0):
+        raise AppError(422, INVALID_SEGMENT, code="invalid_segment")
+    if start_s is not None and end_s is not None:
+        return math.ceil((end_s - start_s) / 60)
+    return duration_min
+
+
 def create_lesson(db: Session, module: Module, data: LessonIn) -> LessonAdminOut:
+    # A pasted ?t= prefills the start, read before _canonical() drops the query (UPS-045).
+    start_s = data.start_s if "start_s" in data.model_fields_set else parse_start(data.youtube_url)
+    duration_min = _segment(start_s, data.end_s, data.duration_min)
     lesson = Lesson(
         module_id=module.id,
         title=data.title,
         youtube_url=_canonical(_video_id(data.youtube_url)),
         youtube_video_id=_video_id(data.youtube_url),
         description=clean_markdown(data.description),
-        duration_min=data.duration_min,
+        duration_min=duration_min,
+        start_s=start_s,
+        end_s=data.end_s,
         is_published=data.is_published,
         position=_next_position(db, Lesson.position, Lesson.module_id == module.id),
     )
@@ -324,12 +347,21 @@ def update_lesson(db: Session, lesson: Lesson, data: LessonUpdateIn) -> LessonAd
     values = data.model_dump(exclude_unset=True)
     links = values.pop("links", None)
     if values.get("youtube_url") is not None:
+        if "start_s" not in values and (start := parse_start(values["youtube_url"])) is not None:
+            values["start_s"] = start  # a pasted ?t= prefills the start (UPS-045)
         lesson.youtube_video_id = _video_id(values["youtube_url"])
         values["youtube_url"] = _canonical(lesson.youtube_video_id)
     if values.get("description") is not None:
         values["description"] = clean_markdown(values["description"])
+    if "start_s" in values or "end_s" in values or "duration_min" in values:
+        # Checked against the stored values, so a PATCH with only one end cannot invert the segment.
+        start_s = values.get("start_s", lesson.start_s)
+        end_s = values.get("end_s", lesson.end_s)
+        derived = _segment(start_s, end_s, values.get("duration_min", lesson.duration_min))
+        if start_s is not None and end_s is not None or "duration_min" in values:
+            values["duration_min"] = derived
     for field, value in values.items():
-        if value is not None or field == "duration_min":
+        if value is not None or field in {"duration_min", "start_s", "end_s"}:
             setattr(lesson, field, value)
     db.flush()
     if links is not None:

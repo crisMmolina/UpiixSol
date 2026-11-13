@@ -294,7 +294,7 @@ function CommunityPage({ clubSlug }: { clubSlug?: string }) {
             <h1 className="text-3xl">Comunidad</h1>
             <p className="text-sm text-muted">{selected ? `Canal del club ${selected.name}.` : "Cargando canal…"}</p>
           </div>
-          <Link to="/comunidad" className="text-sm font-semibold">
+          <Link to="/comunidad" className="inline-flex min-h-11 items-center text-sm font-semibold">
             Ver toda la comunidad
           </Link>
         </div>

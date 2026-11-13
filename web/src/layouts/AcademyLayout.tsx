@@ -80,7 +80,7 @@ export function AcademyLayout({ children }: { children?: ReactNode }) {
           headerSlot={<ClubSwitcher current={branding.slug} />}
           brand={
             safeAssetPath(branding.logo_url) ? (
-              <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className={`h-(--logo-h) w-auto ${LOGO_HEIGHT.header}`} />
+              <img src={safeAssetPath(branding.logo_url)!} alt={branding.name} className={`h-(--logo-h) w-auto min-w-[calc(var(--logo-h)*3.75)] object-contain object-left ${LOGO_HEIGHT.header}`} />
             ) : (
               <Wordmark name={branding.name} colors={branding} className={`block min-w-0 truncate ${LOGO_HEIGHT.header}`} />
             )

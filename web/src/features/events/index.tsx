@@ -387,10 +387,10 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
             </label>
           )}
           <div role="group" aria-label="Vista" className="flex rounded-full bg-line/50 p-1">
-            <button type="button" aria-pressed={view === "month"} onClick={() => setParam("vista", "")} className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-sm font-semibold ${view === "month" ? "bg-surface shadow-soft" : "text-muted"}`}>
+            <button type="button" aria-pressed={view === "month"} onClick={() => setParam("vista", "")} className={`inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold ${view === "month" ? "bg-surface shadow-soft" : "text-muted"}`}>
               <SquaresFour weight="bold" aria-hidden /> Mes
             </button>
-            <button type="button" aria-pressed={view === "list"} onClick={() => setParam("vista", "lista")} className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-sm font-semibold ${view === "list" ? "bg-surface shadow-soft" : "text-muted"}`}>
+            <button type="button" aria-pressed={view === "list"} onClick={() => setParam("vista", "lista")} className={`inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold ${view === "list" ? "bg-surface shadow-soft" : "text-muted"}`}>
               <ListBullets weight="bold" aria-hidden /> Lista
             </button>
           </div>

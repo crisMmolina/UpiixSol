@@ -63,9 +63,10 @@ export function GridSkeleton({ count = 6, media = true, className = "" }: { coun
 /** Full-page placeholder while the session or a page loads. */
 export function PageSkeleton() {
   return (
-    <div role="status" aria-label="Cargando" className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
-      <Skeleton className="mb-2 h-9 w-72" />
-      <Skeleton className="mb-8 h-4 w-96 max-w-full" />
+    <div role="status" aria-label="Cargando" className="mx-auto w-full min-w-0 max-w-6xl px-4 py-8 sm:px-8">
+      {/* Fluid widths: a fixed w-96 counted as min-content and widened the grid column past the phone. */}
+      <Skeleton className="mb-2 h-9 w-full max-w-72" />
+      <Skeleton className="mb-8 h-4 w-full max-w-96" />
       <GridSkeleton count={3} />
     </div>
   );

@@ -118,7 +118,7 @@ export function PostCard({
               href={post.link_url}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="mt-3 flex w-fit max-w-full items-center gap-1.5 text-sm font-semibold"
+              className="mt-3 flex min-h-11 w-fit max-w-full items-center gap-1.5 text-sm font-semibold"
             >
               <LinkSimple weight="bold" aria-hidden className="shrink-0" />
               <span className="min-w-0 truncate">{post.link_url}</span>

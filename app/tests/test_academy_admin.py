@@ -439,3 +439,109 @@ def test_failed_upload_commit_keeps_previous_logo(
     assert response.status_code == 500
     assert {p.name for p in (media_dir / "logo").iterdir()} == before  # new file removed, previous kept
     assert (media_dir / first["logo_url"].removeprefix("/media/")).exists()
+
+
+# ── Segments (UPS-045) ───────────────────────────────────────
+
+
+def _first_module(db: Session, route: LearningRoute) -> Module:
+    return db.scalars(select(Module).where(Module.route_id == route.id)).first()
+
+
+def test_lesson_segment_end_must_exceed_start(
+    as_admin_ia: TestClient, route: LearningRoute, db: Session
+) -> None:
+    module = _first_module(db, route)
+    path = f"/api/modules/{module.id}/lessons"
+    for start_s, end_s in ((100, 100), (100, 50), (None, 0)):
+        response = as_admin_ia.post(
+            path, json={"title": "x", "youtube_url": VIDEO, "start_s": start_s, "end_s": end_s}
+        )
+        assert response.status_code == 422, (start_s, end_s)
+    bad = as_admin_ia.post(path, json={"title": "x", "youtube_url": VIDEO, "start_s": 100, "end_s": 90})
+    assert bad.json()["error"]["code"] == "invalid_segment"
+    assert bad.json()["error"]["message"] == "El fin del tramo debe ser mayor que el inicio."
+    for field, value in (("start_s", -1), ("start_s", 86_401), ("end_s", 86_401)):
+        assert (
+            as_admin_ia.post(path, json={"title": "x", "youtube_url": VIDEO, field: value}).status_code == 422
+        )
+    ok = as_admin_ia.post(path, json={"title": "x", "youtube_url": VIDEO, "start_s": 0, "end_s": 1})
+    assert ok.status_code == 201 and (ok.json()["start_s"], ok.json()["end_s"]) == (0, 1)
+
+
+def test_lesson_patch_segment_checks_stored_value(
+    as_admin_ia: TestClient, route: LearningRoute, db: Session
+) -> None:
+    module = _first_module(db, route)
+    lesson = as_admin_ia.post(
+        f"/api/modules/{module.id}/lessons",
+        json={"title": "x", "youtube_url": VIDEO, "start_s": 600, "end_s": 900},
+    ).json()
+    path = f"/api/lessons/{lesson['id']}"
+    too_early = as_admin_ia.patch(path, json={"end_s": 500})  # below the stored start
+    assert too_early.status_code == 422 and too_early.json()["error"]["code"] == "invalid_segment"
+    too_late = as_admin_ia.patch(path, json={"start_s": 950})  # past the stored end
+    assert too_late.status_code == 422 and too_late.json()["error"]["code"] == "invalid_segment"
+    moved = as_admin_ia.patch(path, json={"start_s": 300})
+    assert moved.status_code == 200 and (moved.json()["start_s"], moved.json()["end_s"]) == (300, 900)
+    cleared = as_admin_ia.patch(path, json={"start_s": None, "end_s": None})
+    assert (cleared.json()["start_s"], cleared.json()["end_s"]) == (None, None)
+    stored = db.get(Lesson, lesson["id"])
+    db.refresh(stored)
+    assert (stored.start_s, stored.end_s) == (None, None)
+
+
+def test_lesson_prefills_start_from_url(as_admin_ia: TestClient, route: LearningRoute, db: Session) -> None:
+    module = _first_module(db, route)
+    path = f"/api/modules/{module.id}/lessons"
+    timed = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=14m10s"
+    body = as_admin_ia.post(path, json={"title": "x", "youtube_url": timed}).json()
+    assert body["start_s"] == 850 and body["youtube_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    explicit = as_admin_ia.post(path, json={"title": "y", "youtube_url": timed, "start_s": 10}).json()
+    assert explicit["start_s"] == 10  # an explicit start wins over the URL
+    patched = as_admin_ia.patch(
+        f"/api/lessons/{explicit['id']}", json={"youtube_url": "https://youtu.be/aircAruvnKk?t=90"}
+    )
+    assert patched.json()["start_s"] == 90 and patched.json()["youtube_video_id"] == "aircAruvnKk"
+    plain = as_admin_ia.patch(f"/api/lessons/{explicit['id']}", json={"youtube_url": VIDEO})
+    assert plain.json()["start_s"] == 90  # a URL without t= leaves the stored start alone
+
+
+def test_lesson_duration_from_segment(as_admin_ia: TestClient, route: LearningRoute, db: Session) -> None:
+    module = _first_module(db, route)
+    body = as_admin_ia.post(
+        f"/api/modules/{module.id}/lessons",
+        json={"title": "x", "youtube_url": VIDEO, "start_s": 850, "end_s": 1500, "duration_min": 99},
+    ).json()
+    assert body["duration_min"] == 11  # ceil((1500 - 850) / 60), the explicit 99 is ignored
+    patched = as_admin_ia.patch(f"/api/lessons/{body['id']}", json={"end_s": 910})
+    assert patched.json()["duration_min"] == 1
+    only_start = as_admin_ia.post(
+        f"/api/modules/{module.id}/lessons",
+        json={"title": "y", "youtube_url": VIDEO, "start_s": 60, "duration_min": 7},
+    ).json()
+    assert only_start["duration_min"] == 7  # no end: the admin's duration stays
+
+
+def test_segment_write_respects_academy_scope(
+    as_admin_ia: TestClient, as_member: TestClient, db: Session
+) -> None:
+    other = make_academy(db, "robotica", "UpiixRobótica")
+    robo_route = LearningRoute(academy_id=other.id, title="Robots")
+    db.add(robo_route)
+    db.flush()
+    module = Module(route_id=robo_route.id, title="M")
+    db.add(module)
+    db.flush()
+    lesson = Lesson(module_id=module.id, title="L", youtube_url=VIDEO, youtube_video_id="dQw4w9WgXcQ")
+    db.add(lesson)
+    db.flush()
+    segment = {"start_s": 10, "end_s": 20}
+    for client in (as_admin_ia, as_member):
+        assert client.patch(f"/api/lessons/{lesson.id}", json=segment).status_code == 403
+        created = client.post(
+            f"/api/modules/{module.id}/lessons", json={"title": "x", "youtube_url": VIDEO, **segment}
+        )
+        assert created.status_code == 403
+    db.refresh(lesson)
+    assert (lesson.start_s, lesson.end_s) == (None, None)

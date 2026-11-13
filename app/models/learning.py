@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -51,6 +51,11 @@ class Module(Base):
 
 class Lesson(CreatedAtMixin, Base):
     __tablename__ = "lessons"
+    # Optional video segment (UPS-045): NULL means the whole video, as before. Migration 0007.
+    __table_args__ = (
+        CheckConstraint("start_s IS NULL OR start_s >= 0", name="start_s"),
+        CheckConstraint("end_s IS NULL OR end_s > COALESCE(start_s, 0)", name="end_s"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     module_id: Mapped[int] = mapped_column(
@@ -63,6 +68,8 @@ class Lesson(CreatedAtMixin, Base):
     )  # derived (app/services/youtube.py)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)  # sanitized markdown
     duration_min: Mapped[int | None] = mapped_column(Integer)
+    start_s: Mapped[int | None] = mapped_column(Integer)
+    end_s: Mapped[int | None] = mapped_column(Integer)
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

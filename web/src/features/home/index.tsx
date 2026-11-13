@@ -250,18 +250,45 @@ function ListSkeleton({ rows }: { rows: number }) {
   );
 }
 
+/** Room for up to 3 lines of the hero text on phones and 2 from sm, loading or not, so nothing below jumps
+ * when /home answers (UPS-040). */
+const HERO_TEXT = "mt-4 min-h-[5.25rem] max-w-xl text-lg text-muted sm:min-h-[3.5rem]";
+
+/** Greeting, title and mascot need no data: they render right away; only the text waits for /home. */
+function HomeHero({ text }: { text: string | null }) {
+  const { user } = useAuth();
+  const site = useSite();
+  return (
+    <section className="grid items-center gap-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
+      <div>
+        <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
+          <Sparkle weight="fill" aria-hidden /> ¡Hola, {user?.nickname}!
+        </p>
+        <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
+        {text === null ? (
+          <div aria-hidden className={`${HERO_TEXT} grid content-start gap-2 pt-1`}>
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-3/4" />
+          </div>
+        ) : (
+          <p className={HERO_TEXT}>{text}</p>
+        )}
+      </div>
+      {site.hasMascot && (
+        <img src={site.mascotUrl} alt={`Mascota de ${site.name}`} {...site.mascotSize} className="mx-auto h-auto w-full max-w-xs" />
+      )}
+    </section>
+  );
+}
+
 function HomeSkeleton() {
   return (
-    <div role="status" aria-label="Cargando inicio" className="grid gap-10">
-      <div className="grid items-center gap-6 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
-        <div>
-          <Skeleton className="mb-3 h-4 w-32" />
-          <Skeleton className="mb-3 h-12 w-4/5" />
-          <Skeleton className="h-5 w-3/5" />
-        </div>
-        <Skeleton className="mx-auto hidden h-40 w-full max-w-xs lg:block" />
-      </div>
-      <ContinueSkeleton />
+    <div role="status" aria-label="Cargando inicio" className="grid grid-cols-1 gap-10">
+      <HomeHero text={null} />
+      <section aria-hidden>
+        <Skeleton className="mb-4 h-8 w-64 max-w-full" />
+        <ContinueSkeleton />
+      </section>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-card border border-line bg-surface p-6 shadow-soft">
           <Skeleton className="mb-5 h-7 w-44" />
@@ -277,9 +304,7 @@ function HomeSkeleton() {
 }
 
 function HomePage() {
-  const { user } = useAuth();
   const { data, error, loading, retry } = useData<HomeOut>("/home");
-  const site = useSite();
 
   if (loading) return <HomeSkeleton />;
   if (error || !data) return <ErrorState message={error ?? "No pudimos cargar el inicio."} onRetry={retry} />;
@@ -289,18 +314,7 @@ function HomePage() {
 
   return (
     <div className="grid grid-cols-1 gap-10">
-      <section className="grid items-center gap-6 overflow-hidden rounded-card border border-line bg-surface p-6 shadow-soft sm:p-10 lg:grid-cols-[1.3fr_1fr]">
-        <div>
-          <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-link">
-            <Sparkle weight="fill" aria-hidden /> ¡Hola, {user?.nickname}!
-          </p>
-          <h1 className="text-3xl sm:text-5xl">Tus clubs en un solo campus</h1>
-          <p className="mt-4 max-w-xl text-lg text-muted">
-            {heroText}
-          </p>
-        </div>
-        {site.hasMascot && <img src={site.mascotUrl} alt={`Mascota de ${site.name}`} className="mx-auto w-full max-w-xs" />}
-      </section>
+      <HomeHero text={heroText} />
 
       <ContinueLearning clubs={data.academies} />
 

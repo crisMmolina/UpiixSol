@@ -1,6 +1,8 @@
 import unittest
 
-from app.services.youtube import embed_url, extract_video_id, thumbnail_url
+import pytest
+
+from app.services.youtube import embed_url, extract_video_id, parse_start, thumbnail_url
 
 VIDEO_ID = "dQw4w9WgXcQ"
 
@@ -64,3 +66,68 @@ class UrlBuildersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── Segments (UPS-045) ───────────────────────────────────────
+
+BASE = f"https://www.youtube.com/watch?v={VIDEO_ID}"
+
+
+@pytest.mark.parametrize(
+    ("url", "seconds"),
+    [
+        (f"{BASE}&t=850", 850),
+        (f"{BASE}&t=850s", 850),
+        (f"{BASE}&t=14m10s", 850),
+        (f"{BASE}&t=1h2m3s", 3723),
+        (f"{BASE}&t=2m", 120),
+        (f"{BASE}&start=850", 850),
+        (f"https://youtu.be/{VIDEO_ID}?t=90", 90),
+        (f"https://youtu.be/{VIDEO_ID}?si=abc&t=0", 0),
+        (f"{BASE}#t=14m10s", 850),
+        (f"https://www.youtube.com/embed/{VIDEO_ID}?start=42", 42),
+    ],
+)
+def test_parse_start_formats(url: str, seconds: int) -> None:
+    assert parse_start(url) == seconds
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        BASE,
+        f"{BASE}&t=",
+        f"{BASE}&t=abc",
+        f"{BASE}&t=-5",
+        f"{BASE}&t=1.5",
+        f"{BASE}&t=10m99x",
+        f"{BASE}&t=javascript:alert(1)",
+        f"{BASE}&t=1%26autoplay%3D1",
+        f"{BASE}&t=1&t=2",
+        f"{BASE}&t=" + "9" * 40,
+        f"{BASE}&t=999999",
+        "not a url",
+        None,
+        12,
+    ],
+)
+def test_parse_start_rejects_hostile(url) -> None:
+    assert parse_start(url) is None
+
+
+def test_embed_url_with_segment() -> None:
+    assert (
+        embed_url(VIDEO_ID, 850, 1500)
+        == f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}?start=850&end=1500"
+    )
+    assert embed_url(VIDEO_ID, None, 60) == f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}?end=60"
+    assert embed_url(VIDEO_ID, 30) == f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}?start=30"
+    with pytest.raises(ValueError):
+        embed_url(VIDEO_ID, "1&autoplay=1")  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        embed_url(VIDEO_ID, True)  # type: ignore[arg-type]
+
+
+def test_embed_url_without_segment_unchanged() -> None:
+    assert embed_url(VIDEO_ID) == f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}"
+    assert embed_url(VIDEO_ID, None, None) == f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}"
