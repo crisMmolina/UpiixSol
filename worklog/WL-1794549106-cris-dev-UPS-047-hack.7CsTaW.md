@@ -10,3 +10,4 @@
 
 ## History
 - 1794549106 | CLAIMED | cris-dev | claim; next: red fixture and idempotency tests, then the fixture from the spike, then `seed_ruta_ia`.
+- 1794549671 | CLAIMED | cris-dev | pending decision UPS-047-1794549671; option: Human 2026-11-13: the De cero a LLMs route is seeded only on request (python -m app.seed --ruta-ia / seed(db, ruta_ia=True)), not by default inside seed(); Why: seeding it by default breaks 11 existing tests and the e2e that rely on one route in UpiixIA (spec open question 1); the human chose the flag in chat; prod runbook keeps it a human step
