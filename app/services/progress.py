@@ -132,10 +132,3 @@ def complete_lesson(db: Session, user_id: int, lesson_id: int) -> LessonProgress
     row.last_viewed_at = now
     db.flush()
     return row
-
-
-def uncomplete_lesson(db: Session, user_id: int, lesson_id: int) -> None:
-    row = db.get(LessonProgress, (user_id, lesson_id))
-    if row is not None:
-        row.completed_at = None
-        db.flush()

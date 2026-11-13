@@ -103,7 +103,6 @@ refresh que la misma respuesta acaba de crear (`refresh_tokens.token_hash`), tam
 | `route.viewed` | `GET /api/routes/{route_id}` | `route` | — |
 | `lesson.viewed` | `GET /api/lessons/{lesson_id}` | `lesson` | — |
 | `lesson.completed` | `POST /api/lessons/{lesson_id}/complete` | `lesson` | — |
-| `lesson.uncompleted` | `DELETE /api/lessons/{lesson_id}/complete` | `lesson` | — |
 | `post.created` | `POST /api/channels/{channel_id}/posts` | `channel` | — |
 | `comment.created` | `POST /api/posts/{post_id}/comments` | `post` | — |
 | `reaction.added` | `PUT /api/posts/{post_id}/reactions/{kind}` | `post` | `kind` |
@@ -205,7 +204,7 @@ FROM learning_routes r LEFT JOIN ev ON ev.route_id = r.id
 GROUP BY r.id, r.title ORDER BY vieron_ruta DESC;
 ```
 
-(Las desmarcadas, `lesson.uncompleted`, no restan aquí; para el estado actual usar `lesson_progress`.)
+(Una clase completada no se puede desmarcar desde UPS-062, así que este conteo y `lesson_progress` coinciden.)
 
 **Recursos más abiertos (últimos 30 días)**
 

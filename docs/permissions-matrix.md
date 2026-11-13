@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **63/63 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -52,7 +52,6 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | PATCH | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | DELETE | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | POST | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ | any signed-in user (enrolls on first progress) |
-| DELETE | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/projects` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | PUT | `/api/projects/{project_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | DELETE | `/api/projects/{project_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |

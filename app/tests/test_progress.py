@@ -9,7 +9,6 @@ from app.services.progress import (
     complete_lesson,
     route_progress,
     routes_progress,
-    uncomplete_lesson,
 )
 
 
@@ -80,7 +79,7 @@ def test_all_complete_is_100_and_no_next(db: Session, academy: Academy, member: 
     assert (progress.percent, progress.next_lesson_id) == (100, None)
 
 
-def test_complete_is_idempotent_and_uncomplete_keeps_last_viewed(
+def test_complete_is_idempotent_and_stays_completed(
     db: Session, academy: Academy, member: User
 ) -> None:
     route = _route(db, academy, lessons_per_module=(1,))
@@ -89,11 +88,9 @@ def test_complete_is_idempotent_and_uncomplete_keeps_last_viewed(
     again = complete_lesson(db, member.id, lesson.id)
     assert first.completed_at == again.completed_at
 
-    uncomplete_lesson(db, member.id, lesson.id)
     row = db.get(LessonProgress, (member.id, lesson.id))
-    assert row is not None and row.completed_at is None and row.last_viewed_at is not None
-    uncomplete_lesson(db, member.id, 999_999)  # no row: no error
-    assert route_progress(db, member.id, route.id).percent == 0
+    assert row is not None and row.completed_at == first.completed_at  # nothing unmarks it (UPS-062)
+    assert route_progress(db, member.id, route.id).percent == 100
 
 
 def test_routes_progress_batches_several_routes(db: Session, academy: Academy, member: User) -> None:

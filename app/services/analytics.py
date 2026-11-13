@@ -112,7 +112,6 @@ SERVER_EVENTS: dict[tuple[str, str], ServerEvent] = {
     ("GET", "/api/routes/{route_id}"): ServerEvent("route.viewed", "route", "route_id"),
     ("GET", "/api/lessons/{lesson_id}"): ServerEvent("lesson.viewed", "lesson", "lesson_id"),
     ("POST", "/api/lessons/{lesson_id}/complete"): ServerEvent("lesson.completed", "lesson", "lesson_id"),
-    ("DELETE", "/api/lessons/{lesson_id}/complete"): ServerEvent("lesson.uncompleted", "lesson", "lesson_id"),
     ("POST", "/api/channels/{channel_id}/posts"): ServerEvent("post.created", "channel", "channel_id"),
     ("POST", "/api/posts/{post_id}/comments"): ServerEvent("comment.created", "post", "post_id"),
     ("PUT", "/api/posts/{post_id}/reactions/{kind}"): ServerEvent(

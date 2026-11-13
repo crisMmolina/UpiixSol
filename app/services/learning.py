@@ -189,10 +189,8 @@ def lesson_detail(db: Session, lesson_id: int, user: User) -> LessonOut:
     )
 
 
-def set_completed(db: Session, lesson_id: int, user: User, completed: bool) -> CompletionOut:
+def complete(db: Session, lesson_id: int, user: User) -> CompletionOut:
+    """Completed once, completed for good: idempotent, and nothing unmarks it (UPS-062)."""
     lesson, route, _academy = get_lesson(db, lesson_id, user)
-    if completed:
-        progress.complete_lesson(db, user.id, lesson.id)
-    else:
-        progress.uncomplete_lesson(db, user.id, lesson.id)
-    return CompletionOut(lesson_id=lesson.id, completed=completed, progress=_progress_out(db, user, route.id))
+    progress.complete_lesson(db, user.id, lesson.id)
+    return CompletionOut(lesson_id=lesson.id, completed=True, progress=_progress_out(db, user, route.id))
