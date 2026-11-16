@@ -88,3 +88,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794553652 | UPS-065 | skeleton title with 2 reserved lines at every width | Why: UPS-040 no-jump rule; the title wraps on desktop too
 - 1794586781 | deadline lease/UPS-060/1794568206 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794859881 | allow | devmoraless | test change: UPS-070 | Why: nickname unique and admin delete comment, human request
+- 1794863543 | UPS-070 | rules in services/nicknames.py, index on lower(nickname) only in migration (alembic check passes) | Why: avoid owned files app/schemas and models/user.py
