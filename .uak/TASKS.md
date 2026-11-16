@@ -1304,3 +1304,26 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - No assertion of LRN-01…08 is weakened: only the fake embed changes.
 - **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_learning.py`
 - **Next step:** make the FAKE_EMBED post an `infoDelivery` message to its parent, then run the module twice.
+
+## UPS-070 · Unique nicknames, reserved "admin" and "upiixia", and admins delete comments
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** human request 2026-11-16. Today `users.nickname` has no unique constraint (test_admin.py says "nicknames are not unique, only the defaults avoid repeats"), `register_member` and `PATCH /api/account/profile` accept any nickname, and `DELETE /api/comments/{id}` is author only (docs/permissions-matrix.md: "moderators hide instead"). The human wants: no two users share a nickname; nobody takes "admin" or "upiixia"; an admin can delete comments. Nickname identity = casefold, accents removed, only letters and digits ("Admin", "a.d.min", "ÚPIIXIA" all collide with the reserved names). The rules live in a new `app/services/nicknames.py`, so `app/schemas/` and `app/models/user.py` (owned rows) stay untouched; the unique index is `lower(nickname)` created in a migration. "Admin" for comments = whoever `_can_moderate` already accepts: superadmin anywhere, academy_admin in channels of their own academy; a member still deletes only their own.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-062
+- **Paths:** app/services/nicknames.py, app/services/auth.py, app/services/admin.py, app/services/account.py, app/services/community.py, app/migrations/versions/0008_unique_nickname.py, app/tests/test_nicknames.py, app/tests/test_community.py, app/tests/test_admin.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/features/community/Comments.tsx
+- **Freeze-Allowed:** no
+- **Tests:** test_register_rejects_a_taken_nickname_case_insensitive, test_register_default_nickname_is_numbered_when_taken, test_reserved_nicknames_are_refused_everywhere, test_profile_update_rejects_taken_and_reserved_nickname, test_migration_renames_existing_duplicate_and_reserved_nicknames, test_admin_deletes_any_comment_in_their_channel, test_admin_cannot_delete_comments_of_another_academy, test_member_cannot_delete_someone_elses_comment
+- **Acceptance:**
+  - Register, `POST /api/admin/users`, `PATCH /api/admin/users/{id}` and `PATCH /api/account/profile` answer 409 (`nickname_taken`, message in Spanish) when another user already has that nickname ignoring case; keeping your own nickname is not a conflict.
+  - Same four endpoints answer 422 (`nickname_reserved`) for "admin" and "upiixia" in any casing, with accents or separators; automatic nicknames skip them the way they skip taken ones ("admin" becomes "admin2"). The seed accounts keep working.
+  - Automatic nicknames are unique on register too (`register_member` reuses the numbering of `_unique_nickname`); a concurrent insert is a 409, never a 500 (the index backs it up).
+  - Migration 0008 renames existing duplicates (oldest keeps the name; the rest get 2, 3…) and any reserved nickname, then creates the unique index on `lower(nickname)`; it round-trips (`alembic upgrade head && alembic downgrade base`) on SQLite and PostgreSQL 16.
+  - `DELETE /api/comments/{id}` accepts the author, a superadmin and the academy_admin of the channel's academy; others get 403. The post's comment count stays right; hide keeps working. The matrix row and docs/permissions-matrix.md change from AUTHOR to the moderator set.
+  - Comments.tsx shows the delete button to those moderators too, with the confirm text it uses today; 1280 and 390 wide.
+  - Existing tests that state the old rules change only where the rule changed: test_admin.py::test_default_nickname_is_unique (line "A chosen nickname is kept as is") and the DELETE comments row of test_permissions_matrix.py. A human runs `uak allow UPS-070 --tests --reason 'nickname unique and admin delete comment, human request'` before those edits.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_nicknames.py app/tests/test_community.py app/tests/test_admin.py app/tests/test_permissions_matrix.py app/tests/test_account.py app/tests/test_auth.py && uv run alembic upgrade head && uv run alembic downgrade base && npm --prefix web run build`
+- **Next step:** write the stubs for the Tests names and `uak red UPS-070`; then app/services/nicknames.py, then the migration, then delete_comment.
