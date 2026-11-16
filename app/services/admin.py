@@ -13,6 +13,7 @@ from app.schemas.academies import AcademyCreateIn, AcademyOut, AcademyUpdateIn, 
 from app.schemas.users import AdminUserCreateIn, AdminUserUpdateIn, PasswordResetOut, UserAdminOut
 from app.security import hash_password
 from app.services.auth import default_nickname, revoke_all_for_user
+from app.services.nicknames import ensure_available, unique_nickname
 
 RESERVED_SLUGS = {"feed", "general"}  # community channel slugs share the namespace
 
@@ -117,30 +118,19 @@ def _user_exists(db: Session, email: str, boleta: str | None) -> bool:
     return bool(db.scalar(select(User.id).where(or_(*clauses)).limit(1)))
 
 
-def _unique_nickname(db: Session, full_name: str) -> str:
-    """Default nickname from the first name, with a number when taken: "aud", "aud2", "aud3"…"""
-    base = default_nickname(full_name)
-    stem = base[:36]  # room for a 4-digit suffix within the 40-character column
-    taken = set(db.scalars(select(User.nickname).where(User.nickname.startswith(stem, autoescape=True))))
-    if base not in taken:
-        return base
-    number = 2
-    while f"{stem}{number}" in taken:
-        number += 1
-    return f"{stem}{number}"
-
-
 def create_user(db: Session, data: AdminUserCreateIn) -> UserAdminOut:
     message = "Ya existe un usuario con ese correo o esa boleta."
     if data.role == Role.academy_admin:
         _check_academy(db, data.academy_id)
     if _user_exists(db, data.email, data.boleta):
         raise _conflict(message)
+    if data.nickname:
+        ensure_available(db, data.nickname)
     user = User(
         role=data.role,
         email=data.email,
         full_name=data.full_name,
-        nickname=data.nickname or _unique_nickname(db, data.full_name),
+        nickname=data.nickname or unique_nickname(db, default_nickname(data.full_name)),
         boleta=data.boleta,
         academy_id=data.academy_id if data.role == Role.academy_admin else None,
         password_hash=hash_password(data.password),
@@ -171,6 +161,8 @@ def update_user(db: Session, actor: User, user_id: int, data: AdminUserUpdateIn)
         if user.role != Role.academy_admin:
             raise _invalid("Solo los admins de club tienen un club asignado.")
         _check_academy(db, values["academy_id"])
+    if values.get("nickname"):
+        ensure_available(db, values["nickname"], user_id=user.id)
     for field, value in values.items():
         if value is not None:
             setattr(user, field, value)

@@ -138,7 +138,7 @@ def test_create_academy_admin_and_member(as_superadmin: TestClient, client: Test
     assert admin.status_code == 201
     body = admin.json()
     assert body["email"] == "robo.admin@upiixsol.dev" and body["role"] == "academy_admin"
-    assert body["must_change_password"] is True and body["nickname"] == "admin"
+    assert body["must_change_password"] is True and body["nickname"] == "admin2"  # "admin" is reserved
     login = client.post(
         "/api/auth/login", json={"email": "robo.admin@upiixsol.dev", "password": "temporal-123"}
     )
@@ -170,8 +170,19 @@ def test_default_nickname_is_unique(as_superadmin: TestClient, seeded: dict) -> 
     assert create("aud1@ipn.mx", "AUD Uno") == "aud"
     assert create("aud2@ipn.mx", "AUD Dos") == "aud2"
     assert create("aud3@ipn.mx", "Aud Tres") == "aud3"
-    # A chosen nickname is kept as is (nicknames are not unique, only the defaults avoid repeats).
-    assert create("aud4@ipn.mx", "AUD Cuatro", nickname="aud") == "aud"
+    # A chosen nickname is kept as is, unless someone has it already (UPS-070: nicknames are unique).
+    assert create("aud4@ipn.mx", "AUD Cuatro", nickname="Aud.Cuatro") == "Aud.Cuatro"
+    taken = as_superadmin.post(
+        "/api/admin/users",
+        json={
+            "role": "member",
+            "email": "aud5@ipn.mx",
+            "full_name": "AUD Cinco",
+            "password": "temporal-123",
+            "nickname": "AUD",
+        },
+    )
+    assert taken.status_code == 409 and taken.json()["error"]["code"] == "nickname_taken"
     assert create("audaz@ipn.mx", "Audaz Persona") == "audaz"
     long_name = "A" * 45 + " Largo"
     assert create("largo1@ipn.mx", long_name) == "a" * 40
@@ -368,4 +379,3 @@ def test_reset_password_never_logs_the_temporary_password(
     assert temporary and len(temporary) >= 8
     assert temporary not in caplog.text
     assert all(temporary not in record.getMessage() for record in caplog.records)
-

@@ -457,3 +457,44 @@ def test_channel_flags_for_admins(as_admin_ia: TestClient, as_superadmin: TestCl
     for client in (as_admin_ia, as_superadmin):
         flags = {c["slug"]: c["can_post"] for c in client.get("/api/channels").json()}
         assert flags == {"feed": False, "general": True, "upiixia": True}
+
+
+def _club_post_with_comments(
+    db: Session, as_member: TestClient, as_admin_ia: TestClient
+) -> tuple[Post, dict, dict]:
+    post = db.scalar(select(Post).where(Post.channel_id == _channel(db, "upiixia").id))
+    mine = as_member.post(f"/api/posts/{post.id}/comments", json={"body": "mío"}).json()
+    theirs = as_admin_ia.post(f"/api/posts/{post.id}/comments", json={"body": "suyo"}).json()
+    return post, mine, theirs
+
+
+def test_admin_deletes_any_comment_in_their_channel(
+    as_member: TestClient, as_admin_ia: TestClient, as_superadmin: TestClient, db: Session
+) -> None:
+    post, mine, theirs = _club_post_with_comments(db, as_member, as_admin_ia)
+    assert as_admin_ia.delete(f"/api/comments/{mine['id']}").status_code == 204
+    assert as_admin_ia.delete(f"/api/comments/{mine['id']}").status_code == 404
+    again = as_member.post(f"/api/posts/{post.id}/comments", json={"body": "otra vez"}).json()
+    assert as_superadmin.delete(f"/api/comments/{again['id']}").status_code == 204
+    listed = as_member.get(f"/api/posts/{post.id}/comments").json()["items"]
+    assert [c["id"] for c in listed] == [theirs["id"]]
+    assert db.get(Comment, mine["id"]) is None and db.get(Comment, again["id"]) is None
+
+
+def test_admin_cannot_delete_comments_of_another_academy(
+    client: TestClient, as_member: TestClient, as_admin_ia: TestClient, db: Session
+) -> None:
+    _post, mine, _theirs = _club_post_with_comments(db, as_member, as_admin_ia)
+    robo = make_academy(db, "robotica", "Robótica")
+    robo_admin = make_user(db, role=Role.academy_admin, email="robo@upiixsol.dev", academy_id=robo.id)
+    denied = client.delete(f"/api/comments/{mine['id']}", headers=auth_headers(robo_admin))
+    assert denied.status_code == 403
+    assert db.get(Comment, mine["id"]) is not None
+
+
+def test_member_cannot_delete_someone_elses_comment(
+    as_member: TestClient, as_admin_ia: TestClient, db: Session
+) -> None:
+    _post, _mine, theirs = _club_post_with_comments(db, as_member, as_admin_ia)
+    assert as_member.delete(f"/api/comments/{theirs['id']}").status_code == 403
+    assert db.get(Comment, theirs["id"]) is not None

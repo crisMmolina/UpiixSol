@@ -70,7 +70,7 @@ Cobertura: **63/63 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/account/password` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
 | POST | `/api/analytics/events` | 🔒 | ✅ | ✅ | ✅ | ✅ | usage analytics, 30/min per user (UPS-037) |
 | DELETE | `/api/posts/{post_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
-| DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
+| DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ✅ | ❌ | ✅ | author, or the moderators of its channel (UPS-070) |
 
 ## Lecturas sensibles
 

@@ -1,5 +1,5 @@
 // Comments under a post (UPS-011, UPS-035): oldest first, 20 per page with "Ver más comentarios",
-// authors delete their own, moderators hide. Every change reports a delta so the post's counter
+// authors delete their own, moderators delete any or hide (UPS-070). Every change reports a delta so the post's counter
 // (which the 30 s poll keeps in sync with the server) stays right meanwhile.
 import { EyeSlash, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
@@ -116,7 +116,8 @@ export function Comments({
   }
 
   async function remove(comment: CommentOut) {
-    if (!window.confirm("¿Borrar tu comentario? No se puede deshacer.")) return;
+    const own = comment.author.id === userId;
+    if (!window.confirm(own ? "¿Borrar tu comentario? No se puede deshacer." : "¿Borrar este comentario? No se puede deshacer.")) return;
     setError(null);
     try {
       await api(`/comments/${comment.id}`, { method: "DELETE" });
@@ -148,8 +149,14 @@ export function Comments({
                 </p>
                 <Markdown source={comment.body} className="text-sm" />
               </div>
-              {comment.author.id === userId && (
-                <button type="button" aria-label="Borrar mi comentario" title="Borrar mi comentario" className={`${iconButton} text-muted hover:text-ink`} onClick={() => void remove(comment)}>
+              {(comment.author.id === userId || moderator) && (
+                <button
+                  type="button"
+                  aria-label={comment.author.id === userId ? "Borrar mi comentario" : "Borrar comentario"}
+                  title={comment.author.id === userId ? "Borrar mi comentario" : "Borrar comentario"}
+                  className={`${iconButton} text-muted hover:text-ink`}
+                  onClick={() => void remove(comment)}
+                >
                   <Trash weight="bold" />
                 </button>
               )}
