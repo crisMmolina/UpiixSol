@@ -1,12 +1,12 @@
 # worklog/WL-1794949986-victor-2-UPS-078-hack.xzbeNE.md · UPS-078
 
 ## Live summary
-- Done: All criteria green; PR #132 open at 7df1ca48; done recorded (REVIEW); critic SHIP; e2e 12 passed; smoke PASS
+- Done: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py' exit 0 after rm -rf web/dist: 12 passed; origin/main ec37aa8f already merged, no UI change, shots and critic SHIP in .uak-shots/UPS-078/ still valid · red at c9c5300: FAILED e2e/test_mail.py::test_superadmin_sends_to_a_club_after_preview_and_confirm[desktop]
 - Decision: types.ts untouched (outside Paths); History reads audience.outside locally
 - Why: AudienceOut.email_count in types.ts is wrong vs API
 - Failing: -
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py'
-- Next: merge origin/main, rerun Verify, uak done for review
+- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/132; run .uak/bin/smoke
 
 ## History
 - 1794949986 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-078`; then `AudiencePicker`, then the confirm modal, then history.
@@ -17,3 +17,4 @@
 - 1794950617 | REVIEW | victor-2 | handoff; next: uak wait UPS-078 --for approve, then uak merge UPS-078; fix types.ts email_count -> outside via a followup
 - 1794950622 | AVAILABLE | victor-2 | release; claim released by victor-2; reason: -; summary kept
 - 1794950983 | CLAIMED | victor-2 | claim; next: merge origin/main, rerun Verify, uak done for review
+- 1794951046 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/132; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py' exit 0 after rm -rf web/dist: 12 passed; origin/main ec37aa8f already merged, no UI change, shots and critic SHIP in .uak-shots/UPS-078/ still valid · red at c9c5300: FAILED e2e/test_mail.py::test_superadmin_sends_to_a_club_after_preview_and_confirm[desktop]; reviewer: -
