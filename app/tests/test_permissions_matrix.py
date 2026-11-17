@@ -25,9 +25,10 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.config import get_settings
 from app.db import get_db
 from app.main import app
 from app.models import Academy, Channel, Comment, Event, LearningRoute, Lesson, Module, Post, Role, User
@@ -265,6 +266,29 @@ MATRIX: list[Rule] = [
         _json(lambda w: {"kind": "academy", "academy_id": w.academy_id}),
         note="superadmin: any audience; academy_admin: own club, its enrollees and outside addresses",
     ),
+    # ── Email campaigns (UPS-075): payload and sender 403s in test_mail_campaigns.py ──
+    Rule(
+        "POST",
+        "/api/mail/test",
+        SENDERS,
+        _json(lambda _w: {"subject": "Prueba", "body": "Hola"}),
+        note="only to the caller's own address",
+    ),
+    Rule(
+        "POST",
+        "/api/mail/campaigns",
+        OWN,
+        _json(
+            lambda w: {
+                "subject": "Aviso",
+                "body": "Hola",
+                "audience": {"kind": "academy", "academy_id": w.academy_id},
+            }
+        ),
+        note="draft; same audience scope as the preview",
+    ),
+    Rule("POST", "/api/mail/campaigns/{campaign_id}/send", OWN, note="the campaign's sender or superadmin"),
+    Rule("POST", "/api/mail/campaigns/{campaign_id}/resume", OWN, note="the campaign's sender or superadmin"),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}
@@ -349,6 +373,24 @@ def _resource_id(db: Session, w: World) -> int:
     return resource.id
 
 
+def _campaign(db: Session, w: World) -> int:
+    """A draft of UpiixIA sent by its admin (UPS-075): its sender and superadmins may send it."""
+    from app.models.mail import MailCampaign
+
+    sender = db.scalar(select(User.id).where(User.email == "admin.ia@upiixsol.dev"))
+    campaign = MailCampaign(
+        sender_id=sender,
+        academy_id=w.academy_id,
+        audience_kind="academy",
+        audience_params={"academy_id": w.academy_id},
+        subject="Matriz",
+        body="Hola",
+    )
+    db.add(campaign)
+    db.flush()
+    return campaign.id
+
+
 def _path(rule: Rule, w: World, db: Session) -> str:
     values: dict[str, Any] = {
         "slug": "upiixia",
@@ -369,7 +411,22 @@ def _path(rule: Rule, w: World, db: Session) -> str:
         values["project_id"] = _fresh(db, "Project")
     if "{blog_id}" in rule.path:
         values["blog_id"] = _fresh(db, "BlogPost")
+    if "{campaign_id}" in rule.path:
+        values["campaign_id"] = _campaign(db, w)
     return rule.path.format(**values)
+
+
+@pytest.fixture(autouse=True)
+def _mail_on(monkeypatch: pytest.MonkeyPatch, engine: Engine) -> Iterator[None]:
+    """Mail on with the console transport, and background sends bound to the test DB (UPS-075)."""
+    from app.services import mail_campaigns
+    from app.services.mailer import ConsoleTransport, get_mail_transport
+
+    monkeypatch.setattr(get_settings(), "mail_enabled", True)
+    monkeypatch.setattr(mail_campaigns, "session_factory", sessionmaker(bind=engine, expire_on_commit=False))
+    app.dependency_overrides[get_mail_transport] = ConsoleTransport
+    yield
+    app.dependency_overrides.pop(get_mail_transport, None)
 
 
 @pytest.fixture
@@ -430,6 +487,13 @@ READ_MATRIX: list[Rule] = [
         SENDERS,
         note="own club's enrollees and co-admins; email only for superadmin",
     ),
+    Rule(
+        "GET",
+        "/api/mail/campaigns",
+        SENDERS,
+        note="history: superadmin all, academy_admin own club (UPS-075)",
+    ),
+    Rule("GET", "/api/mail/campaigns/{campaign_id}", OWN, note="a campaign of the club (UPS-075)"),
 ]
 
 
