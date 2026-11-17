@@ -1399,12 +1399,13 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Related:** UPS-075, UPS-078
 - **Paths:** app/services/mail_audience.py, app/routers/mail_audience.py, app/tests/test_mail_audience.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
 - **Freeze-Allowed:** no
-- **Tests:** test_all_counts_active_users_once, test_academy_counts_enrollees_and_its_admins, test_role_counts_that_role_only, test_individual_mixes_users_and_outside_addresses, test_individual_over_50_entries_or_20_emails_is_422, test_invalid_outside_address_is_422, test_excludes_inactive_suppressed_and_blocked_domains, test_academy_admin_cannot_mail_all, test_academy_admin_cannot_mail_a_role, test_academy_admin_cannot_mail_another_club, test_academy_admin_cannot_pick_a_non_enrolled_user, test_academy_admin_can_add_outside_addresses, test_recipient_search_hides_email_from_academy_admin, test_member_and_anon_get_403_and_401, test_mail_status_reports_quota_from_the_db
+- **Tests:** test_all_counts_active_users_once, test_academy_counts_enrollees_and_its_admins, test_role_counts_that_role_only, test_individual_mixes_users_and_outside_addresses, test_individual_over_50_entries_or_20_emails_is_422, test_invalid_outside_address_is_422, test_excludes_inactive_suppressed_and_blocked_domains, test_academy_admin_cannot_mail_all, test_academy_admin_cannot_mail_a_role, test_academy_admin_cannot_mail_another_club, test_academy_admin_cannot_pick_a_non_enrolled_user, test_academy_admin_can_pick_a_co_admin_of_their_club, test_academy_admin_can_add_outside_addresses, test_recipient_search_hides_email_from_academy_admin, test_member_and_anon_get_403_and_401, test_mail_status_reports_quota_from_the_db
 - **Acceptance:**
   - `resolve_audience(db, sender, audience) -> list[ResolvedRecipient]` and `preview()` implement spec §Audiences; the club scope comes from the DB (`users.academy_id`, `enrollments`), never from the body.
   - `GET /api/mail/status`, `POST /api/mail/audience/preview` and `GET /api/mail/recipients?q=` (cursor page ≤ 50; email only for superadmin) answer as plan §Contracts; schemas live in the service module.
   - The preview endpoint has a matrix row (OWN with `{kind: "academy", academy_id: world.academy_id}`); `recipients` and `status` are in the read matrix; `docs/permissions-matrix.md` is regenerated. Payload-dependent 403s are in `test_mail_audience.py`.
   - Preview p95 < 300 ms on the seeded data (one timing test, like the existing ones).
+  - Human 2026-11-17 (victor): a club admin may also pick the co-admins of their own club in `individual` and in the recipient search; the preview count of typed outside addresses may exceed the final list for club admins (accepted, no oracle).
 - **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py`
 - **Next step:** stubs for the Tests names and `uak red UPS-074`; then `resolve_audience`, then the router, then the matrix rows.
 
@@ -1565,3 +1566,23 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - CI `web` is green on the PR.
 - **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web ci && npm --prefix web audit --omit=dev --audit-level=high && npm --prefix web run lint && npm --prefix web run build'`
 - **Next step:** reproduce the audit failure, then try (a).
+
+## UPS-083 · Tests ignore the developer's `.env`: the backend suite is hermetic
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** human request (victor) 2026-11-17. `Settings` reads `.env` (`app/config.py`, `env_file=".env"`), and `wt new` links the main checkout's `.env` into every worktree, so a developer's `.env` copied from `.env.example` makes 23 backend tests fail in upload, site, auth and analytics code, while the same commit passes all 741 tests and smoke without it (found by victor-2 on UPS-074, recorded with `uak learn`). CI has no `.env`, so CI stays green and hides it. Tests must never depend on a developer's local configuration.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-074, UPS-020
+- **Paths:** app/tests/conftest.py, app/config.py, app/tests/test_settings_isolation.py
+- **Freeze-Allowed:** yes
+- **Tests:** test_settings_ignore_dotenv_under_pytest, test_suite_settings_match_defaults_with_a_full_dotenv_present
+- **Acceptance:**
+  - First find which variables cause the 23 failures (run the suite with a `.env` that has every `.env.example` key, then bisect); record them in the PR description. Never read, print or commit the real `.env`: build a throwaway one from `.env.example` in a temp dir.
+  - Under pytest, `Settings` does not read any `.env` file (e.g. the test settings are built with `_env_file=None`, or `conftest.py` sets that before the app is imported); explicit environment variables and `monkeypatch` still work as today.
+  - The full backend suite passes in a worktree that has the main checkout's `.env` linked, and in a clean checkout without it; the app outside tests still reads `.env` as before (dev and prod unchanged).
+  - No existing test is edited to pass.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x`
+- **Next step:** reproduce with a throwaway `.env` built from `.env.example`, find the variables, then the stub test and `uak red UPS-083`.
