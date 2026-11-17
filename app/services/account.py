@@ -12,6 +12,7 @@ from app.schemas.users import EmailChangeIn, PasswordChangeIn, ProfileUpdateIn, 
 from app.security import hash_password, verify_password
 from app.services import media
 from app.services.auth import issue_session, revoke_all_for_user, user_me
+from app.services.nicknames import ensure_available
 
 EMAIL_TAKEN = "Ese correo ya está registrado."
 
@@ -27,6 +28,8 @@ def _check_current(user: User, password: str) -> None:
 
 
 def update_profile(db: Session, user: User, data: ProfileUpdateIn) -> UserMe:
+    if data.nickname:
+        ensure_available(db, data.nickname, user_id=user.id)
     for field, value in data.model_dump(exclude_unset=True).items():
         if value is not None:
             setattr(user, field, value)

@@ -250,7 +250,12 @@ MATRIX: list[Rule] = [
     ),
     # ── Community: authors delete their own (UPS-035) ────────
     Rule("DELETE", "/api/posts/{post_id}", AUTHOR, note="author only; moderators hide instead"),
-    Rule("DELETE", "/api/comments/{comment_id}", AUTHOR, note="author only; moderators hide instead"),
+    Rule(
+        "DELETE",
+        "/api/comments/{comment_id}",
+        {"member", "admin_own", "superadmin"},
+        note="author, or the moderators of its channel (UPS-070)",
+    ),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}

@@ -245,10 +245,11 @@ def _visible_comment(db: Session, comment_id: int) -> tuple[Comment, Channel]:
     return comment, channel
 
 
-def delete_comment(db: Session, comment_id: int, author: User) -> None:
-    comment, _channel = _visible_comment(db, comment_id)
-    if comment.author_id != author.id:
-        raise AppError(403, "Solo quien comentó puede borrar este comentario.")
+def delete_comment(db: Session, comment_id: int, user: User) -> None:
+    """The author, a superadmin, or the admin of the channel's academy (same rule as hiding)."""
+    comment, channel = _visible_comment(db, comment_id)
+    if comment.author_id != user.id and not _can_moderate(user, channel):
+        raise AppError(403, "Solo quien comentó o un admin del club puede borrar este comentario.")
     db.execute(delete(Comment).where(Comment.id == comment.id))
     db.flush()
 
