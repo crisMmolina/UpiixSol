@@ -43,7 +43,7 @@ function audienceText(campaign: Campaign, academies: AcademyChoice[]): string {
   if (a.kind === "academy") return `${KIND_LABEL.academy} · ${academies.find((x) => x.id === a.academy_id)?.name ?? "club"}`;
   if (a.kind === "role") return `${KIND_LABEL.role} · ${ROLE_LABEL[a.role]}`;
   if (a.kind === "individual") {
-    const parts = [`${a.user_ids.length} de la plataforma`, `${a.email_count} externos`];
+    const parts = [`${a.user_ids.length} de la plataforma`, `${a.outside} externos`];
     return `${KIND_LABEL.individual} · ${parts.join(", ")}`;
   }
   return KIND_LABEL.all;

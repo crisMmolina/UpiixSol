@@ -117,11 +117,14 @@ def test_history_lists_the_campaign_with_counts(site: Site) -> None:
     row = page.get_by_role("region", name="Historial").get_by_role("listitem").filter(has_text=CLUB_SUBJECT)
     expect(row).to_have_count(1)
     expect(row.get_by_text("Un club")).to_be_visible()
+    expect(row).not_to_contain_text("undefined")
     expect(row.get_by_text("superadmin1")).to_be_visible()
     expect(row.get_by_text(re.compile(r"Enviado|Enviando"))).to_be_visible()
     expect(row.get_by_text(re.compile(r"\d+ (aceptados?|entregados?|pendientes?)"))).to_be_visible()
     mixed = page.get_by_role("region", name="Historial").get_by_role("listitem").filter(has_text=MIX_SUBJECT)
     expect(mixed.get_by_text("Personas")).to_be_visible()
+    expect(mixed).to_contain_text("1 externos")
+    expect(mixed).not_to_contain_text("undefined")
     site.shot("mail-history")
 
 
@@ -133,7 +136,9 @@ def test_mail_tab_at_390_wide(site: Site) -> None:
     compose(page, "Revisión de pantalla")
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
+    expect(dialog.get_by_text(re.compile(r"Se enviará a"))).to_be_visible()
     expect(dialog.get_by_role("button", name="Enviar ahora")).to_be_visible()
+    page.wait_for_timeout(500)  # the modal finishes opening before the shot
     site.shot("mail-modal")
     dialog.get_by_role("button", name="Cancelar").click()
     expect(dialog).to_be_hidden()
