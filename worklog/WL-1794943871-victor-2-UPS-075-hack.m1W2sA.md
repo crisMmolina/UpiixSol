@@ -16,3 +16,4 @@
 - 1794949161 | CLAIMED | victor-2 | pending decision UPS-075-1794949161; option: Footer Darte de baja links to %recipient.unsubscribe_url% (API URL); UPS-076 answers GET /api/mail/unsubscribe?t= with 303 to /baja?t= without changing state; Why: Mailgun only receives name and unsubscribe_url variables (UPS-073), so /baja?t=token cannot be built per recipient in a batch
 - 1794949330 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/129; evidence: Verify exit 0 in a clean checkout (no dotenv); full suite + ruff green, coverage 99.96%; 16 named tests, matrix rows and docs regenerated · red at f57af16: E   AssertionError: assert '&lt;b&gt;Hola&lt;/b&gt; &amp; bienvenidos' in ''; reviewer: -
 - 1794949343 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA f0bf0f5 (PR 129)
+- 1794949638 | REVIEW | victor-1 | review; approve; SHA f0bf0f5f88fb07b17ed5923e6aedf0d62ae01299; reviewer victor-1
