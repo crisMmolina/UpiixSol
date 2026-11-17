@@ -1544,3 +1544,24 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - No scheduler is added; `docs/mail-mailgun.md` (UPS-080) already says to run it monthly.
 - **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_retention.py`
 - **Next step:** stubs for the Tests names and `uak red UPS-081`; then the query, then the CLI.
+
+## UPS-082 · Web CI: `npm audit` high on picomatch (GHSA-fc5q-39xc-vjpf) without breaking Vite
+
+- **Type:** bug
+- **Priority:** P0
+- **Estimate:** 90 min
+- **Rubric / Spec:** human request (victor) 2026-11-17. The `web` CI job fails on every PR (seen on PR #123, UPS-072) at `npm --prefix web audit --omit=dev --audit-level=high`: picomatch, high, ReDoS through single-branch repeated extglobs (https://github.com/advisories/GHSA-fc5q-39xc-vjpf), reached through `@tailwindcss/vite` → `vite` → `fdir` → `picomatch`. npm's suggestion (`npm audit fix --force`, which installs `vite@6.2.7`) is a breaking downgrade and is NOT an acceptable fix. `.uak/docs/SECURITY.md` §dependencies applies.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-001, UPS-072
+- **Paths:** web/package.json, web/package-lock.json, docs/security-deps.md
+- **Freeze-Allowed:** yes
+- **Test-First:** no (dependency fix: the red check is the failing audit itself; reproduce it first)
+- **Acceptance:**
+  - First reproduce the failure locally (`npm --prefix web ci && npm --prefix web audit --omit=dev --audit-level=high` exits non-zero) and record the advisory's affected and patched versions from the advisory page.
+  - Fix in this order of preference, stopping at the first that works: (a) build-only packages (`@tailwindcss/vite`, `tailwindcss`) move to `devDependencies`, since nothing at runtime imports them, so the production tree no longer contains vite/picomatch; (b) an `overrides` entry pins `picomatch` to the patched version; (c) if no patched version exists, stop and ask the human with `uak decision UPS-082 --class scope` (never disable or weaken the audit step, never `--force`).
+  - Vite stays on its current major (`^8`); `npm --prefix web run lint`, `npm --prefix web run build` and the Docker build stage that runs `npm ci` keep working (check the Dockerfile still installs devDependencies for the build).
+  - `docs/security-deps.md` (Spanish, short) records the advisory, the path, the fix chosen and why, and the date.
+  - CI `web` is green on the PR.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web ci && npm --prefix web audit --omit=dev --audit-level=high && npm --prefix web run lint && npm --prefix web run build'`
+- **Next step:** reproduce the audit failure, then try (a).
