@@ -123,7 +123,7 @@ def test_history_lists_the_campaign_with_counts(site: Site) -> None:
     expect(row.get_by_text(re.compile(r"\d+ (aceptados?|entregados?|pendientes?)"))).to_be_visible()
     mixed = page.get_by_role("region", name="Historial").get_by_role("listitem").filter(has_text=MIX_SUBJECT)
     expect(mixed.get_by_text("Personas")).to_be_visible()
-    expect(mixed).to_contain_text("1 externos")
+    expect(mixed).to_contain_text("1 externo")
     expect(mixed).not_to_contain_text("undefined")
     site.shot("mail-history")
 

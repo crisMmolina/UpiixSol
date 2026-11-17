@@ -43,7 +43,9 @@ function audienceText(campaign: Campaign, academies: AcademyChoice[]): string {
   if (a.kind === "academy") return `${KIND_LABEL.academy} · ${academies.find((x) => x.id === a.academy_id)?.name ?? "club"}`;
   if (a.kind === "role") return `${KIND_LABEL.role} · ${ROLE_LABEL[a.role]}`;
   if (a.kind === "individual") {
-    const parts = [`${a.user_ids.length} de la plataforma`, `${a.outside} externos`];
+    // The API sends `outside` (types.ts still says `email_count`; not ours to edit, see UPS-075 contract).
+    const outside = (a as unknown as { outside?: number }).outside ?? 0;
+    const parts = [`${a.user_ids.length} de la plataforma`, `${outside} ${outside === 1 ? "externo" : "externos"}`];
     return `${KIND_LABEL.individual} · ${parts.join(", ")}`;
   }
   return KIND_LABEL.all;

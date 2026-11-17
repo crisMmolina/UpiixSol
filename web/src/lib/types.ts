@@ -419,7 +419,7 @@ export type AudienceOut =
   | { kind: "all" }
   | { kind: "academy"; academy_id: number }
   | { kind: "role"; role: Role }
-  | { kind: "individual"; user_ids: number[]; outside: number };
+  | { kind: "individual"; user_ids: number[]; email_count: number };
 
 export type CampaignStatus = "draft" | "sending" | "sent" | "partial" | "failed";
 export type MailRecipientStatus =
