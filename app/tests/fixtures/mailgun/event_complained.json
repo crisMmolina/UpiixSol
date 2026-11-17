@@ -1,0 +1,43 @@
+{
+  "signature": {
+    "token": "e0b5477167110d68991efc6b9f89f0a11066af27834600e123",
+    "timestamp": "1770920772",
+    "signature": "663dfcae86d431115c93fba11e7d259abb70bf3235e4f26533246d8935c0f508"
+  },
+  "event-data": {
+    "event": "complained",
+    "id": "rIVDlyk8SY-mJauQoYmNFA",
+    "timestamp": 1770920772.2684145,
+    "log-level": "warn",
+    "account": {
+      "id": "1234567890303a4bd1f33898"
+    },
+    "domain": {
+      "name": "mg.upiixsol.com"
+    },
+    "message": {
+      "headers": {
+        "to": "recipient@example.com",
+        "message-id": "20260212182531.0d5ed3254c319957@mg.upiixsol.com",
+        "from": "UpiixSol <avisos@mg.upiixsol.com>",
+        "subject": "Aviso de prueba"
+      },
+      "size": 11002
+    },
+    "campaigns": [],
+    "recipient": "recipient@example.com",
+    "recipient-domain": "example.com",
+    "recipient-provider": "Other",
+    "tags": [
+      "webhook_payload"
+    ],
+    "user-variables": [],
+    "envelope": {
+      "sending-ip": "198.51.100.10"
+    },
+    "storage": {
+      "key": "XXXXAQVV4uE1s5YYj9ZJq7Ge6flueUXXXX",
+      "url": "https://storage-us-west1.api.mailgun.net/v3/domains/mg.upiixsol.com/messages/BAABAQVV4uE1s5YYj9ZJq7Ge6flueUcDZQ"
+    }
+  }
+}
