@@ -93,3 +93,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794936624 | UPS-071 | docs-only, no key used | Why: key in .env unreadable by agents
 - 1794938600 | UPS-072 | dropped prod console+enabled rejection (would edit a committed assertion) | Why: security review LOW, spec only requires keys for mailgun
 - 1794940895 | UPS-082 | tailwind build-only packages -> devDependencies | Why: no picomatch patch exists (<=4.0.7, first_patched null); --force downgrades vite
+- 1794941236 | UPS-074 | academy_admin individual = enrollees only (spec); outside addresses never looked up among users | Why: spec §Audiences; avoid oracle
