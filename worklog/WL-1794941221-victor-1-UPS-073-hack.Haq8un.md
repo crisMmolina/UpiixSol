@@ -6,7 +6,7 @@
 - Why: mode rule
 - Failing: PR #126 web CI: picomatch audit, fixed by UPS-082 #125
 - Commands: gh pr checks 126
-- Next: Human merges #126 (after #125, rerun web); then uak done UPS-073 --integrated <merge sha>
+- Next: Integrated in main: 6e06d2baa01e2abf3e8d8e4e708575f6c2764837
 
 ## History
 - 1794941221 | CLAIMED | victor-1 | claim; next: stubs for the Tests names and `uak red UPS-073`; then the request builder, then batching, then errors.
@@ -17,3 +17,4 @@
 - 1794942953 | REVIEW | victor-2 | review; approve; SHA f8f37f7682bd9235567220b1fb42e19bcbd4c044; reviewer victor-2
 - 1794943006 | REVIEW | victor-1 | checkpoint; next: Human merges #126 (after #125, rerun web); then uak done UPS-073 --integrated <merge sha>
 - 1794943133 | REVIEW | victor-1 | heartbeat; lease until 1795029533
+- 1794943315 | INTEGRATED | victor-1 | merge; smoke and Verify PASS (smoke: full); commit 6e06d2baa01e2abf3e8d8e4e708575f6c2764837; reviewer victor-2
