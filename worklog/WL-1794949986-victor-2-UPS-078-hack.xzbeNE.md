@@ -18,3 +18,4 @@
 - 1794950622 | AVAILABLE | victor-2 | release; claim released by victor-2; reason: -; summary kept
 - 1794950983 | CLAIMED | victor-2 | claim; next: merge origin/main, rerun Verify, uak done for review
 - 1794951046 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/132; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py' exit 0 after rm -rf web/dist: 12 passed; origin/main ec37aa8f already merged, no UI change, shots and critic SHIP in .uak-shots/UPS-078/ still valid · red at c9c5300: FAILED e2e/test_mail.py::test_superadmin_sends_to_a_club_after_preview_and_confirm[desktop]; reviewer: -
+- 1794951639 | REVIEW | victor-2 | heartbeat; lease until 1795038039
