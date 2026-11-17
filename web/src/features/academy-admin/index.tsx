@@ -38,6 +38,7 @@ import { ResourceBoard } from "@/features/resources/ResourceBoard";
 import { CampusLayout } from "@/layouts";
 
 import { formatClock, parseClock, startFromUrl } from "./clock";
+import { ClubMailTab } from "@/features/mail";
 import { useSortable } from "./sortable";
 
 export const order = 50;
@@ -87,7 +88,7 @@ interface EnrolleeOut {
   enrolled_at: string;
 }
 
-type Tab = "identidad" | "contenido" | "recursos" | "inscritos";
+type Tab = "identidad" | "contenido" | "recursos" | "inscritos" | "correos";
 
 function move<T extends { id: number }>(items: T[], index: number, delta: -1 | 1): number[] {
   const ids = items.map((item) => item.id);
@@ -968,7 +969,7 @@ function AcademyPanel() {
   const slug = params.slug ?? user?.academy_slug ?? null;
   const [load, setLoad] = useState<PanelLoad | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const tab: Tab = (["identidad", "contenido", "recursos", "inscritos"] as const).find((t) => t === search.get("tab")) ?? "contenido";
+  const tab: Tab = (["identidad", "contenido", "recursos", "inscritos", "correos"] as const).find((t) => t === search.get("tab")) ?? "contenido";
   // An academy admin can only manage their own club: say so instead of opening a panel whose tabs all 403.
   const ownAcademyId = user?.role === "academy_admin" ? (user.academy_id ?? -1) : null;
 
@@ -1010,6 +1011,7 @@ function AcademyPanel() {
     { id: "identidad", label: "Identidad" },
     { id: "recursos", label: "Recursos" },
     { id: "inscritos", label: "Inscritos" },
+    { id: "correos", label: "Correos" },
   ];
 
   return (
@@ -1024,7 +1026,7 @@ function AcademyPanel() {
             Ver como miembro
           </ButtonLink>
         </div>
-        <div role="tablist" aria-label="Secciones del panel" className="flex w-full max-w-md gap-1 rounded-full bg-line/50 p-1">
+        <div role="tablist" aria-label="Secciones del panel" className="flex w-full max-w-xl gap-1 rounded-full bg-line/50 p-1">
           {tabs.map(({ id, label }) => (
             <button
               key={id}
@@ -1047,6 +1049,7 @@ function AcademyPanel() {
               <ResourceBoard slug={academy.slug} academyId={academy.id} canManage mascotUrl={academy.mascot_url} />
             )}
             {tab === "inscritos" && <EnrolleesTab academy={academy} />}
+            {tab === "correos" && <ClubMailTab academy={{ id: academy.id, name: academy.name }} />}
           </section>
         </AnimatedHeight>
       </div>

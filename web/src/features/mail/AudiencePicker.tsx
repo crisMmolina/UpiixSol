@@ -212,11 +212,14 @@ export function AudiencePicker({
   onChange,
   academies,
   kinds = ["all", "academy", "role", "individual"],
+  ownClub,
 }: {
   draft: AudienceDraft;
   onChange: (next: AudienceDraft) => void;
   academies: AcademyChoice[];
   kinds?: AudienceKind[];
+  /** A club admin's own club: the "academy" choice is labelled "Mi club" and needs no select. */
+  ownClub?: boolean;
 }) {
   const group = useId();
   return (
@@ -228,12 +231,12 @@ export function AudiencePicker({
             key={kind}
             className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-semibold has-[:focus-visible]:outline-3 ${draft.kind === kind ? "border-primary bg-primary/10" : "border-line bg-surface hover:bg-subtle"}`}
           >
-            <input type="radio" name={group} checked={draft.kind === kind} onChange={() => onChange({ ...draft, kind })} className="size-4 accent-[var(--color-link)]" />
-            {KIND_LABEL[kind]}
+            <input type="radio" name={group} checked={draft.kind === kind} onChange={() => onChange({ ...draft, kind, academyId: kind === "academy" && ownClub ? (academies[0]?.id ?? null) : draft.academyId })} className="size-4 accent-[var(--color-link)]" />
+            {kind === "academy" && ownClub ? "Mi club" : KIND_LABEL[kind]}
           </label>
         ))}
       </div>
-      {draft.kind === "academy" && (
+      {draft.kind === "academy" && !ownClub && (
         <SelectField label="Club" value={draft.academyId ?? ""} onChange={(e) => onChange({ ...draft, academyId: e.target.value ? Number(e.target.value) : null })}>
           <option value="">Elige un club</option>
           {academies.map((a) => (
