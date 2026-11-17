@@ -58,6 +58,21 @@ usuarios equivalen a unas 3.4 peticiones por segundo.
   usuarios la memoria osciló entre unos 40 y 511 MiB. No hubo OOM-kill visible: el contenedor siguió vivo hasta el
   final de cada corrida. No se verificó con `docker inspect`.
 
+### Repetición del Verify (2026-11-17, rama con `main` integrado)
+
+`UAK_PORT=8700 bash perf/run_local.sh 20 60s`, mismos límites (0.1 CPU, 512 MiB). Salida: exit 1.
+
+| Usuarios | Ola de login | Sin login | Peticiones (veredicto) | p50 (ms) | p95 (ms) | Tasa de error | Veredicto |
+|---|---|---|---|---|---|---|---|
+| 20 | 132.5 s | 0 | 201 | 4100 | 7100 | 0.50 % | FALLA (p95) |
+
+- El único error fue `GET /api/lessons/[id]`: `RemoteDisconnected` (el servidor cerró la conexión sin responder).
+- p95 por endpoint: `/api/academies/[slug]/home` 11000 ms (26 peticiones), `/api/events` 7500, `/api/home` 7000,
+  `/api/lessons/[id]` 6600, `/api/lessons/[id]/complete` 6700, `/api/channels/[id]/posts` 6200.
+- RAM: llegó a 511.9 MiB en la ola de login y bajó a unos 82 MiB en la ventana, igual que en las corridas anteriores.
+- Hizo la mitad de peticiones que la corrida del 2026-11-12 con latencias más altas. No se investigó la causa
+  (una sola corrida, mismo equipo con otra carga). La conclusión no cambia: 20 usuarios ya pasan el límite.
+
 ### Endpoints más lentos (p95 de la ventana)
 
 | Usuarios | Endpoint | p95 (ms) | Peticiones |
