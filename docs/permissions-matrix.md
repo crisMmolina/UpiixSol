@@ -85,4 +85,4 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/mail/status` | 🔒 | ❌ | ✅ | ✅ | ✅ | daily quota (UPS-074) |
-| GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees; email only for superadmin |
+| GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins; email only for superadmin |

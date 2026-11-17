@@ -23,7 +23,7 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, false, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -126,7 +126,8 @@ class ResolvedRecipient:
 
 
 def check_scope(db: Session, sender: User, audience: Audience) -> None:
-    """Superadmin: any audience. academy_admin: their club, or its enrollees plus outside addresses."""
+    """Superadmin: any audience. academy_admin: their club, or its enrollees and co-admins plus outside
+    addresses (co-admins: human decision, victor 2026-11-17)."""
     if sender.role == Role.superadmin:
         return
     club = sender.academy_id if sender.role == Role.academy_admin else None
@@ -136,21 +137,23 @@ def check_scope(db: Session, sender: User, audience: Audience) -> None:
         return
     if isinstance(audience, IndividualAudience):
         wanted = set(audience.user_ids)
-        if wanted <= _enrolled(db, club, wanted):
+        if wanted <= _pickable(db, club, wanted):
             return
     raise AppError(403)
 
 
-def _enrolled(db: Session, academy_id: int, user_ids: set[int]) -> set[int]:
+def _club_members(academy_id: int | None):
+    """Who an academy_admin may pick: the club's enrollees and its co-admins (a SQL condition on User)."""
+    if academy_id is None:  # `== None` would compile to IS NULL and match every club-less admin
+        return false()
+    enrolled = select(Enrollment.user_id).where(Enrollment.academy_id == academy_id)
+    return or_(User.id.in_(enrolled), and_(User.role == Role.academy_admin, User.academy_id == academy_id))
+
+
+def _pickable(db: Session, academy_id: int, user_ids: set[int]) -> set[int]:
     found: set[int] = set()
     for chunk in _chunks(sorted(user_ids)):
-        found.update(
-            db.scalars(
-                select(Enrollment.user_id).where(
-                    Enrollment.academy_id == academy_id, Enrollment.user_id.in_(chunk)
-                )
-            )
-        )
+        found.update(db.scalars(select(User.id).where(User.id.in_(chunk), _club_members(academy_id))))
     return found
 
 
@@ -248,17 +251,17 @@ def _chunks[T](items: list[T]) -> Iterable[list[T]]:
 def search_recipients(
     db: Session, sender: User, q: str | None, cursor: str | None, limit: int
 ) -> Page[RecipientOut]:
-    """Active users the sender may pick: everyone for a superadmin, the club's enrollees otherwise.
+    """Active users the sender may pick: everyone for a superadmin, the club's enrollees
+    and co-admins otherwise.
 
     Only a superadmin's search matches (and returns) addresses; the others match name and nickname, so
     the search cannot be used to find out whether an address belongs to someone.
     """
     is_super = sender.role == Role.superadmin
-    stmt = select(User).where(User.is_active.is_(True))
+    # The sender is left out: mailing yourself is the test send (POST /api/mail/test), not a recipient.
+    stmt = select(User).where(User.is_active.is_(True), User.id != sender.id)
     if not is_super:
-        stmt = stmt.where(
-            User.id.in_(select(Enrollment.user_id).where(Enrollment.academy_id == sender.academy_id))
-        )
+        stmt = stmt.where(_club_members(sender.academy_id))
     if q and q.strip():
         # LIKE wildcards in the search are literal characters (as app/services/admin.py does).
         escaped = q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

@@ -424,7 +424,12 @@ READ_MATRIX: list[Rule] = [
     Rule("GET", "/api/admin/users", SUPER),
     Rule("GET", "/api/admin/home", SUPER),
     Rule("GET", "/api/mail/status", SENDERS, note="daily quota (UPS-074)"),
-    Rule("GET", "/api/mail/recipients", SENDERS, note="own club's enrollees; email only for superadmin"),
+    Rule(
+        "GET",
+        "/api/mail/recipients",
+        SENDERS,
+        note="own club's enrollees and co-admins; email only for superadmin",
+    ),
 ]
 
 

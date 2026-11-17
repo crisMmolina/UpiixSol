@@ -332,3 +332,22 @@ def test_academy_admin_preview_does_not_confirm_typed_addresses(
         "count": 1,
         "excluded": {"inactive": 0, "suppressed": 1, "blocked_domain": 0},
     }
+
+
+def test_academy_admin_can_pick_a_co_admin_of_their_club(
+    as_admin_ia: TestClient, db: Session, seeded: dict
+) -> None:
+    """Human decision (victor 2026-11-17, plan PR #128): own co-admins are pickable, other clubs' are not."""
+    robotica = _robotica(db)
+    co_admin = _person(
+        db, "jefa@ipn.mx", role=Role.academy_admin, academy_id=seeded["academy_id"], full_name="Jefa Club"
+    )
+    other = _person(
+        db, "jefe.robot@ipn.mx", role=Role.academy_admin, academy_id=robotica, full_name="Jefe Robot"
+    )
+    assert _preview(as_admin_ia, {"kind": "individual", "user_ids": [co_admin.id]})["count"] == 1
+    response = as_admin_ia.post(PREVIEW, json={"kind": "individual", "user_ids": [co_admin.id, other.id]})
+    assert response.status_code == 403
+    found = as_admin_ia.get(RECIPIENTS, params={"q": "jef"}).json()["items"]
+    assert [item["id"] for item in found] == [co_admin.id]
+    assert "email" not in found[0]
