@@ -7,7 +7,7 @@ from collections.abc import Iterator
 import pytest
 from playwright.sync_api import Page, expect
 
-from e2e.conftest import Site
+from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import sign_in
 
 SUPERADMIN = "superadmin1@upiixsol.dev"
@@ -19,6 +19,7 @@ OUTSIDE = "invitado@example.com"
 @pytest.fixture(scope="module")
 def mail_env() -> Iterator[None]:
     with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("SEED_DEFAULT_PASSWORD", SEED_PASSWORD)  # the local .env may set another one
         patch.setenv("MAIL_ENABLED", "true")
         patch.setenv("MAIL_BACKEND", "console")
         patch.setenv("MAIL_BLOCKED_DOMAINS", "blocked.invalid")  # the seed accounts are @upiixsol.dev
@@ -59,7 +60,7 @@ def test_superadmin_sends_to_a_club_after_preview_and_confirm(site: Site) -> Non
     page.get_by_role("radio", name="Un club").check()
     page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
     compose(page, CLUB_SUBJECT)
-    expect(page.get_by_text(re.compile(r"\d+ / 20[\s\u00a0\u202f]?000"))).to_be_visible()
+    expect(page.get_by_text(re.compile(r"\d+ / 20[,\s\u00a0\u202f]?000"))).to_be_visible()
     site.shot("mail-composer")
     review_and_confirm(page, r"\d+ personas?")
     history = page.get_by_role("region", name="Historial")

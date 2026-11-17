@@ -152,6 +152,7 @@ function PersonSearch({ draft, onChange }: { draft: AudienceDraft; onChange: (ne
       </div>
 
       <form
+        noValidate
         className="flex flex-wrap items-start gap-2"
         onSubmit={(e) => {
           e.preventDefault();
