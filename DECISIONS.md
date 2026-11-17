@@ -95,3 +95,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794940895 | UPS-082 | tailwind build-only packages -> devDependencies | Why: no picomatch patch exists (<=4.0.7, first_patched null); --force downgrades vite
 - 1794941236 | UPS-074 | academy_admin individual = enrollees only (spec); outside addresses never looked up among users | Why: spec §Audiences; avoid oracle
 - 1794942252 | UPS-073 | spike §3 unverified: per-recipient calls below 100, no custom header above; switch UNSUBSCRIBE_HEADER_IN_BATCH | Why: plan fallback; one function builds headers
+- 1794942360 | UPS-074 | non-superadmin preview blind to typed-address dedup/suppression; individual = enrollees only | Why: security review oracle findings; spec §Audiences
