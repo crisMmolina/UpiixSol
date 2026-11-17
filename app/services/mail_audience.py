@@ -164,7 +164,7 @@ def resolve_audience(db: Session, sender: User, audience: Audience) -> list[Reso
 
 def preview(db: Session, sender: User, audience: Audience) -> PreviewOut:
     check_scope(db, sender, audience)
-    recipients, excluded = _compute(db, audience)
+    recipients, excluded = _compute(db, audience, blind_typed=sender.role != Role.superadmin)
     return PreviewOut(count=len(recipients), excluded=excluded)
 
 
@@ -181,27 +181,39 @@ def _users_stmt(audience: Audience) -> Select | None:
     return stmt.where(User.id.in_(audience.user_ids)) if audience.user_ids else None
 
 
-def _compute(db: Session, audience: Audience) -> tuple[list[ResolvedRecipient], ExcludedOut]:
+def _compute(
+    db: Session, audience: Audience, *, blind_typed: bool = False
+) -> tuple[list[ResolvedRecipient], ExcludedOut]:
+    """Deliverable recipients and the exclusions. Campus users come first, so a typed address that is also
+    one of them is sent once, as that user; typed addresses are never looked up among other users.
+
+    `blind_typed` (preview for a non-superadmin): typed addresses are deduplicated only among themselves
+    and not checked against suppressions, so the count never confirms whose address a guess is or that it
+    unsubscribed (security review UPS-074). The list that is actually sent always applies both.
+    """
     stmt = _users_stmt(audience)
-    # (user_id, email, name, is_active). Campus users come first, so a typed address that is also one
-    # of them counts once, as that user. Typed addresses are never looked up among other users (no oracle).
-    candidates: list[tuple[int | None, str, str, bool]] = [
-        (row.id, normalize_email(row.email), row.full_name, row.is_active)
+    # (user_id, email, name, is_active, typed)
+    candidates: list[tuple[int | None, str, str, bool, bool]] = [
+        (row.id, normalize_email(row.email), row.full_name, row.is_active, False)
         for row in (db.execute(stmt) if stmt is not None else ())
     ]
     if isinstance(audience, IndividualAudience):
         candidates += [
-            (None, email, email.partition("@")[0], True) for email in map(normalize_email, audience.emails)
+            (None, email, email.partition("@")[0], True, True)
+            for email in map(normalize_email, audience.emails)
         ]
-    suppressed = _suppressed(db, {email for _, email, _, _ in candidates})
+    suppressed = _suppressed(
+        db, {email for _, email, _, _, typed in candidates if not (blind_typed and typed)}
+    )
     blocked = get_settings().mail_blocked_domains
     excluded = ExcludedOut()
-    seen: set[str] = set()
+    seen: set[tuple[str, bool]] = set()
     kept: list[ResolvedRecipient] = []
-    for user_id, email, name, is_active in candidates:
-        if email in seen:
+    for user_id, email, name, is_active, typed in candidates:
+        key = (email, typed and blind_typed)
+        if key in seen:
             continue
-        seen.add(email)
+        seen.add(key)
         if not is_active:
             excluded.inactive += 1
         elif _is_blocked(email, blocked):

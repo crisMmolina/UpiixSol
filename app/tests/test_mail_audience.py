@@ -314,3 +314,21 @@ def test_recipient_search_without_query_pages_the_club(
     names = [item["full_name"] for item in first["items"] + second["items"]]
     assert names == sorted(names) and len(set(names)) == len(names)
     assert {"Socio 0", "Socio 1", "Socio 2"} <= set(names)
+
+
+def test_academy_admin_preview_does_not_confirm_typed_addresses(
+    as_admin_ia: TestClient, as_superadmin: TestClient, db: Session, seeded: dict
+) -> None:
+    mine = _person(db, "mio@ipn.mx", enrolled=(seeded["academy_id"],))
+    db.add(MailSuppression(email="rebote@gmail.com", reason="bounced"))
+    db.flush()
+    audience = {"kind": "individual", "user_ids": [mine.id], "emails": ["MIO@ipn.mx", "rebote@gmail.com"]}
+    # A guess that is the member's address, or a suppressed one, changes nothing an admin can see.
+    assert _preview(as_admin_ia, audience) == {
+        "count": 3,
+        "excluded": {"inactive": 0, "suppressed": 0, "blocked_domain": 0},
+    }
+    assert _preview(as_superadmin, audience) == {
+        "count": 1,
+        "excluded": {"inactive": 0, "suppressed": 1, "blocked_domain": 0},
+    }
