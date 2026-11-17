@@ -36,7 +36,7 @@ All under `/api/mail`, JSON, errors `{"error": {...}}`, lists = cursor pages ≤
 |---|---|---|
 | `GET /status` | superadmin, academy_admin | `{enabled, daily_limit, sent_today, remaining}` |
 | `POST /audience/preview` | superadmin; academy_admin own club | `Audience` → `{count, excluded: {inactive, suppressed, blocked_domain}}` |
-| `GET /recipients?q=` | superadmin (all users); academy_admin (own club's enrollees) | page of `{id, full_name, nickname, avatar_url}`; email only for superadmin |
+| `GET /recipients?q=` | superadmin (all users); academy_admin (own club's enrollees and co-admins) | page of `{id, full_name, nickname, avatar_url}`; email only for superadmin |
 | `POST /test` | superadmin, academy_admin | `{subject, body}` → 202, sent to the caller only |
 | `POST /campaigns` | same as preview | `{subject, body, audience}` → 201 `Campaign` (`draft`) |
 | `POST /campaigns/{id}/send` · `/resume` | the campaign's sender or superadmin | → 202 `Campaign`; idempotent |

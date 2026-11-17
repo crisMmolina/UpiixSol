@@ -15,7 +15,7 @@ Today the club reaches its people through WhatsApp groups and personal mail. A s
 ## Acceptance criteria (EARS)
 Audiences and permissions
 - When a superadmin asks for the audience preview, the system shall return the number of recipients computed with a DB query, for one of: `all` (every active user), `academy` (active users enrolled in that club plus its academy_admins), `role` (`superadmin`, `academy_admin` or `member`), `individual` (campus user ids plus outside addresses typed by hand: at most 50 entries in total, at most 20 outside addresses, each a valid email).
-- If an academy_admin requests `all`, `role`, another club, or an `individual` audience with a campus user who is not enrolled in their own club (`users.academy_id`), the system shall respond 403 (outside addresses are allowed); a member shall get 403 and an anonymous caller 401, on every email endpoint.
+- If an academy_admin requests `all`, `role`, another club, or an `individual` audience with a campus user who is neither enrolled in their own club (`users.academy_id`) nor a co-admin of it, the system shall respond 403 (outside addresses and the club's co-admins are allowed; decided by victor 2026-11-17); a member shall get 403 and an anonymous caller 401, on every email endpoint.
 - While computing any audience, the system shall exclude inactive users, every suppressed address (unsubscribed, hard bounce or complaint; suppressions are kept per normalized email, so they cover outside addresses too) and addresses on non-deliverable domains (`MAIL_BLOCKED_DOMAINS`, default `upiixsol.dev`, the seed accounts), and count each address once.
 - While a sender who is not a superadmin builds an `individual` audience, the system shall never return the email of a campus user (they pick by name or nickname); outside addresses are shown only to whoever typed them and to superadmins.
 
@@ -55,5 +55,7 @@ History and delivery status
 - [x] Outside addresses: yes, for superadmin and academy_admin, at most 20 per campaign · victor 2026-11-16
 - [x] `https://www.upiixsol.com` already points to the Render service: `PUBLIC_BASE_URL=https://www.upiixsol.com` · victor 2026-11-16
 - [x] Unsubscribed addresses are excluded from every campaign, direct ones included (an outside address has no other way to opt out) · default, victor can change it in the plan PR
+- [x] Club admins may also pick the co-admins of their own club in `individual` · victor 2026-11-17
+- [x] For a club admin, the preview count of typed outside addresses may be slightly higher than the final list (suppressed outside addresses are not revealed, so the preview is no oracle) · accepted by victor 2026-11-17
 - [ ] Reply-To address (draft: none, so replies go to `avisos@mg.upiixsol.com` and are dropped; or a real inbox of the board) · victor
 - [ ] Mailgun plan and region (US `api.mailgun.net` or EU `api.eu.mailgun.net`); its daily limit sets `MAIL_DAILY_LIMIT`. Any paid plan is a spend a human authorizes · victor
