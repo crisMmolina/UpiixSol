@@ -407,11 +407,19 @@ export interface CommentOut {
 }
 
 // ── Email channel (spec 003, /api/mail) ──────────────────────
+/** What the sender submits. */
 export type Audience =
   | { kind: "all" }
   | { kind: "academy"; academy_id: number }
   | { kind: "role"; role: Role }
   | { kind: "individual"; user_ids: number[]; emails: string[] }; // ≤ 50 entries in total, ≤ 20 emails
+
+/** What the API returns: outside addresses are never echoed back, only how many there were. */
+export type AudienceOut =
+  | { kind: "all" }
+  | { kind: "academy"; academy_id: number }
+  | { kind: "role"; role: Role }
+  | { kind: "individual"; user_ids: number[]; email_count: number };
 
 export type CampaignStatus = "draft" | "sending" | "sent" | "partial" | "failed";
 export type MailRecipientStatus =
@@ -431,7 +439,7 @@ export interface CampaignIn {
 export interface Campaign {
   id: number;
   subject: string;
-  audience: Audience;
+  audience: AudienceOut;
   sender: PublicUser | null;
   status: CampaignStatus;
   recipient_count: number;

@@ -68,6 +68,7 @@ class MailRecipient(Base):
     __table_args__ = (
         UniqueConstraint("campaign_id", "email"),
         CheckConstraint(_one_of("status", RECIPIENT_STATUSES), name="status"),
+        CheckConstraint("email = lower(email)", name="email_lowercase"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -93,7 +94,12 @@ class MailSuppression(Base):
     """Addresses that must never get club email again; covers campus users and outside addresses."""
 
     __tablename__ = "mail_suppressions"
-    __table_args__ = (CheckConstraint(_one_of("reason", SUPPRESSION_REASONS), name="reason"),)
+    __table_args__ = (
+        CheckConstraint(_one_of("reason", SUPPRESSION_REASONS), name="reason"),
+        CheckConstraint(
+            "email = lower(email)", name="email_lowercase"
+        ),  # a path that skips normalize_email fails
+    )
 
     email: Mapped[str] = mapped_column(String(254), primary_key=True)  # normalized lowercase
     reason: Mapped[str] = mapped_column(String(12), nullable=False)

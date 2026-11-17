@@ -79,6 +79,7 @@ def upgrade() -> None:
             "status IN ('pending', 'accepted', 'delivered', 'failed', 'bounced', 'complained')",
             name=op.f("ck_mail_recipients_status"),
         ),
+        sa.CheckConstraint("email = lower(email)", name=op.f("ck_mail_recipients_email_lowercase")),
         sa.ForeignKeyConstraint(
             ["campaign_id"],
             ["mail_campaigns.id"],
@@ -101,6 +102,7 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "reason IN ('unsubscribed', 'bounced', 'complained')", name=op.f("ck_mail_suppressions_reason")
         ),
+        sa.CheckConstraint("email = lower(email)", name=op.f("ck_mail_suppressions_email_lowercase")),
         sa.ForeignKeyConstraint(
             ["campaign_id"],
             ["mail_campaigns.id"],

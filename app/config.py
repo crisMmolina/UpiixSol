@@ -73,6 +73,12 @@ class Settings(BaseSettings):
             weak_seed = len(seed) < 12 or seed == DOCUMENTED_SEED_PASSWORD
             if "seed_default_password" not in self.model_fields_set or weak_seed:
                 raise ValueError("SEED_DEFAULT_PASSWORD (>= 12 chars, not the default) is required in prod")
+            if self.mail_enabled and not (
+                self.mailgun_api_base.startswith("https://") and self.public_base_url.startswith("https://")
+            ):
+                raise ValueError(
+                    "MAILGUN_API_BASE and PUBLIC_BASE_URL must be https:// when mail is enabled in prod"
+                )
             if self.mail_enabled and self.mail_backend == "mailgun":
                 missing = [
                     name

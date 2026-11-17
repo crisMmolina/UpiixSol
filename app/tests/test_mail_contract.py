@@ -302,3 +302,33 @@ def test_unsubscribe_token_is_random_and_only_its_hash_is_stored() -> None:
 )
 def test_normalize_email_lowercases_and_trims(raw: str, expected: str) -> None:
     assert mailer.normalize_email(raw) == expected
+
+
+def test_stored_emails_must_be_lowercase(db: Session) -> None:
+    campaign = _campaign(db)
+    db.add(MailSuppression(email="Ana@ipn.mx", reason="unsubscribed"))
+    with pytest.raises(IntegrityError):
+        db.flush()
+    db.rollback()
+    campaign = _campaign(db)
+    db.add(_recipient(campaign.id, "Ana@ipn.mx", "f" * 64))
+    with pytest.raises(IntegrityError):
+        db.flush()
+    db.rollback()
+
+
+def test_transport_value_objects_do_not_repr_addresses_or_tokens() -> None:
+    message = mailer.MailMessage(subject="Secreto", html="<p>x</p>", text="x")
+    person = mailer.MailRecipientVars(1, "ana@ipn.mx", "Ana", "https://x.test/baja?t=tok")
+    shown = repr(message) + repr(person)
+    for private in ("Secreto", "ana@ipn.mx", "Ana", "tok"):
+        assert private not in shown
+
+
+def test_prod_mail_needs_https_urls(clean_env: pytest.MonkeyPatch) -> None:
+    _prod_mailgun_env(clean_env, MAILGUN_API_BASE="http://api.mailgun.net")
+    with pytest.raises(ValidationError, match="https"):
+        Settings(_env_file=None)
+    _prod_mailgun_env(clean_env, PUBLIC_BASE_URL="http://www.upiixsol.com")
+    with pytest.raises(ValidationError, match="https"):
+        Settings(_env_file=None)

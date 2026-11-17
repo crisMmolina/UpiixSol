@@ -27,9 +27,9 @@ MAX_BATCH = 1000  # Mailgun's limit of recipients per call
 class MailMessage:
     """The rendered email, the same for every recipient of a batch (per-person parts are variables)."""
 
-    subject: str
-    html: str
-    text: str
+    subject: str = field(repr=False)
+    html: str = field(repr=False)
+    text: str = field(repr=False)
     campaign_id: int | None = None  # sent to the provider as a tag so webhooks find the campaign
 
 
@@ -38,9 +38,9 @@ class MailRecipientVars:
     """One recipient of a batch: `%recipient.name%` and `%recipient.unsubscribe_url%` come from here."""
 
     recipient_id: int  # mail_recipients.id
-    email: str
-    name: str
-    unsubscribe_url: str
+    email: str = field(repr=False)  # repr=False: a stray "%r" in a log must not leak the address or the token
+    name: str = field(repr=False)
+    unsubscribe_url: str = field(repr=False)
 
 
 @dataclass
