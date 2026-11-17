@@ -108,3 +108,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794952588 | UPS-079 | ownClub prop on picker/composer/history | Why: reuse UPS-078 pieces
 - 1794953773 | UPS-060 | Verify exit 1 reported as the real breaking point, not hidden | Why: criteria: numbers only from real runs; 20 users exceeds p95 1500 ms
 - 1794954588 | UPS-081 | finished_at cutoff; snapshot only when rows exist | Why: second run must not zero the snapshot
+- 1794954598 | UPS-080 | MAIL_ENABLED and MAILGUN_TEST_MODE sync:false so redeploys never override the dashboard or rollback | Why: blueprint value would overwrite manual flips
