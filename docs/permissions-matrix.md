@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **70/70 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -72,6 +72,12 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | DELETE | `/api/posts/{post_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
 | DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ✅ | ❌ | ✅ | author, or the moderators of its channel (UPS-070) |
 | POST | `/api/mail/audience/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | superadmin: any audience; academy_admin: own club, its enrollees and outside addresses |
+| POST | `/api/mail/test` | 🔒 | ❌ | ✅ | ✅ | ✅ | only to the caller's own address |
+| POST | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ❌ | ✅ | draft; same audience scope as the preview |
+| POST | `/api/mail/campaigns/{campaign_id}/send` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
+| POST | `/api/mail/campaigns/{campaign_id}/resume` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
+| POST | `/api/mail/unsubscribe` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | token in ?t=, same 200 for unknown tokens; rate-limited per IP |
+| PUT | `/api/mail/preferences` | 🔒 | ✅ | ✅ | ✅ | ✅ | the caller's own address only |
 
 ## Lecturas sensibles
 
@@ -86,3 +92,5 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/mail/status` | 🔒 | ❌ | ✅ | ✅ | ✅ | daily quota (UPS-074) |
 | GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins; email only for superadmin |
+| GET | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ✅ | ✅ | history: superadmin all, academy_admin own club (UPS-075) |
+| GET | `/api/mail/campaigns/{campaign_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a campaign of the club (UPS-075) |

@@ -18,12 +18,13 @@ import { Wordmark } from "@/lib/brand";
 import { AcademyTheme, meetsAA, safeAssetPath } from "@/lib/theme";
 import type { AcademyOut, HomeContentOut, Page, PasswordResetOut, Role, UserAdminOut } from "@/lib/types";
 import { CampusLayout } from "@/layouts";
+import { MailTab } from "@/features/mail";
 
 import { SiteBrandTab } from "./SiteBrandTab";
 
 export const order = 60;
 
-type Tab = "academias" | "usuarios" | "inicio" | "marca";
+type Tab = "academias" | "usuarios" | "correos" | "inicio" | "marca";
 
 const ROLE_LABEL: Record<Role, string> = {
   superadmin: "Superadmin",
@@ -533,10 +534,11 @@ function HomeTab() {
 
 function SuperadminPage() {
   const [search, setSearch] = useSearchParams();
-  const tab: Tab = (["academias", "usuarios", "inicio", "marca"] as const).find((t) => t === search.get("tab")) ?? "academias";
+  const tab: Tab = (["academias", "usuarios", "correos", "inicio", "marca"] as const).find((t) => t === search.get("tab")) ?? "academias";
   const tabs: { id: Tab; label: string }[] = [
     { id: "academias", label: "Clubes" },
     { id: "usuarios", label: "Usuarios" },
+    { id: "correos", label: "Correos" },
     { id: "inicio", label: "Página principal" },
     { id: "marca", label: "Marca del sitio" },
   ];
@@ -563,6 +565,7 @@ function SuperadminPage() {
       <section role="tabpanel">
         {tab === "academias" && <AcademiesTab />}
         {tab === "usuarios" && <UsersTab />}
+        {tab === "correos" && <MailTab />}
         {tab === "inicio" && <HomeTab />}
         {tab === "marca" && <SiteBrandTab />}
       </section>
