@@ -183,7 +183,7 @@ No hay rúbrica de concurso; estos son los **criterios de aceptación** de la en
 
 **Reproductor de clase** (referencia de layout `docs/ref/player-reference.png`): sidebar izquierdo con título de la ruta, barra y % completado, buscador de clases, módulos plegables con check y contador `completadas/total`, clases con ícono de tipo y duración; área principal con título, video 16:9, controles Anterior/Siguiente/Marcar completada, y debajo "Descripción" y "Recursos de la clase". En móvil el sidebar se vuelve un drawer.
 
-- Out: pagos, certificados, exámenes/calificaciones, chat en tiempo real (la comunidad se refresca al recargar o cada 30 s), mensajes directos, notificaciones por correo, app móvil nativa, recuperación de contraseña por correo.
+- Out: pagos, certificados, exámenes/calificaciones, chat en tiempo real (la comunidad se refresca al recargar o cada 30 s), mensajes directos, notificaciones automáticas por correo (los envíos manuales de admins sí entran: `docs/specs/003-correo/`, decidido por victor 2026-11-16), app móvil nativa, recuperación de contraseña por correo.
 - Simulated with `demo_data`: academia UpiixIA con 1 ruta, 2 módulos, 4 clases, 3 recursos, 2 eventos, 5 posts; 3 proyectos en la galería; 1 entrada de blog; cuentas de §2.3.
 - UI language: español (México).
 - Ethics/data: la boleta y el correo son datos personales: solo los ven el propio usuario y los superadmins; en la comunidad solo se muestra nickname y foto. Aviso de privacidad simple en el registro. Los admins pueden ocultar posts; queda registro de quién lo ocultó. Contraseñas con hash; las de seed se deben cambiar antes de producción.
