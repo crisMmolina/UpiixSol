@@ -59,7 +59,7 @@ def test_superadmin_sends_to_a_club_after_preview_and_confirm(site: Site) -> Non
     page.get_by_role("radio", name="Un club").check()
     page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
     compose(page, CLUB_SUBJECT)
-    expect(page.get_by_text(re.compile(r"\d+ / 20[  ]?000"))).to_be_visible()
+    expect(page.get_by_text(re.compile(r"\d+ / 20[\s\u00a0\u202f]?000"))).to_be_visible()
     site.shot("mail-composer")
     review_and_confirm(page, r"\d+ personas?")
     history = page.get_by_role("region", name="Historial")
