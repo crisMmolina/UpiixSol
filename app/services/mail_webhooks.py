@@ -16,11 +16,11 @@ import time
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models.mail import MailRecipient
-from app.services.mail_suppressions import add_suppression
+from app.models.mail import MailRecipient, MailSuppression
 from app.services.mailer import normalize_email
 
 log = logging.getLogger("app.mail.webhook")
@@ -78,6 +78,16 @@ def verify(body: object) -> dict[str, Any] | None:
     return event
 
 
+def _suppress(db: Session, email: str, reason: str, campaign_id: int | None) -> None:
+    if db.get(MailSuppression, email) is not None:
+        return  # already suppressed (maybe by the person's choice): keep that row
+    try:
+        with db.begin_nested():
+            db.add(MailSuppression(email=email, reason=reason, campaign_id=campaign_id))
+    except IntegrityError:
+        pass  # a concurrent request added it first
+
+
 def _campaign_id(event: dict[str, Any]) -> int | None:
     variables = event.get("user-variables")
     raw = variables.get("campaign_id") if isinstance(variables, dict) else None
@@ -121,7 +131,7 @@ def apply_event(db: Session, event: dict[str, Any]) -> None:
         recipient.error_code = _text(event.get("reason"))[:40] or None if status != "delivered" else None
     if reason is not None:
         # By address, even if the campaign is unknown or its rows were purged: it protects the person.
-        add_suppression(db, email, reason, recipient.campaign_id if recipient is not None else None)
+        _suppress(db, email, reason, recipient.campaign_id if recipient is not None else None)
     db.flush()
     log.info(
         "mail webhook event=%s campaign=%s matched=%s", event.get("event"), campaign_id, recipient is not None

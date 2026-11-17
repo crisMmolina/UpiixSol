@@ -28,12 +28,12 @@ class PreferencesOut(BaseModel):
     receive_club_email: bool
 
 
-def add_suppression(db: Session, email: str, reason: str, campaign_id: int | None) -> None:
+def _add_suppression(db: Session, email: str, campaign_id: int | None) -> None:
     if db.get(MailSuppression, email) is not None:
         return  # already suppressed (maybe for a stronger reason): keep that row
     try:
         with db.begin_nested():
-            db.add(MailSuppression(email=email, reason=reason, campaign_id=campaign_id))
+            db.add(MailSuppression(email=email, reason="unsubscribed", campaign_id=campaign_id))
     except IntegrityError:
         pass  # a concurrent request added it first
 
@@ -50,7 +50,7 @@ def unsubscribe_by_token(db: Session, token: str | None) -> None:
         )
     ).first()
     if recipient is not None:
-        add_suppression(db, normalize_email(recipient.email), "unsubscribed", recipient.campaign_id)
+        _add_suppression(db, normalize_email(recipient.email), recipient.campaign_id)
 
 
 def get_preference(db: Session, user: User) -> PreferencesOut:
@@ -64,6 +64,6 @@ def set_preference(db: Session, user: User, receive: bool) -> PreferencesOut:
         if row is not None and row.reason == "unsubscribed":
             db.delete(row)
     else:
-        add_suppression(db, email, "unsubscribed", None)
+        _add_suppression(db, email, None)
     db.flush()
     return get_preference(db, user)
