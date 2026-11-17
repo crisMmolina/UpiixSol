@@ -5,6 +5,8 @@ Spec: docs/specs/003-correo/plan.md §Data and migrations, §Contracts. UPS-073.
 
 import hashlib
 import logging
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -235,7 +237,10 @@ def test_secrets_never_appear_in_validation_errors(clean_env: pytest.MonkeyPatch
     assert API_KEY not in str(raised.value) and SIGNING_KEY not in str(raised.value)
 
 
-def test_console_transport_logs_count_without_addresses(caplog: pytest.LogCaptureFixture) -> None:
+def test_console_transport_logs_count_without_addresses(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(mailer.logger, "disabled", False)  # an earlier alembic run may have disabled it
     message = mailer.MailMessage(subject="Secreto del club", html="<p>Hola</p>", text="Hola", campaign_id=7)
     recipients = [
         mailer.MailRecipientVars(
@@ -263,8 +268,13 @@ def test_get_mail_transport_follows_the_backend(clean_env: pytest.MonkeyPatch) -
         assert isinstance(mailer.get_mail_transport(), mailer.ConsoleTransport)
         clean_env.setenv("MAIL_BACKEND", "mailgun")
         get_settings.cache_clear()
-        with pytest.raises(RuntimeError, match="UPS-073"):  # until app/services/mailgun.py exists
+        clean_env.setitem(sys.modules, "app.services.mailgun", None)  # import → ModuleNotFoundError
+        with pytest.raises(RuntimeError, match="UPS-073"):  # the module is missing
             mailer.get_mail_transport()
+        fake = types.ModuleType("app.services.mailgun")
+        fake.MailgunTransport = type("MailgunTransport", (), {})  # type: ignore[attr-defined]
+        clean_env.setitem(sys.modules, "app.services.mailgun", fake)
+        assert isinstance(mailer.get_mail_transport(), fake.MailgunTransport)  # type: ignore[attr-defined]
     finally:
         get_settings.cache_clear()
 
