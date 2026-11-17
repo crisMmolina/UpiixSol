@@ -4,7 +4,7 @@ import secrets
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Documented provisional default (IDEA §2.3); seeded users get must_change_password=true. Never valid in prod.
@@ -13,7 +13,10 @@ DOCUMENTED_SEED_PASSWORD = "admin123"  # noqa: S105
 
 class Settings(BaseSettings):
     # Empty values (e.g. `JWT_SECRET=` copied from .env.example) fall back to safe defaults.
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
+    # hide_input_in_errors: a failed validator would otherwise print every setting, API keys included.
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", env_ignore_empty=True, hide_input_in_errors=True
+    )
 
     env: Literal["dev", "test", "prod"] = "dev"
     database_url: str = "sqlite:///./upiixsol.db"
@@ -30,12 +33,31 @@ class Settings(BaseSettings):
     # with the seeded accounts (IDEA §2.3).
     require_password_change: bool = True
 
+    # Email channel (UPS-072, spec 003). Off unless a human turns it on; keys live only in .env or the host.
+    mail_enabled: bool = False
+    mail_backend: Literal["console", "mailgun"] = "console"
+    mailgun_api_key: SecretStr | None = None
+    mailgun_domain: str = "mg.upiixsol.com"
+    mailgun_api_base: str = "https://api.mailgun.net"  # EU: https://api.eu.mailgun.net
+    mailgun_webhook_signing_key: SecretStr | None = None
+    mailgun_test_mode: bool = False
+    mail_from: str = "UpiixSol <avisos@mg.upiixsol.com>"
+    mail_reply_to: str = ""
+    mail_daily_limit: int = Field(default=100, ge=0)
+    mail_blocked_domains: Annotated[list[str], NoDecode] = [
+        "upiixsol.dev"
+    ]  # seed accounts, never deliverable
+    public_base_url: str = "https://www.upiixsol.com"
+
     @model_validator(mode="before")
     @classmethod
     def _split_origins(cls, data: dict) -> dict:
         origins = data.get("cors_origins") if isinstance(data, dict) else None
         if isinstance(origins, str):
             data["cors_origins"] = [o.strip() for o in origins.split(",") if o.strip()]
+        domains = data.get("mail_blocked_domains") if isinstance(data, dict) else None
+        if isinstance(domains, str):
+            data["mail_blocked_domains"] = [d.strip().lower() for d in domains.split(",") if d.strip()]
         return data
 
     @model_validator(mode="after")
@@ -51,6 +73,20 @@ class Settings(BaseSettings):
             weak_seed = len(seed) < 12 or seed == DOCUMENTED_SEED_PASSWORD
             if "seed_default_password" not in self.model_fields_set or weak_seed:
                 raise ValueError("SEED_DEFAULT_PASSWORD (>= 12 chars, not the default) is required in prod")
+            if self.mail_enabled and self.mail_backend == "mailgun":
+                missing = [
+                    name
+                    for name, given in (
+                        ("MAILGUN_API_KEY", self.mailgun_api_key),
+                        ("MAILGUN_DOMAIN", "mailgun_domain" in self.model_fields_set),
+                        ("MAILGUN_WEBHOOK_SIGNING_KEY", self.mailgun_webhook_signing_key),
+                    )
+                    if not given
+                ]
+                if missing:
+                    raise ValueError(
+                        f"{', '.join(missing)} required when mail is enabled with Mailgun in prod"
+                    )
         return self
 
     @property

@@ -405,3 +405,56 @@ export interface CommentOut {
   created_at: DateTime;
   is_hidden: boolean;
 }
+
+// ── Email channel (spec 003, /api/mail) ──────────────────────
+export type Audience =
+  | { kind: "all" }
+  | { kind: "academy"; academy_id: number }
+  | { kind: "role"; role: Role }
+  | { kind: "individual"; user_ids: number[]; emails: string[] }; // ≤ 50 entries in total, ≤ 20 emails
+
+export type CampaignStatus = "draft" | "sending" | "sent" | "partial" | "failed";
+export type MailRecipientStatus =
+  | "pending"
+  | "accepted"
+  | "delivered"
+  | "failed"
+  | "bounced"
+  | "complained";
+
+export interface CampaignIn {
+  subject: string;
+  body: string;
+  audience: Audience;
+}
+
+export interface Campaign {
+  id: number;
+  subject: string;
+  audience: Audience;
+  sender: PublicUser | null;
+  status: CampaignStatus;
+  recipient_count: number;
+  counts_by_status: Partial<Record<MailRecipientStatus, number>>;
+  created_at: DateTime;
+  sent_at: DateTime | null;
+}
+
+/** GET /api/mail/status */
+export interface MailStatus {
+  enabled: boolean;
+  daily_limit: number;
+  sent_today: number;
+  remaining: number;
+}
+
+/** GET/PUT /api/mail/preferences */
+export interface MailPreferences {
+  receive_club_email: boolean;
+}
+
+/** POST /api/mail/audience/preview */
+export interface AudiencePreview {
+  count: number;
+  excluded: { inactive: number; suppressed: number; blocked_domain: number };
+}
