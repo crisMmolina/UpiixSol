@@ -35,7 +35,11 @@ def create_campaign(data: CampaignIn, user: Sender, db: Session = Depends(get_db
 
 @router.post("/campaigns/{campaign_id}/send", status_code=202, response_model=CampaignOut)
 def send_campaign(
-    campaign_id: int, user: Sender, transport: Transport, tasks: BackgroundTasks, db: Session = Depends(get_db)
+    campaign_id: int,
+    user: Sender,
+    transport: Transport,
+    tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> CampaignOut:
     campaign, start = service.confirm(db, user, campaign_id)
     if start:
@@ -45,7 +49,11 @@ def send_campaign(
 
 @router.post("/campaigns/{campaign_id}/resume", status_code=202, response_model=CampaignOut)
 def resume_campaign(
-    campaign_id: int, user: Sender, transport: Transport, tasks: BackgroundTasks, db: Session = Depends(get_db)
+    campaign_id: int,
+    user: Sender,
+    transport: Transport,
+    tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> CampaignOut:
     campaign, start = service.resume(db, user, campaign_id)
     if start:

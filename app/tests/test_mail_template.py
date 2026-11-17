@@ -61,9 +61,7 @@ def test_subject_with_newline_is_422(as_superadmin: TestClient, fake: FakeTransp
     assert fake.calls == []
 
 
-def test_template_uses_site_brand_and_public_base_url(
-    db: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_template_uses_site_brand_and_public_base_url(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(get_settings(), "public_base_url", "https://campus.test/")
     db.add(
         SiteSettings(
@@ -99,3 +97,14 @@ def test_footer_says_why_you_got_it() -> None:
     assert "Recibes este correo porque ana te lo envió." in html
     assert f'href="{mail_template.UNSUBSCRIBE_HREF}"' in html and "Darte de baja" in html
     assert mail_template.UNSUBSCRIBE_HREF in text
+
+
+def test_absolute_logo_and_url_without_host_stay_safe(db: Session) -> None:
+    site = get_site(db).model_copy(update={"logo_url": "https://cdn.test/logo.png"})
+    html, _text = mail_template.render("Aviso", "Mira http://. y sigue", "Motivo.", site=site)
+    assert 'src="https://cdn.test/logo.png"' in html
+    assert 'href="http://"' not in html and "Mira http://. y sigue" in html
+    no_logo, _ = mail_template.render(
+        "Aviso", "Hola", "Motivo.", site=site.model_copy(update={"logo_url": None})
+    )
+    assert "<img" not in no_logo and site.name in no_logo

@@ -487,7 +487,12 @@ READ_MATRIX: list[Rule] = [
         SENDERS,
         note="own club's enrollees and co-admins; email only for superadmin",
     ),
-    Rule("GET", "/api/mail/campaigns", SENDERS, note="history: superadmin all, academy_admin own club (UPS-075)"),
+    Rule(
+        "GET",
+        "/api/mail/campaigns",
+        SENDERS,
+        note="history: superadmin all, academy_admin own club (UPS-075)",
+    ),
     Rule("GET", "/api/mail/campaigns/{campaign_id}", OWN, note="a campaign of the club (UPS-075)"),
 ]
 

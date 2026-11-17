@@ -17,12 +17,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
 from app.main import app
-from app.models import Academy, User
+from app.models import Academy, Role, User
 from app.models.analytics import ActivityEvent
 from app.models.common import utcnow
 from app.models.mail import MailCampaign, MailRecipient
 from app.services import mail_campaigns
 from app.services.mailer import BatchResult, MailMessage, MailRecipientVars, get_mail_transport
+from app.tests.conftest import make_user
 
 CAMPAIGNS = "/api/mail/campaigns"
 
@@ -64,7 +65,11 @@ def _emails(n: int, prefix: str = "persona") -> list[str]:
 def _create(client: TestClient, emails: list[str], subject: str = "Aviso semanal") -> dict:
     response = client.post(
         CAMPAIGNS,
-        json={"subject": subject, "body": "Hola a todos", "audience": {"kind": "individual", "emails": emails}},
+        json={
+            "subject": subject,
+            "body": "Hola a todos",
+            "audience": {"kind": "individual", "emails": emails},
+        },
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -129,7 +134,10 @@ def test_batches_are_sent_in_the_background(
     assert all(message.campaign_id == campaign["id"] for message, _ in fake.calls)
     urls = [r.unsubscribe_url for _, recipients in fake.calls for r in recipients]
     assert len(set(urls)) == 5
-    assert all(url.startswith(get_settings().public_base_url.rstrip("/") + "/api/mail/unsubscribe?t=") for url in urls)
+    assert all(
+        url.startswith(get_settings().public_base_url.rstrip("/") + "/api/mail/unsubscribe?t=")
+        for url in urls
+    )
     done = _get(as_superadmin, campaign["id"])
     assert done["status"] == "sent"
     assert done["counts_by_status"] == {"accepted": 5}
@@ -148,7 +156,9 @@ def test_failed_batch_marks_partial_and_keeps_others(
     assert done["status"] == "partial"
     assert done["counts_by_status"] == {"accepted": 3, "failed": 2}
     failed = db.scalars(
-        select(MailRecipient).where(MailRecipient.campaign_id == campaign["id"], MailRecipient.status == "failed")
+        select(MailRecipient).where(
+            MailRecipient.campaign_id == campaign["id"], MailRecipient.status == "failed"
+        )
     ).all()
     assert {r.error_code for r in failed} == {"rejected"}
 
@@ -218,8 +228,11 @@ def test_history_scoped_by_club_for_academy_admin(
     db.add(robotica)
     db.flush()
     other = MailCampaign(
-        academy_id=robotica.id, audience_kind="academy", audience_params={"academy_id": robotica.id},
-        subject="De otro club", body="x",
+        academy_id=robotica.id,
+        audience_kind="academy",
+        audience_params={"academy_id": robotica.id},
+        subject="De otro club",
+        body="x",
     )
     db.add(other)
     db.flush()
@@ -267,3 +280,77 @@ def test_send_logs_have_no_addresses(
     assert event is not None
     assert event.properties == {"count": 2}
     assert event.user_id == sender_id
+
+
+class BrokenTransport(FakeTransport):
+    """Raises on the calls listed in `raise_calls`; a retryable code makes the job retry once."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.raise_calls: set[int] = set()
+
+    def send_batch(self, message: MailMessage, recipients: list[MailRecipientVars]) -> BatchResult:
+        if len(self.calls) in self.raise_calls:
+            self.calls.append((message, list(recipients)))
+            raise RuntimeError("caída de red con ana@ipn.mx")
+        return super().send_batch(message, recipients)
+
+
+def test_retryable_failures_are_retried_once_and_errors_never_escape(
+    as_superadmin: TestClient, db: Session, fake: FakeTransport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broken = BrokenTransport()
+    app.dependency_overrides[get_mail_transport] = lambda: broken
+    broken.fail_calls, broken.code = {0}, "provider_error"  # first call fails, the retry goes through
+    first = _create(as_superadmin, _emails(2))
+    _send(as_superadmin, first["id"])
+    assert len(broken.calls) == 2
+    assert _get(as_superadmin, first["id"])["counts_by_status"] == {"accepted": 2}
+    broken.calls, broken.fail_calls, broken.raise_calls = [], set(), {0, 1}  # call and retry both raise
+    second = _create(as_superadmin, _emails(2, prefix="otra"))
+    _send(as_superadmin, second["id"])
+    done = _get(as_superadmin, second["id"])
+    assert done["status"] == "failed" and done["counts_by_status"] == {"failed": 2}
+    mail_campaigns._send(db, 10_000, broken)  # a campaign that is gone, or not sending: nothing happens
+    draft = _create(as_superadmin, _emails(1, prefix="borrador"))
+    assert _send(as_superadmin, draft["id"], "resume")["status"] == "draft"  # resume never starts a draft
+    # A job that blows up is logged by type and leaves the campaign as it was.
+    monkeypatch.setattr(mail_campaigns, "_send", lambda *_args: 1 / 0)
+    mail_campaigns.send_pending(second["id"], broken)
+    mail_campaigns.send_pending(10_000, broken)
+
+
+def test_failed_test_send_is_502_and_unknown_campaign_is_404(
+    as_superadmin: TestClient, db: Session, fake: FakeTransport
+) -> None:
+    fake.fail_calls = {0}
+    response = as_superadmin.post("/api/mail/test", json={"subject": "Prueba", "body": "Hola"})
+    assert response.status_code == 502
+    assert "@" not in response.text
+    assert as_superadmin.get(f"{CAMPAIGNS}/999").status_code == 404
+    assert as_superadmin.post(f"{CAMPAIGNS}/999/send").status_code == 404
+
+
+def test_audience_params_keep_ids_not_addresses(
+    as_superadmin: TestClient, db: Session, seeded: dict, fake: FakeTransport
+) -> None:
+    ia = seeded["academy_id"]
+    make_user(db, email="ana@ipn.mx", academy_id=ia, role=Role.academy_admin)
+    for audience, expected in (
+        ({"kind": "academy", "academy_id": ia}, {"kind": "academy", "academy_id": ia}),
+        ({"kind": "role", "role": "academy_admin"}, {"kind": "role", "role": "academy_admin"}),
+        ({"kind": "all"}, {"kind": "all"}),
+    ):
+        response = as_superadmin.post(CAMPAIGNS, json={"subject": "A", "body": "B", "audience": audience})
+        assert response.status_code == 201, response.text
+        assert response.json()["audience"] == expected
+    empty = as_superadmin.post(
+        CAMPAIGNS, json={"subject": "A", "body": "B", "audience": {"kind": "role", "role": "member"}}
+    )
+    assert empty.status_code == 422  # every member is on the blocked seed domain
+
+
+def test_admin_without_club_sees_no_history(db: Session, seeded: dict) -> None:
+    db.add(MailCampaign(audience_kind="all", audience_params={}, subject="x", body="y"))
+    lonely = make_user(db, email="sin.club@ipn.mx", role=Role.academy_admin)
+    assert mail_campaigns.list_campaigns(db, lonely, None, 20).items == []

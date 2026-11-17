@@ -90,14 +90,15 @@ def render(subject: str, body: str, footer: str, *, site: SiteOut | None = None)
     html = (
         '<!doctype html><html lang="es-MX"><head><meta charset="utf-8">'
         f"<title>{escape(subject)}</title></head>"
-        '<body style="margin:0;padding:0;background:#f4f5f4;font-family:Arial,Helvetica,sans-serif;color:#1d1d1b">'
+        '<body style="margin:0;padding:0;background:#f4f5f4;'
+        'font-family:Arial,Helvetica,sans-serif;color:#1d1d1b">'
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">'
         '<table role="presentation" width="600" cellpadding="0" cellspacing="0" '
         'style="max-width:600px;width:100%;background:#ffffff;margin:24px 0">'
         f'<tr><td style="padding:24px"><a href="{escape(home)}">{brand}</a></td></tr>'
         f'<tr><td style="padding:0 24px 8px;font-size:16px">{_body_html(body)}</td></tr>'
         '<tr><td style="padding:16px 24px;border-top:1px solid #e3e5e3;font-size:12px;color:#5c605c">'
-        f"<p style=\"margin:0 0 8px\">{escape(footer)}</p>"
+        f'<p style="margin:0 0 8px">{escape(footer)}</p>'
         f'<p style="margin:0"><a href="{UNSUBSCRIBE_HREF}" style="color:#5c605c">Darte de baja</a>'
         f' · <a href="{escape(home)}" style="color:#5c605c">{escape(name)}</a></p>'
         "</td></tr></table></td></tr></table></body></html>"
