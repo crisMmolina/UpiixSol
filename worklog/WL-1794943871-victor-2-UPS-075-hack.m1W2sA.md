@@ -6,7 +6,7 @@
 - Why: Mailgun only gets name and unsubscribe_url variables
 - Failing: none; linked dotenv breaks logo/media matrix rows here (UPS-083), clean checkout green
 - Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_template.py app/tests/test_mail_campaigns.py app/tests/test_permissions_matrix.py
-- Next: Wait for review of SHA f0bf0f5 (PR 129)
+- Next: Integrated in main: e9b2fee36b626bfc81f08d412ba5acf08e2faaae
 
 ## History
 - 1794943871 | CLAIMED | victor-2 | claim; next: stubs for the Tests names and `uak red UPS-075`; then the template, then draft and confirm, then background sending.
@@ -18,3 +18,4 @@
 - 1794949343 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA f0bf0f5 (PR 129)
 - 1794949638 | REVIEW | victor-1 | review; approve; SHA f0bf0f5f88fb07b17ed5923e6aedf0d62ae01299; reviewer victor-1
 - 1794949790 | REVIEW | victor-2 | heartbeat; lease until 1795036190
+- 1794949789 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit e9b2fee36b626bfc81f08d412ba5acf08e2faaae; reviewer victor-1
