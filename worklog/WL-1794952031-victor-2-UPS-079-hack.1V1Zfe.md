@@ -6,7 +6,7 @@
 - Why: reuse UPS-078 pieces
 - Failing: none
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_club.py'
-- Next: Wait for review of PR 135
+- Next: Integrated in main: 3dfd350ceca68fd76ca4cf43a563fde60adf6c8d
 
 ## History
 - 1794952031 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-079`; then the /baja page, then the toggle, then the club tab.
@@ -15,3 +15,4 @@
 - 1794952588 | REVIEW | victor-2 | checkpoint; next: Wait for review of PR 135
 - 1794952886 | REVIEW | victor-1 | review; approve; SHA 45b8fd1b6e47da790183988bc9efdbd0797bcc8c; reviewer victor-1
 - 1794952903 | REVIEW | victor-2 | heartbeat; lease until 1795039303
+- 1794954336 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit 3dfd350ceca68fd76ca4cf43a563fde60adf6c8d; reviewer victor-1
