@@ -13,3 +13,4 @@
 - 1794943902 | CLAIMED | victor-2 | heartbeat; lease until 1794958302
 - 1794947925 | CLAIMED | victor-2 | heartbeat; lease until 1794962325
 - 1794949150 | CLAIMED | victor-2 | heartbeat; lease until 1794963550
+- 1794949161 | CLAIMED | victor-2 | pending decision UPS-075-1794949161; option: Footer Darte de baja links to %recipient.unsubscribe_url% (API URL); UPS-076 answers GET /api/mail/unsubscribe?t= with 303 to /baja?t= without changing state; Why: Mailgun only receives name and unsubscribe_url variables (UPS-073), so /baja?t=token cannot be built per recipient in a batch
