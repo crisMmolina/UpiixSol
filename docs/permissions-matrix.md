@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **68/68 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **70/70 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -76,6 +76,8 @@ Cobertura: **68/68 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ❌ | ✅ | draft; same audience scope as the preview |
 | POST | `/api/mail/campaigns/{campaign_id}/send` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
 | POST | `/api/mail/campaigns/{campaign_id}/resume` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
+| POST | `/api/mail/unsubscribe` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | token in ?t=, same 200 for unknown tokens; rate-limited per IP |
+| PUT | `/api/mail/preferences` | 🔒 | ✅ | ✅ | ✅ | ✅ | the caller's own address only |
 
 ## Lecturas sensibles
 

@@ -289,6 +289,20 @@ MATRIX: list[Rule] = [
     ),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/send", OWN, note="the campaign's sender or superadmin"),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/resume", OWN, note="the campaign's sender or superadmin"),
+    # ── Email opt-out (UPS-076): real-token tests in test_mail_unsubscribe.py ──
+    Rule(
+        "POST",
+        "/api/mail/unsubscribe",
+        PUBLIC,
+        note="token in ?t=, same 200 for unknown tokens; rate-limited per IP",
+    ),
+    Rule(
+        "PUT",
+        "/api/mail/preferences",
+        ANY,
+        _json(lambda _w: {"receive_club_email": True}),
+        note="the caller's own address only",
+    ),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}
