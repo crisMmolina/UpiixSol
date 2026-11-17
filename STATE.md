@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794957585
+Updated: 1794957589
 AVAILABLE: UPS-068 UPS-084 
 CLAIMED: -
 BLOCKED: UPS-057 
@@ -12,7 +12,7 @@ CANCELLED: UPS-030
 Claims (first 24; status --task ID shows detail):
 UPS-057 | BLOCKED | david-2 | until 1794548448 (EXPIRED: release --expired --read-summary TOKEN)
 UPS-060 | REVIEW | zoe-1 | until 1795040173
-UPS-080 | REVIEW | victor-1 | until 1795040998
+UPS-080 | REVIEW | victor-1 | until 1795043989
 UPS-081 | REVIEW | victor-2 | until 1795040988
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
