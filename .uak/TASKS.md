@@ -2,7 +2,7 @@
 
 State lives on the `claims` branch (`uak status`); this file holds only tasks. IDs are `UPS-NNN`.
 Priority is `P0/P1/P2`. Type is `setup/contract/spike/feature/bug/integration/demo/docs`. Check the graph with `uak graph`.
-Spec: `docs/specs/001-campus/spec.md` · Plan: `docs/specs/001-campus/plan.md` · Product: `IDEA.md`. UI in Spanish (Mexico).
+Spec: `docs/specs/001-campus/spec.md` · Plan: `docs/specs/001-campus/plan.md` · Email (UPS-071…081): `docs/specs/003-correo/` · Product: `IDEA.md`. UI in Spanish (Mexico).
 Every commit and PR goes out under the human's identity, **without** `Co-Authored-By` or "Generated with" (PROJECT principle 5).
 
 ## UPS-001 · Repo skeleton: FastAPI + Vite running, CI and dependencies
@@ -1327,3 +1327,220 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Existing tests that state the old rules change only where the rule changed: test_admin.py::test_default_nickname_is_unique (line "A chosen nickname is kept as is") and the DELETE comments row of test_permissions_matrix.py. A human runs `uak allow UPS-070 --tests --reason 'nickname unique and admin delete comment, human request'` before those edits.
 - **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_nicknames.py app/tests/test_community.py app/tests/test_admin.py app/tests/test_permissions_matrix.py app/tests/test_account.py app/tests/test_auth.py && uv run alembic upgrade head && uv run alembic downgrade base && npm --prefix web run build`
 - **Next step:** write the stubs for the Tests names and `uak red UPS-070`; then app/services/nicknames.py, then the migration, then delete_comment.
+
+## UPS-071 · Spike: Mailgun batch sending, unsubscribe header variables and webhook signature (test mode)
+
+- **Type:** spike
+- **Priority:** P1
+- **Estimate:** 90 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md`, `plan.md` §Design (batch sending), ADR 0002. Human owner: victor.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-073, UPS-077
+- **Paths:** docs/spikes/mailgun.md, app/tests/fixtures/mailgun/
+- **Freeze-Allowed:** no
+- **Test-First:** no (research: the output is a verified document and recorded payloads, not behavior)
+- **Acceptance:**
+  - `docs/spikes/mailgun.md` answers, each with the doc URL and date it was checked, or the request/response of a run with `o:testmode=yes`: the messages endpoint and auth for US and EU; the max recipients per call; whether `%recipient.*%` variables are substituted inside a custom `h:List-Unsubscribe` header (if not, which fallback of plan §Design applies); how `List-Unsubscribe-Post` is sent; `o:tracking`, `v:` user variables and how they come back in events.
+  - The webhook section documents the payload of `delivered`, `failed` (permanent and temporary), `complained` and `unsubscribed`, and the signature fields (`timestamp`, `token`, `signature`) with the exact HMAC recipe.
+  - `app/tests/fixtures/mailgun/` holds one JSON sample per event, with the addresses replaced by `@example.com`, and a recorded messages-API response (success and 4xx).
+  - Any real call uses victor's key from `.env` (never printed or committed) and test mode only. Without a key, the spike stays docs-only and marks those answers "unverified".
+- **Verify:** `bash .uak/bin/q bash -c 'test -s docs/spikes/mailgun.md && grep -q List-Unsubscribe docs/spikes/mailgun.md && ls app/tests/fixtures/mailgun/*.json'`
+- **Next step:** read Mailgun's sending and webhook docs, write the questions as headings, then fill them.
+
+## UPS-072 · Contract: mail tables, migration 0009, mail settings and the transport interface
+
+- **Type:** contract
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/003-correo/plan.md` §Data and migrations, §Contracts (settings), ADR 0002. Human owner: victor.
+- **Depends on:** UPS-070, UPS-002
+- **Uses contract:** None
+- **Related:** UPS-073, UPS-074, UPS-075, UPS-076, UPS-077
+- **Paths:** app/models/mail.py, app/models/__init__.py, app/migrations/versions/0009_mail.py, app/config.py, .env.example, app/services/mailer.py, app/tests/test_mail_contract.py, web/src/lib/types.ts
+- **Freeze-Allowed:** no
+- **Tests:** test_mail_migration_round_trips, test_recipient_email_is_unique_per_campaign, test_suppression_is_keyed_by_normalized_email, test_prod_requires_mailgun_settings_when_mail_enabled, test_mail_disabled_by_default, test_console_transport_logs_count_without_addresses, test_unsubscribe_token_is_random_and_only_its_hash_is_stored, test_normalize_email_lowercases_and_trims
+- **Acceptance:**
+  - `app/models/mail.py`: `MailCampaign`, `MailRecipient`, `MailSuppression` with the columns, statuses and indexes of plan §Data, registered in `app/models/__init__.py`. `app/models/user.py` and `app/schemas/` are not touched.
+  - Migration `0009_mail` (down_revision `0008_unique_nickname`) only creates the three tables; `alembic upgrade head && alembic downgrade base` is green on SQLite and on PostgreSQL 16 in CI.
+  - `app/config.py` + `.env.example`: every setting of plan §Contracts with its default; `ENV=prod` + `MAIL_ENABLED=true` + `MAIL_BACKEND=mailgun` without `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` or `MAILGUN_WEBHOOK_SIGNING_KEY` fails at startup with a clear message; secrets never appear in `repr` or errors.
+  - `app/services/mailer.py`: `MailMessage`, `MailRecipientVars`, `BatchResult`, the `MailTransport` protocol, `ConsoleTransport` (logs subject length and recipient count, no addresses), `get_mail_transport()` dependency, `normalize_email()`, `new_unsubscribe_token() -> (token, sha256_hex)`.
+  - `web/src/lib/types.ts` mirrors `Audience`, `Campaign`, `MailStatus`, `MailPreferences` of plan §Contracts.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_contract.py && uv run alembic upgrade head && uv run alembic downgrade base && npm --prefix web run build`
+- **Next step:** stubs for the Tests names and `uak red UPS-072`; then the models, then the migration, then the settings.
+
+## UPS-073 · Mailgun transport: batches of 1 000, recipient variables, test mode and safe errors
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** `docs/specs/003-correo/plan.md` §Design, `docs/spikes/mailgun.md` (UPS-071). Human owner: victor.
+- **Depends on:** UPS-071, UPS-072
+- **Uses contract:** None
+- **Related:** UPS-075
+- **Paths:** app/services/mailgun.py, app/tests/test_mailgun.py
+- **Freeze-Allowed:** no
+- **Tests:** test_one_call_per_batch_of_at_most_1000, test_each_recipient_gets_only_their_address, test_recipient_variables_carry_name_and_unsubscribe_url, test_list_unsubscribe_headers_are_sent, test_tracking_off_and_campaign_id_variable, test_test_mode_flag_sets_o_testmode, test_us_and_eu_base_urls, test_4xx_and_timeout_become_failed_batch_without_secrets, test_api_key_never_in_logs_or_errors
+- **Acceptance:**
+  - `MailgunTransport.send_batch` posts to `{MAILGUN_API_BASE}/v3/{MAILGUN_DOMAIN}/messages` with basic auth `api:<key>`, `from`, optional `h:Reply-To`, `to` = the batch, `recipient-variables` JSON, `subject`, `html`, `text`, `o:tracking=no`, `v:campaign_id`, `o:testmode` when enabled, and the unsubscribe headers as the spike settled.
+  - More than 1 000 recipients are split into ordered batches; each call's result maps to `accepted` with the provider message id, or `failed` with a short error code.
+  - Timeout 10 s; a 4xx/5xx or a timeout returns a failed `BatchResult` whose message has neither the key nor any address. Tests use `httpx.MockTransport` with the UPS-071 fixtures; no network.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mailgun.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-073`; then the request builder, then batching, then errors.
+
+## UPS-074 · Mail audience: preview count and recipient search, scoped by role and club
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Audiences and permissions, `plan.md` §Contracts, §STRIDE (elevation, disclosure). Human owner: victor.
+- **Depends on:** UPS-072
+- **Uses contract:** None
+- **Related:** UPS-075, UPS-078
+- **Paths:** app/services/mail_audience.py, app/routers/mail_audience.py, app/tests/test_mail_audience.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_all_counts_active_users_once, test_academy_counts_enrollees_and_its_admins, test_role_counts_that_role_only, test_individual_mixes_users_and_outside_addresses, test_individual_over_50_entries_or_20_emails_is_422, test_invalid_outside_address_is_422, test_excludes_inactive_suppressed_and_blocked_domains, test_academy_admin_cannot_mail_all, test_academy_admin_cannot_mail_a_role, test_academy_admin_cannot_mail_another_club, test_academy_admin_cannot_pick_a_non_enrolled_user, test_academy_admin_can_add_outside_addresses, test_recipient_search_hides_email_from_academy_admin, test_member_and_anon_get_403_and_401, test_mail_status_reports_quota_from_the_db
+- **Acceptance:**
+  - `resolve_audience(db, sender, audience) -> list[ResolvedRecipient]` and `preview()` implement spec §Audiences; the club scope comes from the DB (`users.academy_id`, `enrollments`), never from the body.
+  - `GET /api/mail/status`, `POST /api/mail/audience/preview` and `GET /api/mail/recipients?q=` (cursor page ≤ 50; email only for superadmin) answer as plan §Contracts; schemas live in the service module.
+  - The preview endpoint has a matrix row (OWN with `{kind: "academy", academy_id: world.academy_id}`); `recipients` and `status` are in the read matrix; `docs/permissions-matrix.md` is regenerated. Payload-dependent 403s are in `test_mail_audience.py`.
+  - Preview p95 < 300 ms on the seeded data (one timing test, like the existing ones).
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-074`; then `resolve_audience`, then the router, then the matrix rows.
+
+## UPS-075 · Mail campaigns: template, test send, draft → confirm → send in the background, quota, history
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 360 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Composing and sending, §History, `plan.md` §Design, §Contracts, §STRIDE (tampering, repudiation, DoS). Human owner: victor.
+- **Depends on:** UPS-074
+- **Uses contract:** UPS-073
+- **Related:** UPS-078, UPS-079
+- **Paths:** app/services/mail_template.py, app/services/mail_campaigns.py, app/routers/mail_campaigns.py, app/tests/test_mail_campaigns.py, app/tests/test_mail_template.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_body_html_is_escaped_and_urls_become_links, test_subject_with_newline_is_422, test_template_uses_site_brand_and_public_base_url, test_footer_says_why_you_got_it, test_test_send_goes_only_to_the_sender, test_create_campaign_freezes_recipients_as_draft, test_confirm_twice_sends_once, test_batches_are_sent_in_the_background, test_failed_batch_marks_partial_and_keeps_others, test_resume_sends_only_pending, test_quota_exceeded_is_422_before_sending, test_rate_limit_6th_campaign_is_429, test_mail_disabled_answers_503, test_history_scoped_by_club_for_academy_admin, test_history_shows_sender_and_counts, test_send_logs_have_no_addresses
+- **Acceptance:**
+  - `mail_template.render(subject, body, footer_reason)` → `(html, text)`: body escaped, paragraphs, `<br>`, links only through `safe_url`; the layout carries the site name and logo (`SiteSettings`) with absolute URLs from `PUBLIC_BASE_URL` and the unsubscribe link `/baja?t=%recipient.unsubscribe_token%` (or the spike's fallback).
+  - `POST /api/mail/test`, `POST /api/mail/campaigns`, `POST /api/mail/campaigns/{id}/send`, `POST /api/mail/campaigns/{id}/resume`, `GET /api/mail/campaigns`, `GET /api/mail/campaigns/{id}` behave as spec and plan §Contracts; confirm uses a conditional `UPDATE … WHERE status='draft'`; batches run in `BackgroundTasks` and commit per batch.
+  - Quota and the 5-per-hour limit are checked before anything is sent; `MAIL_ENABLED=false` → 503 "El correo está desactivado".
+  - Every new write endpoint has a matrix row (OWN with the club audience, or the campaign's sender); `docs/permissions-matrix.md` is regenerated. Tests use a Fake transport through `app.dependency_overrides[get_mail_transport]`.
+  - Analytics event `mail.campaign_sent` with the count only.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_template.py app/tests/test_mail_campaigns.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-075`; then the template, then draft and confirm, then background sending.
+
+## UPS-076 · One-click unsubscribe and the "Recibir correos del club" preference
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Opt-out, `plan.md` §Contracts, §STRIDE (disclosure). RFC 8058. Human owner: victor.
+- **Depends on:** UPS-075
+- **Uses contract:** None
+- **Related:** UPS-079
+- **Paths:** app/services/mail_suppressions.py, app/routers/mail_public.py, app/tests/test_mail_unsubscribe.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_one_click_post_form_encoded_suppresses_without_session, test_json_post_from_the_baja_page_suppresses, test_unknown_token_answers_like_a_valid_one, test_token_is_read_from_the_query_not_the_path, test_suppressed_address_is_excluded_from_every_campaign, test_preference_get_and_put_toggle_the_current_address, test_outside_address_can_unsubscribe, test_unsubscribe_is_rate_limited
+- **Acceptance:**
+  - `POST /api/mail/unsubscribe?t=` accepts `application/x-www-form-urlencoded` (`List-Unsubscribe=One-Click`) and JSON, with no session and no `X-Requested-With`; it looks up the token hash, adds a `mail_suppressions` row (`unsubscribed`) and answers 200 with the same body for unknown tokens.
+  - `GET/PUT /api/mail/preferences` for any signed-in user; `receive_club_email=false` adds the suppression of their current address, `true` removes an `unsubscribed` one (never a bounce or complaint).
+  - Matrix rows: unsubscribe PUBLIC (the test builds a real token), preferences ANY; docs regenerated. Per-IP rate limit on unsubscribe.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_unsubscribe.py app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-076`; then suppressions, then the public router, then preferences.
+
+## UPS-077 · Mailgun webhook: signed delivery status, bounces and complaints suppress the address
+
+- **Type:** feature
+- **Priority:** P2
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §History and delivery status, `plan.md` §STRIDE (spoofing), `docs/spikes/mailgun.md` §Webhooks. Human owner: victor.
+- **Depends on:** UPS-076, UPS-071
+- **Uses contract:** None
+- **Related:** UPS-080
+- **Paths:** app/services/mail_webhooks.py, app/routers/mail_webhooks.py, app/tests/test_mail_webhooks.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_delivered_event_updates_the_recipient, test_permanent_failure_marks_bounced_and_suppresses, test_temporary_failure_keeps_accepted, test_complaint_suppresses, test_webhook_rejects_bad_signature, test_webhook_rejects_old_timestamp, test_webhook_rejects_replayed_token, test_unknown_campaign_or_recipient_is_ignored_with_200, test_webhook_logs_have_no_addresses
+- **Acceptance:**
+  - `POST /api/mail/webhooks/mailgun` verifies HMAC-SHA256(`MAILGUN_WEBHOOK_SIGNING_KEY`, timestamp+token) with `hmac.compare_digest`, timestamp within 5 minutes, token seen once (in-memory, one process); otherwise 403 and nothing changes.
+  - Events from the UPS-071 fixtures update `mail_recipients` by `(campaign_id, email)`; permanent failures and complaints add a suppression; the campaign's counts change accordingly.
+  - Matrix row PUBLIC (the test signs a real payload); docs regenerated.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_webhooks.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-077`; then the signature check, then the event mapping.
+
+## UPS-078 · Web: "Correos" tab in the superadmin panel (composer, audience, preview, test, confirm, history)
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 360 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Stories (superadmin), `plan.md` §Contracts, `web/DESIGN.md` (admin panel recipe). Human owner: victor.
+- **Depends on:** UPS-075
+- **Uses contract:** None
+- **Related:** UPS-079
+- **Paths:** web/src/features/mail/, web/src/features/superadmin/index.tsx, e2e/test_mail.py
+- **Freeze-Allowed:** no
+- **Tests:** test_superadmin_sends_to_a_club_after_preview_and_confirm, test_superadmin_mixes_users_and_outside_addresses, test_test_send_reports_sent_to_me, test_mail_disabled_shows_the_notice, test_history_lists_the_campaign_with_counts, test_mail_tab_at_390_wide
+- **Acceptance:**
+  - New tab "Correos" in `/admin` (after "Usuarios"): audience picker "Todo UpiixSol" / "Un club" / "Un rol" / "Personas" (search users by name or nickname, plus chips for outside addresses, max 50/20 with live counters), subject, plain-text body with character counter, "Enviarme una prueba".
+  - "Revisar y enviar" opens a modal "Se enviará a N personas" (N from the preview endpoint, with excluded counts) and the remaining daily quota; confirm creates the draft and sends it; the button is disabled while sending.
+  - History: campaigns with subject, audience, sender, date, status and counts per status; "Interrumpido · Reanudar" when stuck; empty and loading states like the other tabs.
+  - `web/src/features/mail/` holds the reusable `Composer`, `AudiencePicker` and `History` (UPS-079 reuses them). Spanish (Mexico), WCAG AA, 1280 and 390 wide, reduced motion; `.uak-shots/UPS-078/` and a `design-critic` SHIP.
+  - e2e runs with the console backend (no Mailgun) and checks the history row.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-078`; then `AudiencePicker`, then the confirm modal, then history.
+
+## UPS-079 · Web: "Correos" in the club panel, Mi cuenta toggle and the /baja page
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Stories (academy admin, member), §Opt-out. Human owner: victor.
+- **Depends on:** UPS-078, UPS-076
+- **Uses contract:** None
+- **Related:** None
+- **Paths:** web/src/features/academy-admin/index.tsx, web/src/features/account/index.tsx, web/src/features/account/ProfileTab.tsx, web/src/features/mail/, e2e/test_mail_club.py
+- **Freeze-Allowed:** no
+- **Tests:** test_club_admin_mails_their_club_only, test_club_admin_picker_lists_only_their_enrollees, test_member_turns_off_club_email_in_mi_cuenta, test_baja_page_confirms_and_unsubscribes, test_baja_page_with_bad_token_shows_the_same_message, test_club_mail_tab_at_390_wide
+- **Acceptance:**
+  - The club panel gets a "Correos" tab with the same `Composer`, audience limited to "Mi club" and "Personas" (enrollees of the club plus outside addresses), and the club's history.
+  - Mi cuenta shows "Recibir correos del club" (switch, saved through `PUT /api/mail/preferences`, with the reason text).
+  - New public route `/baja?t=…` (in `web/src/features/mail/index.tsx` `routes`): one button "Darme de baja", then "Listo, ya no recibirás correos del club"; the same message for an unknown token.
+  - 1280 and 390 wide, AA, reduced motion; `.uak-shots/UPS-079/` and a `design-critic` SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_club.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-079`; then the /baja page, then the toggle, then the club tab.
+
+## UPS-080 · Docs: Mailgun runbook (DNS for mg.upiixsol.com, Render variables, webhook, first send)
+
+- **Type:** docs
+- **Priority:** P1
+- **Estimate:** 90 min
+- **Rubric / Spec:** `docs/specs/003-correo/plan.md` §Rollout and rollback, ADR 0002, `docs/spikes/mailgun.md`. Human owner: victor (every step in the dashboard or DNS is his, never an agent's).
+- **Depends on:** UPS-077
+- **Uses contract:** None
+- **Related:** UPS-071
+- **Paths:** docs/mail-mailgun.md, docs/runbook.md, docs/deploy-render.md, render.yaml
+- **Freeze-Allowed:** no
+- **Test-First:** no (documentation; checked by the Verify grep and by victor following it once)
+- **Acceptance:**
+  - `docs/mail-mailgun.md` (Spanish): create the domain `mg.upiixsol.com` in Mailgun (region), the DNS records to add (SPF, DKIM, MX, optional tracking CNAME off) and DMARC on `upiixsol.com`, how to check they are verified, the webhook URL `https://www.upiixsol.com/api/mail/webhooks/mailgun` and its events, where the API key and signing key go (Render dashboard only), the rollout steps of plan §Rollout, the rollback (`MAIL_ENABLED=false`) and the monthly retention run (`python -m app.services.mail_retention`, UPS-081).
+  - `render.yaml` lists the mail variables (`sync: false` for keys); `docs/runbook.md` and `docs/deploy-render.md` link the new doc.
+  - No real key, record value or address beyond the documented `avisos@mg.upiixsol.com` is written in the repo.
+- **Verify:** `bash .uak/bin/q bash -c 'test -s docs/mail-mailgun.md && grep -q mg.upiixsol.com docs/mail-mailgun.md && grep -q MAILGUN_API_KEY render.yaml && bash .uak/bin/secret-scan --tracked'`
+- **Next step:** write the headings from plan §Rollout, then the DNS table from the spike.
+
+## UPS-081 · Mail retention: delete recipient rows 365 days after the campaign
+
+- **Type:** feature
+- **Priority:** P2
+- **Estimate:** 90 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Non-functional (privacy), `plan.md` §Data, §STRIDE (disclosure). Human owner: victor.
+- **Depends on:** UPS-077
+- **Uses contract:** None
+- **Related:** UPS-080
+- **Paths:** app/services/mail_retention.py, app/tests/test_mail_retention.py
+- **Freeze-Allowed:** no
+- **Tests:** test_purge_deletes_recipients_of_old_campaigns_only, test_purge_keeps_campaign_counts, test_purge_keeps_suppressions, test_purge_cli_dry_run_prints_counts_only
+- **Acceptance:**
+  - `python -m app.services.mail_retention [--days 365] [--dry-run]` deletes `mail_recipients` rows of campaigns finished more than N days ago, after storing their counts per status on the campaign; suppressions are kept; it prints counts only.
+  - No scheduler is added; `docs/mail-mailgun.md` (UPS-080) already says to run it monthly.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_retention.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-081`; then the query, then the CLI.
