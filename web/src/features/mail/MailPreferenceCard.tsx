@@ -57,14 +57,14 @@ export function MailPreferenceCard() {
           onClick={() => void toggle()}
           className="group relative -my-2 grid min-h-11 min-w-14 shrink-0 place-items-center disabled:opacity-60"
         >
-          <span className={`h-7 w-12 rounded-full border border-line transition-colors motion-reduce:transition-none group-focus-visible:outline-3 ${receive ? "bg-primary" : "bg-line"}`} />
+          <span className={`h-7 w-12 rounded-full border border-muted transition-colors motion-reduce:transition-none group-focus-visible:outline-3 ${receive ? "bg-primary" : "bg-line"}`} />
           <span
             aria-hidden
             className={`absolute left-1/2 size-5 -translate-x-[1.35rem] rounded-full bg-surface shadow-soft transition-transform motion-reduce:transition-none ${receive ? "translate-x-[0.35rem]" : ""}`}
           />
         </button>
       </div>
-      <FormMessage message={note?.text} tone={note?.tone} lines={{ base: 2, sm: 1 }} />
+      {note && <FormMessage message={note.text} tone={note.tone} lines={1} />}
     </Card>
   );
 }

@@ -32,6 +32,12 @@ def site(mail_env: None, site: Site) -> Site:  # noqa: ARG001 - overrides confte
     return site
 
 
+def view(site: Site, step: str) -> None:
+    """Viewport-sized shot (what a person sees, fixed bars and modal included), for the design review."""
+    site.page.wait_for_timeout(600)  # let the modal and height animations settle
+    site.page.screenshot(path=f"e2e/artifacts/view-{site.name}-{step}.png")
+
+
 def open_club_mail(site: Site) -> Page:
     sign_in(site, CLUB_ADMIN, "/panel/academia?tab=correos")
     page = site.page
@@ -49,6 +55,7 @@ def test_club_admin_mails_their_club_only(site: Site) -> None:
     page.get_by_label("Asunto").fill(SUBJECT)
     page.get_by_label("Mensaje").fill(BODY)
     site.shot("club-mail-composer")
+    view(site, "club-mail")
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
     expect(dialog.get_by_text(re.compile(r"Se enviará a \d+ personas?"))).to_be_visible()
@@ -75,6 +82,7 @@ def test_club_admin_picker_lists_only_their_enrollees(site: Site) -> None:
     page.get_by_role("button", name="Agregar correo").click()
     expect(page.get_by_text("Personas 2/50")).to_be_visible()
     expect(page.get_by_text("Correos externos 1/20")).to_be_visible()
+    view(site, "club-mail-individual")
     site.shot("club-mail-individual")
 
 
@@ -84,6 +92,8 @@ def test_member_turns_off_club_email_in_mi_cuenta(site: Site) -> None:
     switch = page.get_by_role("switch", name="Recibir correos del club")
     expect(switch).to_be_checked()
     expect(page.get_by_text(re.compile(r"Los avisos de tus clubes llegan a tu correo"))).to_be_visible()
+    switch.scroll_into_view_if_needed()
+    view(site, "account-mail-on")
     site.shot("account-mail-on")
     switch.click()
     expect(page.get_by_text("Ya no recibirás correos del club.")).to_be_visible()
@@ -108,11 +118,13 @@ def test_baja_page_confirms_and_unsubscribes(site: Site) -> None:
     page.route("**/api/mail/unsubscribe*", spy)
     page.goto(site.url("/baja?t=token-de-prueba"))
     expect(page.get_by_text(GONE)).to_have_count(0)
+    view(site, "baja-ask")
     site.shot("baja-ask")
     page.get_by_role("button", name="Darme de baja").click()
     expect(page.get_by_text(GONE)).to_be_visible()
     expect(page.get_by_role("button", name="Darme de baja")).to_have_count(0)
     assert len(sent) == 1 and sent[0].startswith("POST ") and sent[0].endswith("/api/mail/unsubscribe?t=token-de-prueba")
+    view(site, "baja-done")
     site.shot("baja-done")
     page.unroute("**/api/mail/unsubscribe*")
 
@@ -138,4 +150,6 @@ def test_club_mail_tab_at_390_wide(site: Site) -> None:
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
     expect(dialog.get_by_role("button", name="Enviar ahora")).to_be_visible()
+    expect(dialog.get_by_role("button", name="Cancelar")).to_be_visible()
+    view(site, "club-mail-modal")
     site.shot("club-mail-390")
