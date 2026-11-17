@@ -31,3 +31,22 @@ services:
       # Only Render's proxy reaches the container (see deploy/entrypoint.sh for the rate-limit trade-off).
       - key: FORWARDED_ALLOW_IPS
         value: "*"
+      # Email (spec 003, docs/mail-mailgun.md). Keys are set by hand in the dashboard (sync: false).
+      - key: MAIL_ENABLED # set by hand ("false" = off, also the rollback); value-less so a redeploy never overrides it
+        sync: false
+      - key: MAIL_BACKEND
+        value: mailgun
+      - key: MAILGUN_DOMAIN
+        value: mg.upiixsol.com
+      - key: MAILGUN_API_BASE # EU region: https://api.eu.mailgun.net
+        value: https://api.mailgun.net
+      - key: MAILGUN_API_KEY # sending key of the domain
+        sync: false
+      - key: MAILGUN_WEBHOOK_SIGNING_KEY
+        sync: false
+      - key: MAILGUN_TEST_MODE # set by hand: "true" for the first tests
+        sync: false
+      - key: MAIL_FROM
+        value: UpiixSol <avisos@mg.upiixsol.com>
+      - key: PUBLIC_BASE_URL
+        value: https://www.upiixsol.com

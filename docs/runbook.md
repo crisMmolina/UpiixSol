@@ -100,3 +100,6 @@ Además: `COOKIE_SECURE=true` y `CORS_ORIGINS=https://<dominio>`.
 | `/api/ready` → 503 | `docker compose logs db`, espacio en disco, `POSTGRES_PASSWORD` igual en db y api (sale de la misma variable) |
 | 429 a todos los usuarios | El rate limit ve una sola IP: el terminador no manda `X-Forwarded-For` o no está en el host (§7, §8) |
 | Imágenes 404 tras un deploy | ¿Se recreó el volumen `media`? Restaura `media-*.tar.gz` (§5) |
+
+## 10. Correo (Mailgun)
+Activar, probar, retirar y revertir el correo: [docs/mail-mailgun.md](mail-mailgun.md). Rollback inmediato: `MAIL_ENABLED=false`.
