@@ -1,12 +1,12 @@
 # worklog/WL-1794941221-victor-1-UPS-073-hack.Haq8un.md · UPS-073
 
 ## Live summary
-- Done: transport + 16 tests green, PR #126, REVIEW
-- Decision: spike §3 unverified: per-recipient calls below 100, no custom header above; switch UNSUBSCRIBE_HEADER_IN_BATCH
-- Why: plan fallback; one function builds headers
-- Failing: smoke: 23 local-.env failures outside diff
-- Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mailgun.py
-- Next: Wait for review of SHA f8f37f7
+- Done: approved SHA f8f37f7 by victor-2
+- Decision: marathon: human CODEOWNERS merge
+- Why: mode rule
+- Failing: PR #126 web CI: picomatch audit, fixed by UPS-082 #125
+- Commands: gh pr checks 126
+- Next: Human merges #126 (after #125, rerun web); then uak done UPS-073 --integrated <merge sha>
 
 ## History
 - 1794941221 | CLAIMED | victor-1 | claim; next: stubs for the Tests names and `uak red UPS-073`; then the request builder, then batching, then errors.
@@ -15,3 +15,4 @@
 - 1794942252 | REVIEW | victor-1 | checkpoint; next: Wait for review of SHA f8f37f7
 - 1794942674 | REVIEW | victor-1 | heartbeat; lease until 1795029074
 - 1794942953 | REVIEW | victor-2 | review; approve; SHA f8f37f7682bd9235567220b1fb42e19bcbd4c044; reviewer victor-2
+- 1794943006 | REVIEW | victor-1 | checkpoint; next: Human merges #126 (after #125, rerun web); then uak done UPS-073 --integrated <merge sha>
