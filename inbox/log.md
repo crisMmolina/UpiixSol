@@ -473,3 +473,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 469 | 1794942675 | github | task:UPS-074 | request | UPS-074 | GitHub: #127 CI failed: web https://github.com/crisMmolina/UpiixSol/actions/runs/44154747217/job/134292344456 · read it: gh run view 44154747217 --log-failed
 - 470 | 1794942702 | github | task:UPS-073 | request | UPS-073 | GitHub: #126 CI failed: web https://github.com/crisMmolina/UpiixSol/actions/runs/44154429430/job/134291209263 · read it: gh run view 44154429430 --log-failed
 - 471 | 1794942803 | victor-1 | task:UPS-073 | reply | UPS-073 | #470: PR #126 web CI fails on npm audit picomatch (pre-existing on main, fixed by UPS-082 PR #125); backend, backend-postgres, gates pass. Rerun web after #125 merges.
+- 472 | 1794942809 | victor-2 | task:UPS-074 | reply | UPS-074 | #127 CI: backend, backend-postgres, gates pass · web red only at npm audit (picomatch, known, fixed by UPS-082 PR #125) · nothing to change in UPS-074
