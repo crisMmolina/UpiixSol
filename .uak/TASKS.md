@@ -2,7 +2,7 @@
 
 State lives on the `claims` branch (`uak status`); this file holds only tasks. IDs are `UPS-NNN`.
 Priority is `P0/P1/P2`. Type is `setup/contract/spike/feature/bug/integration/demo/docs`. Check the graph with `uak graph`.
-Spec: `docs/specs/001-campus/spec.md` · Plan: `docs/specs/001-campus/plan.md` · Product: `IDEA.md`. UI in Spanish (Mexico).
+Spec: `docs/specs/001-campus/spec.md` · Plan: `docs/specs/001-campus/plan.md` · Email (UPS-071…081): `docs/specs/003-correo/` · Product: `IDEA.md`. UI in Spanish (Mexico).
 Every commit and PR goes out under the human's identity, **without** `Co-Authored-By` or "Generated with" (PROJECT principle 5).
 
 ## UPS-001 · Repo skeleton: FastAPI + Vite running, CI and dependencies
@@ -645,7 +645,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 210 min
 - **Rubric / Spec:** audit docs/audit/2026-10-08/community.md (all) · UPS-025 security notes
-- **Depends on:** UPS-033
+- **Depends on:** UPS-033, UPS-063
 - **Uses contract:** UPS-033
 - **Related:** UPS-025
 - **Paths:** web/src/features/community/, app/services/community.py, app/routers/community.py, app/services/media.py, app/tests/test_community.py, app/tests/test_media.py
@@ -740,7 +740,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P0
 - **Estimate:** 240 min
 - **Rubric / Spec:** human request 2026-10-09: the app looks odd on phones in many cases, above all the skeletons
-- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043, UPS-004
+- **Depends on:** UPS-035, UPS-039, UPS-041, UPS-043, UPS-004, UPS-061
 - **Uses contract:** UPS-033
 - **Related:** UPS-038
 - **Paths:** web/src/components/, web/src/layouts/, web/src/index.css, web/src/features/home/, web/src/features/academy/, web/src/features/auth/, web/src/features/account/, web/src/features/community/, web/src/features/events/, web/src/features/blog/, web/src/features/gallery/, web/src/features/resources/, web/src/features/superadmin/, web/src/features/academy-admin/, e2e/test_mobile.py
@@ -835,7 +835,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 150 min
-- **Rubric / Spec:** human brief 2026-11-10 (long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §3 (2026-11-10, long videos split into classes) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Data, §Contracts
 - **Depends on:** None
 - **Uses contract:** None
 - **Related:** UPS-046, UPS-047, UPS-048
@@ -857,7 +857,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** spike
 - **Priority:** P0
 - **Estimate:** 120 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `ruta-ia-videos.md` §5 (catalog)
+- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` · human brief `.uak/ruta-ia-videos.md` §5 (catalog)
 - **Depends on:** None
 - **Uses contract:** None
 - **Related:** UPS-047
@@ -865,7 +865,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Freeze-Allowed:** no
 - **Test-First:** no (research: the output is a verified document, not behavior)
 - **Acceptance:**
-  - `docs/spikes/ruta-ia-catalog.md` holds the brief's §5 catalog as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
+  - `docs/spikes/ruta-ia-catalog.md` holds the §5 catalog of `.uak/ruta-ia-videos.md` as the source of truth, one row per lesson: module, title, URL, `start_s`, `end_s`, `lang`, `status`, and links.
   - Every `verificar` row is opened: its title, channel and availability are confirmed, or it is replaced and the reason noted. The "3Blue1Brown Español" dubbed URL is preferred when it exists (then `lang: es`).
   - Every `buscar` row gets a real YouTube URL (NumPy/pandas ES, Hugging Face course videos, RAG ES parts 1–2, Ollama ES) or a documented substitute.
   - Chapter timestamps are copied from the YouTube descriptions to split the Karpathy videos (module 5, 2–3 segments each) and "Deep Dive into LLMs" (module 7, 4 segments).
@@ -880,7 +880,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 150 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §3 · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (segments) · `plan.md` §Design 1, §Risks
 - **Depends on:** UPS-045
 - **Uses contract:** UPS-045
 - **Related:** UPS-047
@@ -902,7 +902,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Type:** feature
 - **Priority:** P0
 - **Estimate:** 120 min
-- **Rubric / Spec:** `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
+- **Rubric / Spec:** human brief `.uak/ruta-ia-videos.md` §4 (load) and §5 (catalog; links come from `docs/spikes/ruta-ia-catalog.md` once UPS-046 lands) · `docs/specs/002-ruta-ia-videos/spec.md` §Acceptance (route content), open questions 1–5 · `plan.md` §Design 2
 - **Depends on:** UPS-045, UPS-048, UPS-002, UPS-027 (integrated), UPS-031 (not yet integrated; it also writes app/seed.py, so this task starts after it)
 - **Uses contract:** UPS-046
 - **Related:** None
@@ -1157,3 +1157,432 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Bottlenecks found (N+1 queries, missing indexes, images served from the database) become new tasks or `uak followup`, not fixes in this task.
 - **Verify:** `bash perf/run_local.sh 20 60s`
 - **Next step:** write the locustfile with seed accounts, then the local ramp with docker CPU/RAM limits.
+
+## UPS-061 · Drawers and modals keep Tab focus inside until they close
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** found by UPS-057 (docs/PRUEBAS-CAMPUS.md MOB-02): at 375 px, tabbing through the open "Más" drawer moves focus out of the dialog (native `showModal()` lets Tab leave the page after the last control). Follow-up of UPS-043 (same component).
+- **Depends on:** UPS-043
+- **Uses contract:** UPS-033
+- **Related:** UPS-057, UPS-040
+- **Paths:** web/src/components/Overlay.tsx, e2e/test_overlay_focus.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - In any open drawer or modal, Tab from the last control goes to the first and Shift+Tab from the first goes to the last: a full lap plus two extra presses never leaves the dialog, at 375 px and 1280 px.
+  - Escape and the close button still close it, and focus returns to the control that opened it.
+  - Drawer motion (UPS-043) and first-field focus rules (UPS-033) are unchanged.
+- **Verify:** `npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_overlay_focus.py e2e/test_drawer_motion.py e2e/test_layout_stability.py`
+- **Next step:** red e2e that tabs through the "Más" drawer and the "Nuevo evento" modal, then a keydown trap in Overlay.tsx.
+
+## UPS-062 · Remove DELETE /lessons/{id}/complete: a completed lesson stays completed
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 45 min
+- **Rubric / Spec:** human decision 2026-11-12 (chat): a lesson is marked completed when the member watches the whole video and it stays that way; there is no UI and no API to unmark it. Found in review of UPS-052: LRN-04 of docs/PRUEBAS-CAMPUS.md ("Desmarcar la clase completada") contradicts it.
+- **Depends on:** UPS-052
+- **Uses contract:** None
+- **Related:** UPS-007, UPS-010, UPS-052
+- **Paths:** app/routers/learning.py, app/services/learning.py, app/services/progress.py, app/tests/test_learning.py, app/tests/test_analytics.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, docs/PRUEBAS-CAMPUS.md, e2e/test_qa_learning.py
+- **Freeze-Allowed:** no
+- **Tests:** test_uncomplete_endpoint_is_gone, test_completed_lesson_stays_completed, test_progress_never_goes_down
+- **Acceptance:**
+  - `DELETE /api/lessons/{id}/complete` no longer exists: the router, the `completed=False` branch of `set_completed` and `uncomplete_lesson` in progress.py are removed (no dead code). The call answers 405.
+  - Completing twice still changes nothing, and a lesson never leaves the completed state; the route progress percentage never goes down.
+  - The permission matrix test and docs/permissions-matrix.md drop the DELETE row. Tests that used DELETE to reset state (test_learning.py, test_analytics.py, the LRN-04 e2e) set up their state another way or assert there is no way to unmark.
+  - LRN-04 in docs/PRUEBAS-CAMPUS.md is rewritten: "una clase completada no se puede desmarcar" (the Player offers no control for it).
+  - A member who completed lessons before this change keeps them completed; no migration.
+- **Verify:** `uv run pytest -q app/tests/test_learning.py app/tests/test_analytics.py app/tests/test_permissions_matrix.py`
+- **Next step:** red test that DELETE answers 405, then remove the endpoint and the dead code, then fix the tests that used it.
+
+## UPS-063 · Uploaded WebP images are served as image/webp on every OS
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 30 min
+- **Rubric / Spec:** found by the UPS-056 review (david-3, Windows): with `MEDIA_STORAGE=disk` (the default) `/media/*.webp` is served as `application/octet-stream`. Starlette's `StaticFiles` guesses the type with Python's `mimetypes`, whose built-in table has no `.webp` before Python 3.13; macOS and desktop Linux add it from the OS, Windows (registry without it) and likely `python:3.12-slim` (no `/etc/mime.types`, unverified) do not. With `nosniff`, browsers may refuse those avatars, covers and post images. `MEDIA_STORAGE=database` (Render) is not affected.
+- **Depends on:** -
+- **Uses contract:** -
+- **Related:** UPS-056, UPS-058
+- **Paths:** app/services/media.py, app/tests/test_media.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The app registers `image/webp` for `.webp` (and keeps `image/svg+xml` for `.svg`) when media is loaded, so `GET /media/<kind>/<name>.webp` answers `Content-Type: image/webp` with disk storage even when the OS mime table lacks it.
+  - A test resets `mimetypes` to Python's built-in table (no OS files) and still gets `image/webp` for a stored WebP; `nosniff` and the media CSP stay.
+- **Verify:** `uv run pytest -q app/tests/test_media.py && uv run ruff check app`
+- **Next step:** red test with `mimetypes.init(files=[])`, then register the types in app/services/media.py.
+
+## UPS-064 · Alert color: clubs without color_accent_2 show errors and delete buttons in green
+
+- **Type:** fix
+- **Priority:** P1
+- **Estimate:** 30 min
+- **Rubric / Spec:** design-critic of UPS-048 (P1-1), human accepted it as a followup on 2026-11-12: on UpiixIA a validation error reads as success. `web/src/lib/theme.tsx:82` sets `--academy-accent-2` to `safeColor(branding.color_accent_2, secondary)`; a club with `color_accent_2` null falls back to its secondary color (green #04944F on UpiixIA, 3.92:1 on white, fails AA). Every consumer of `accent-2` in web/ is an alert (FormMessage error, Field aria-invalid border, States alert, Badge alert, delete buttons in community, events and resources), and the campus default is the alert red #B4422F (5.58:1, `SITE.colors.accent2`).
+- **Depends on:** UPS-048
+- **Uses contract:** None
+- **Related:** UPS-048, UPS-032
+- **Paths:** web/src/lib/theme.tsx, web/src/lib/theme.test.ts, e2e/test_theme_alert.py
+- **Freeze-Allowed:** no
+- **Tests:** test_accent2_falls_back_to_alert_red, test_accent2_keeps_a_club_color, test_error_message_is_red_on_upiixia
+- **Acceptance:**
+  - When a club has no `color_accent_2`, `--academy-accent-2` is the site alert red (`SITE.colors.accent2`), never the club secondary color. A club that sets `color_accent_2` keeps it (after `safeColor`).
+  - On UpiixIA, the invalid-field border and the FormMessage error are red and meet 4.5:1 on the light surface; checked in a real browser at 1280 and 390 wide, with a screenshot in `.uak-shots/`.
+  - No other color token changes: the secondary color of every club is untouched.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_theme_alert.py`
+- **Next step:** red test that UpiixIA shows a red error on the lesson form, then change the fallback on theme.tsx:82.
+
+## UPS-065 · Home shows the superadmin's hero title (saved, never rendered)
+
+- **Type:** fix
+- **Priority:** P2
+- **Estimate:** 30 min
+- **Rubric / Spec:** review of UPS-055 (PR #94, rejected 2026-11-12). `PUT /api/admin/home` saves `hero_title` (superadmin tab "Página principal", field "Título principal") and `GET /api/home` returns it in `hero.hero_title`, but `web/src/features/home/index.tsx` renders only `hero_text` (`heroText`, line 313). `test_sup05_home_text_shows_on_home` in e2e/test_qa_admin.py documents the gap.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-055
+- **Paths:** web/src/features/home/index.tsx, e2e/test_qa_admin.py
+- **Freeze-Allowed:** no
+- **Tests:** test_sup05_home_title_shows_on_home
+- **Acceptance:**
+  - The superadmin's `hero_title` shows on the home hero at 1280 and 390 wide. An empty `hero_title` renders no empty heading.
+  - `test_sup05_home_title_shows_on_home` asserts the title is visible; the existing hero_text assertion stays.
+  - The hero keeps its reserved lines while /home loads (no layout jump, see DESIGN.md).
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_admin.py`
+- **Next step:** red: assert the title on the home in test_sup05, then render it in the hero.
+
+## UPS-067 · Backend test: the temporary password never reaches the server log
+
+- **Type:** test
+- **Priority:** P2
+- **Estimate:** 30 min
+- **Rubric / Spec:** review of UPS-055: SUP-02 asks that the temporary password "no se muestra en logs". The e2e run cannot read server output (e2e/conftest.py sends uvicorn stdout and stderr to DEVNULL), so the server-side check belongs in the backend tests. Today `reset_password` in app/services/admin.py returns the password and has no logger call; this test keeps it that way.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-055
+- **Paths:** app/tests/test_admin.py
+- **Freeze-Allowed:** no
+- **Tests:** test_reset_password_never_logs_the_temporary_password
+- **Acceptance:**
+  - With `caplog` at DEBUG, `POST /api/admin/users/{id}/reset-password` answers 200 with the password in its body, and the password appears in no log record (`caplog.text`).
+  - The test passes on today's code. Prove it can fail: log the password in a scratch change, see the red, then drop that change (never committed).
+- **Verify:** `bash .uak/bin/q uv run pytest -q app/tests/test_admin.py -k reset_password`
+- **Next step:** write the caplog test next to test_reset_password, then the scratch check.
+
+## UPS-068 · PROPOSAL, needs human approval: academy analytics (ADM-09) has no screen or endpoint
+
+- **Type:** feature
+- **Priority:** P3
+- **Estimate:** 120 min
+- **Rubric / Spec:** PROPUESTA: a human picks one option before work starts. (a) `GET /api/academies/{slug}/analytics` for academy admins plus an "Analíticas" tab in `/panel/academia` (a new screen is scope). (b) Keep ADM-09 a backend-only check (app/tests/test_analytics.py) and mark it as not e2e in `docs/PRUEBAS-CAMPUS.md`. Evidence: ADM-09 ("Los números cuadran con los datos del seed", marked ❌). `app/routers/analytics.py` only has `POST /api/analytics/events` (ingest). Found in review of UPS-055.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-055
+- **Paths:** app/routers/analytics.py, app/services/analytics.py, app/tests/test_analytics.py, web/src/features/academy-admin/index.tsx, e2e/test_qa_admin.py, docs/PRUEBAS-CAMPUS.md
+- **Freeze-Allowed:** no
+- **Tests:** test_academy_analytics_match_seed (option a only)
+- **Acceptance (after human picks the option):**
+  - Option (a): the panel numbers equal the seed counts from the same query the backend test uses, at 1280 and 390 wide.
+  - Option (b): ADM-09 in docs/PRUEBAS-CAMPUS.md names app/tests/test_analytics.py as its check and says it is not e2e.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_admin.py app/tests/test_analytics.py`
+- **Next step:** human picks (a) or (b); then the red test.
+
+## UPS-069 · e2e LRN-02: the fake YouTube embed answers like the real one
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 20 min
+- **Rubric / Spec:** `e2e/test_qa_learning.py::test_player_loads_the_video_with_its_thumbnail` is red on main (desktop and mobile) since UPS-048: the Player now shows the video only once the embed answers over `postMessage` (a blocked embed still fires `onLoad`), and this test's fake embed never posts anything, so "Cargando video" stays. Found while verifying UPS-064; it fails the same with or without UPS-064. The product behavior is right; the test fixture is stale.
+- **Depends on:** UPS-052
+- **Uses contract:** UPS-048
+- **Related:** UPS-048, UPS-062
+- **Paths:** e2e/test_qa_learning.py
+- **Freeze-Allowed:** no
+- **Acceptance:**
+  - The fake embed in e2e/test_qa_learning.py posts a YouTube-like state message to the page (as e2e/test_segments.py does), so LRN-02 sees the iframe shown and "Cargando video" gone, at 1280 and 390.
+  - No assertion of LRN-01…08 is weakened: only the fake embed changes.
+- **Verify:** `npm --prefix web run build && uv run pytest -q e2e/test_qa_learning.py`
+- **Next step:** make the FAKE_EMBED post an `infoDelivery` message to its parent, then run the module twice.
+
+## UPS-070 · Unique nicknames, reserved "admin" and "upiixia", and admins delete comments
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** human request 2026-11-16. Today `users.nickname` has no unique constraint (test_admin.py says "nicknames are not unique, only the defaults avoid repeats"), `register_member` and `PATCH /api/account/profile` accept any nickname, and `DELETE /api/comments/{id}` is author only (docs/permissions-matrix.md: "moderators hide instead"). The human wants: no two users share a nickname; nobody takes "admin" or "upiixia"; an admin can delete comments. Nickname identity = casefold, accents removed, only letters and digits ("Admin", "a.d.min", "ÚPIIXIA" all collide with the reserved names). The rules live in a new `app/services/nicknames.py`, so `app/schemas/` and `app/models/user.py` (owned rows) stay untouched; the unique index is `lower(nickname)` created in a migration. "Admin" for comments = whoever `_can_moderate` already accepts: superadmin anywhere, academy_admin in channels of their own academy; a member still deletes only their own.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-062
+- **Paths:** app/services/nicknames.py, app/services/auth.py, app/services/admin.py, app/services/account.py, app/services/community.py, app/migrations/versions/0008_unique_nickname.py, app/tests/test_nicknames.py, app/tests/test_community.py, app/tests/test_admin.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/features/community/Comments.tsx
+- **Freeze-Allowed:** no
+- **Tests:** test_register_rejects_a_taken_nickname_case_insensitive, test_register_default_nickname_is_numbered_when_taken, test_reserved_nicknames_are_refused_everywhere, test_profile_update_rejects_taken_and_reserved_nickname, test_migration_renames_existing_duplicate_and_reserved_nicknames, test_admin_deletes_any_comment_in_their_channel, test_admin_cannot_delete_comments_of_another_academy, test_member_cannot_delete_someone_elses_comment
+- **Acceptance:**
+  - Register, `POST /api/admin/users`, `PATCH /api/admin/users/{id}` and `PATCH /api/account/profile` answer 409 (`nickname_taken`, message in Spanish) when another user already has that nickname ignoring case; keeping your own nickname is not a conflict.
+  - Same four endpoints answer 422 (`nickname_reserved`) for "admin" and "upiixia" in any casing, with accents or separators; automatic nicknames skip them the way they skip taken ones ("admin" becomes "admin2"). The seed accounts keep working.
+  - Automatic nicknames are unique on register too (`register_member` reuses the numbering of `_unique_nickname`); a concurrent insert is a 409, never a 500 (the index backs it up).
+  - Migration 0008 renames existing duplicates (oldest keeps the name; the rest get 2, 3…) and any reserved nickname, then creates the unique index on `lower(nickname)`; it round-trips (`alembic upgrade head && alembic downgrade base`) on SQLite and PostgreSQL 16.
+  - `DELETE /api/comments/{id}` accepts the author, a superadmin and the academy_admin of the channel's academy; others get 403. The post's comment count stays right; hide keeps working. The matrix row and docs/permissions-matrix.md change from AUTHOR to the moderator set.
+  - Comments.tsx shows the delete button to those moderators too, with the confirm text it uses today; 1280 and 390 wide.
+  - Existing tests that state the old rules change only where the rule changed: test_admin.py::test_default_nickname_is_unique (line "A chosen nickname is kept as is") and the DELETE comments row of test_permissions_matrix.py. A human runs `uak allow UPS-070 --tests --reason 'nickname unique and admin delete comment, human request'` before those edits.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_nicknames.py app/tests/test_community.py app/tests/test_admin.py app/tests/test_permissions_matrix.py app/tests/test_account.py app/tests/test_auth.py && uv run alembic upgrade head && uv run alembic downgrade base && npm --prefix web run build`
+- **Next step:** write the stubs for the Tests names and `uak red UPS-070`; then app/services/nicknames.py, then the migration, then delete_comment.
+
+## UPS-071 · Spike: Mailgun batch sending, unsubscribe header variables and webhook signature (test mode)
+
+- **Type:** spike
+- **Priority:** P1
+- **Estimate:** 90 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md`, `plan.md` §Design (batch sending), ADR 0002. Human owner: victor.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-073, UPS-077
+- **Paths:** docs/spikes/mailgun.md, app/tests/fixtures/mailgun/
+- **Freeze-Allowed:** no
+- **Test-First:** no (research: the output is a verified document and recorded payloads, not behavior)
+- **Acceptance:**
+  - `docs/spikes/mailgun.md` answers, each with the doc URL and date it was checked, or the request/response of a run with `o:testmode=yes`: the messages endpoint and auth for US and EU; the max recipients per call; whether `%recipient.*%` variables are substituted inside a custom `h:List-Unsubscribe` header (if not, which fallback of plan §Design applies); how `List-Unsubscribe-Post` is sent; `o:tracking`, `v:` user variables and how they come back in events.
+  - The webhook section documents the payload of `delivered`, `failed` (permanent and temporary), `complained` and `unsubscribed`, and the signature fields (`timestamp`, `token`, `signature`) with the exact HMAC recipe.
+  - `app/tests/fixtures/mailgun/` holds one JSON sample per event, with the addresses replaced by `@example.com`, and a recorded messages-API response (success and 4xx).
+  - Any real call uses victor's key from `.env` (never printed or committed) and test mode only. Without a key, the spike stays docs-only and marks those answers "unverified".
+- **Verify:** `bash .uak/bin/q bash -c 'test -s docs/spikes/mailgun.md && grep -q List-Unsubscribe docs/spikes/mailgun.md && ls app/tests/fixtures/mailgun/*.json'`
+- **Next step:** read Mailgun's sending and webhook docs, write the questions as headings, then fill them.
+
+## UPS-072 · Contract: mail tables, migration 0009, mail settings and the transport interface
+
+- **Type:** contract
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/003-correo/plan.md` §Data and migrations, §Contracts (settings), ADR 0002. Human owner: victor.
+- **Depends on:** UPS-070, UPS-002
+- **Uses contract:** None
+- **Related:** UPS-073, UPS-074, UPS-075, UPS-076, UPS-077
+- **Paths:** app/models/mail.py, app/models/__init__.py, app/migrations/versions/0009_mail.py, app/config.py, .env.example, app/services/mailer.py, app/tests/test_mail_contract.py, web/src/lib/types.ts
+- **Freeze-Allowed:** no
+- **Tests:** test_mail_migration_round_trips, test_recipient_email_is_unique_per_campaign, test_suppression_is_keyed_by_normalized_email, test_prod_requires_mailgun_settings_when_mail_enabled, test_mail_disabled_by_default, test_console_transport_logs_count_without_addresses, test_unsubscribe_token_is_random_and_only_its_hash_is_stored, test_normalize_email_lowercases_and_trims
+- **Acceptance:**
+  - `app/models/mail.py`: `MailCampaign`, `MailRecipient`, `MailSuppression` with the columns, statuses and indexes of plan §Data, registered in `app/models/__init__.py`. `app/models/user.py` and `app/schemas/` are not touched.
+  - Migration `0009_mail` (down_revision `0008_unique_nickname`) only creates the three tables; `alembic upgrade head && alembic downgrade base` is green on SQLite and on PostgreSQL 16 in CI.
+  - `app/config.py` + `.env.example`: every setting of plan §Contracts with its default; `ENV=prod` + `MAIL_ENABLED=true` + `MAIL_BACKEND=mailgun` without `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` or `MAILGUN_WEBHOOK_SIGNING_KEY` fails at startup with a clear message; secrets never appear in `repr` or errors.
+  - `app/services/mailer.py`: `MailMessage`, `MailRecipientVars`, `BatchResult`, the `MailTransport` protocol, `ConsoleTransport` (logs subject length and recipient count, no addresses), `get_mail_transport()` dependency, `normalize_email()`, `new_unsubscribe_token() -> (token, sha256_hex)`.
+  - `web/src/lib/types.ts` mirrors `Audience`, `Campaign`, `MailStatus`, `MailPreferences` of plan §Contracts.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_contract.py && uv run alembic upgrade head && uv run alembic downgrade base && npm --prefix web run build`
+- **Next step:** stubs for the Tests names and `uak red UPS-072`; then the models, then the migration, then the settings.
+
+## UPS-073 · Mailgun transport: batches of 1 000, recipient variables, test mode and safe errors
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** `docs/specs/003-correo/plan.md` §Design, `docs/spikes/mailgun.md` (UPS-071). Human owner: victor.
+- **Depends on:** UPS-071, UPS-072
+- **Uses contract:** None
+- **Related:** UPS-075
+- **Paths:** app/services/mailgun.py, app/tests/test_mailgun.py
+- **Freeze-Allowed:** no
+- **Tests:** test_one_call_per_batch_of_at_most_1000, test_each_recipient_gets_only_their_address, test_recipient_variables_carry_name_and_unsubscribe_url, test_list_unsubscribe_headers_are_sent, test_tracking_off_and_campaign_id_variable, test_test_mode_flag_sets_o_testmode, test_us_and_eu_base_urls, test_4xx_and_timeout_become_failed_batch_without_secrets, test_api_key_never_in_logs_or_errors
+- **Acceptance:**
+  - `MailgunTransport.send_batch` posts to `{MAILGUN_API_BASE}/v3/{MAILGUN_DOMAIN}/messages` with basic auth `api:<key>`, `from`, optional `h:Reply-To`, `to` = the batch, `recipient-variables` JSON, `subject`, `html`, `text`, `o:tracking=no`, `v:campaign_id`, `o:testmode` when enabled, and the unsubscribe headers as the spike settled.
+  - More than 1 000 recipients are split into ordered batches; each call's result maps to `accepted` with the provider message id, or `failed` with a short error code.
+  - Timeout 10 s; a 4xx/5xx or a timeout returns a failed `BatchResult` whose message has neither the key nor any address. Tests use `httpx.MockTransport` with the UPS-071 fixtures; no network.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mailgun.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-073`; then the request builder, then batching, then errors.
+
+## UPS-074 · Mail audience: preview count and recipient search, scoped by role and club
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Audiences and permissions, `plan.md` §Contracts, §STRIDE (elevation, disclosure). Human owner: victor.
+- **Depends on:** UPS-072
+- **Uses contract:** None
+- **Related:** UPS-075, UPS-078
+- **Paths:** app/services/mail_audience.py, app/routers/mail_audience.py, app/tests/test_mail_audience.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_all_counts_active_users_once, test_academy_counts_enrollees_and_its_admins, test_role_counts_that_role_only, test_individual_mixes_users_and_outside_addresses, test_individual_over_50_entries_or_20_emails_is_422, test_invalid_outside_address_is_422, test_excludes_inactive_suppressed_and_blocked_domains, test_academy_admin_cannot_mail_all, test_academy_admin_cannot_mail_a_role, test_academy_admin_cannot_mail_another_club, test_academy_admin_cannot_pick_a_non_enrolled_user, test_academy_admin_can_pick_a_co_admin_of_their_club, test_academy_admin_can_add_outside_addresses, test_recipient_search_hides_email_from_academy_admin, test_member_and_anon_get_403_and_401, test_mail_status_reports_quota_from_the_db
+- **Acceptance:**
+  - `resolve_audience(db, sender, audience) -> list[ResolvedRecipient]` and `preview()` implement spec §Audiences; the club scope comes from the DB (`users.academy_id`, `enrollments`), never from the body.
+  - `GET /api/mail/status`, `POST /api/mail/audience/preview` and `GET /api/mail/recipients?q=` (cursor page ≤ 50; email only for superadmin) answer as plan §Contracts; schemas live in the service module.
+  - The preview endpoint has a matrix row (OWN with `{kind: "academy", academy_id: world.academy_id}`); `recipients` and `status` are in the read matrix; `docs/permissions-matrix.md` is regenerated. Payload-dependent 403s are in `test_mail_audience.py`.
+  - Preview p95 < 300 ms on the seeded data (one timing test, like the existing ones).
+  - Human 2026-11-17 (victor): a club admin may also pick the co-admins of their own club in `individual` and in the recipient search; the preview count of typed outside addresses may exceed the final list for club admins (accepted, no oracle).
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-074`; then `resolve_audience`, then the router, then the matrix rows.
+
+## UPS-075 · Mail campaigns: template, test send, draft → confirm → send in the background, quota, history
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 360 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Composing and sending, §History, `plan.md` §Design, §Contracts, §STRIDE (tampering, repudiation, DoS). Human owner: victor.
+- **Depends on:** UPS-074
+- **Uses contract:** UPS-073
+- **Related:** UPS-078, UPS-079
+- **Paths:** app/services/mail_template.py, app/services/mail_campaigns.py, app/routers/mail_campaigns.py, app/tests/test_mail_campaigns.py, app/tests/test_mail_template.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_body_html_is_escaped_and_urls_become_links, test_subject_with_newline_is_422, test_template_uses_site_brand_and_public_base_url, test_footer_says_why_you_got_it, test_test_send_goes_only_to_the_sender, test_create_campaign_freezes_recipients_as_draft, test_confirm_twice_sends_once, test_batches_are_sent_in_the_background, test_failed_batch_marks_partial_and_keeps_others, test_resume_sends_only_pending, test_quota_exceeded_is_422_before_sending, test_rate_limit_6th_campaign_is_429, test_mail_disabled_answers_503, test_history_scoped_by_club_for_academy_admin, test_history_shows_sender_and_counts, test_send_logs_have_no_addresses
+- **Acceptance:**
+  - `mail_template.render(subject, body, footer_reason)` → `(html, text)`: body escaped, paragraphs, `<br>`, links only through `safe_url`; the layout carries the site name and logo (`SiteSettings`) with absolute URLs from `PUBLIC_BASE_URL` and the unsubscribe link `/baja?t=%recipient.unsubscribe_token%` (or the spike's fallback).
+  - `POST /api/mail/test`, `POST /api/mail/campaigns`, `POST /api/mail/campaigns/{id}/send`, `POST /api/mail/campaigns/{id}/resume`, `GET /api/mail/campaigns`, `GET /api/mail/campaigns/{id}` behave as spec and plan §Contracts; confirm uses a conditional `UPDATE … WHERE status='draft'`; batches run in `BackgroundTasks` and commit per batch.
+  - Quota and the 5-per-hour limit are checked before anything is sent; `MAIL_ENABLED=false` → 503 "El correo está desactivado".
+  - Every new write endpoint has a matrix row (OWN with the club audience, or the campaign's sender); `docs/permissions-matrix.md` is regenerated. Tests use a Fake transport through `app.dependency_overrides[get_mail_transport]`.
+  - Analytics event `mail.campaign_sent` with the count only.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_template.py app/tests/test_mail_campaigns.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-075`; then the template, then draft and confirm, then background sending.
+
+## UPS-076 · One-click unsubscribe and the "Recibir correos del club" preference
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Opt-out, `plan.md` §Contracts, §STRIDE (disclosure). RFC 8058. Human owner: victor.
+- **Depends on:** UPS-075
+- **Uses contract:** None
+- **Related:** UPS-079
+- **Paths:** app/services/mail_suppressions.py, app/routers/mail_public.py, app/tests/test_mail_unsubscribe.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_one_click_post_form_encoded_suppresses_without_session, test_json_post_from_the_baja_page_suppresses, test_unknown_token_answers_like_a_valid_one, test_token_is_read_from_the_query_not_the_path, test_suppressed_address_is_excluded_from_every_campaign, test_preference_get_and_put_toggle_the_current_address, test_outside_address_can_unsubscribe, test_unsubscribe_is_rate_limited
+- **Acceptance:**
+  - `POST /api/mail/unsubscribe?t=` accepts `application/x-www-form-urlencoded` (`List-Unsubscribe=One-Click`) and JSON, with no session and no `X-Requested-With`; it looks up the token hash, adds a `mail_suppressions` row (`unsubscribed`) and answers 200 with the same body for unknown tokens.
+  - `GET/PUT /api/mail/preferences` for any signed-in user; `receive_club_email=false` adds the suppression of their current address, `true` removes an `unsubscribed` one (never a bounce or complaint).
+  - Matrix rows: unsubscribe PUBLIC (the test builds a real token), preferences ANY; docs regenerated. Per-IP rate limit on unsubscribe.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_unsubscribe.py app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-076`; then suppressions, then the public router, then preferences.
+
+## UPS-077 · Mailgun webhook: signed delivery status, bounces and complaints suppress the address
+
+- **Type:** feature
+- **Priority:** P2
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §History and delivery status, `plan.md` §STRIDE (spoofing), `docs/spikes/mailgun.md` §Webhooks. Human owner: victor.
+- **Depends on:** UPS-076, UPS-071
+- **Uses contract:** None
+- **Related:** UPS-080
+- **Paths:** app/services/mail_webhooks.py, app/routers/mail_webhooks.py, app/tests/test_mail_webhooks.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_delivered_event_updates_the_recipient, test_permanent_failure_marks_bounced_and_suppresses, test_temporary_failure_keeps_accepted, test_complaint_suppresses, test_webhook_rejects_bad_signature, test_webhook_rejects_old_timestamp, test_webhook_rejects_replayed_token, test_unknown_campaign_or_recipient_is_ignored_with_200, test_webhook_logs_have_no_addresses
+- **Acceptance:**
+  - `POST /api/mail/webhooks/mailgun` verifies HMAC-SHA256(`MAILGUN_WEBHOOK_SIGNING_KEY`, timestamp+token) with `hmac.compare_digest`, timestamp within 5 minutes, token seen once (in-memory, one process); otherwise 403 and nothing changes.
+  - Events from the UPS-071 fixtures update `mail_recipients` by `(campaign_id, email)`; permanent failures and complaints add a suppression; the campaign's counts change accordingly.
+  - Matrix row PUBLIC (the test signs a real payload); docs regenerated.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_webhooks.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-077`; then the signature check, then the event mapping.
+
+## UPS-078 · Web: "Correos" tab in the superadmin panel (composer, audience, preview, test, confirm, history)
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 360 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Stories (superadmin), `plan.md` §Contracts, `web/DESIGN.md` (admin panel recipe). Human owner: victor.
+- **Depends on:** UPS-075
+- **Uses contract:** None
+- **Related:** UPS-079
+- **Paths:** web/src/features/mail/, web/src/features/superadmin/index.tsx, e2e/test_mail.py
+- **Freeze-Allowed:** no
+- **Tests:** test_superadmin_sends_to_a_club_after_preview_and_confirm, test_superadmin_mixes_users_and_outside_addresses, test_test_send_reports_sent_to_me, test_mail_disabled_shows_the_notice, test_history_lists_the_campaign_with_counts, test_mail_tab_at_390_wide
+- **Acceptance:**
+  - New tab "Correos" in `/admin` (after "Usuarios"): audience picker "Todo UpiixSol" / "Un club" / "Un rol" / "Personas" (search users by name or nickname, plus chips for outside addresses, max 50/20 with live counters), subject, plain-text body with character counter, "Enviarme una prueba".
+  - "Revisar y enviar" opens a modal "Se enviará a N personas" (N from the preview endpoint, with excluded counts) and the remaining daily quota; confirm creates the draft and sends it; the button is disabled while sending.
+  - History: campaigns with subject, audience, sender, date, status and counts per status; "Interrumpido · Reanudar" when stuck; empty and loading states like the other tabs.
+  - `web/src/features/mail/` holds the reusable `Composer`, `AudiencePicker` and `History` (UPS-079 reuses them). Spanish (Mexico), WCAG AA, 1280 and 390 wide, reduced motion; `.uak-shots/UPS-078/` and a `design-critic` SHIP.
+  - e2e runs with the console backend (no Mailgun) and checks the history row.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-078`; then `AudiencePicker`, then the confirm modal, then history.
+
+## UPS-079 · Web: "Correos" in the club panel, Mi cuenta toggle and the /baja page
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Stories (academy admin, member), §Opt-out. Human owner: victor.
+- **Depends on:** UPS-078, UPS-076
+- **Uses contract:** None
+- **Related:** None
+- **Paths:** web/src/features/academy-admin/index.tsx, web/src/features/account/index.tsx, web/src/features/account/ProfileTab.tsx, web/src/features/mail/, e2e/test_mail_club.py
+- **Freeze-Allowed:** no
+- **Tests:** test_club_admin_mails_their_club_only, test_club_admin_picker_lists_only_their_enrollees, test_member_turns_off_club_email_in_mi_cuenta, test_baja_page_confirms_and_unsubscribes, test_baja_page_with_bad_token_shows_the_same_message, test_club_mail_tab_at_390_wide
+- **Acceptance:**
+  - The club panel gets a "Correos" tab with the same `Composer`, audience limited to "Mi club" and "Personas" (enrollees of the club plus outside addresses), and the club's history.
+  - Mi cuenta shows "Recibir correos del club" (switch, saved through `PUT /api/mail/preferences`, with the reason text).
+  - New public route `/baja?t=…` (in `web/src/features/mail/index.tsx` `routes`): one button "Darme de baja", then "Listo, ya no recibirás correos del club"; the same message for an unknown token.
+  - 1280 and 390 wide, AA, reduced motion; `.uak-shots/UPS-079/` and a `design-critic` SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_club.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-079`; then the /baja page, then the toggle, then the club tab.
+
+## UPS-080 · Docs: Mailgun runbook (DNS for mg.upiixsol.com, Render variables, webhook, first send)
+
+- **Type:** docs
+- **Priority:** P1
+- **Estimate:** 90 min
+- **Rubric / Spec:** `docs/specs/003-correo/plan.md` §Rollout and rollback, ADR 0002, `docs/spikes/mailgun.md`. Human owner: victor (every step in the dashboard or DNS is his, never an agent's).
+- **Depends on:** UPS-077
+- **Uses contract:** None
+- **Related:** UPS-071
+- **Paths:** docs/mail-mailgun.md, docs/runbook.md, docs/deploy-render.md, render.yaml
+- **Freeze-Allowed:** no
+- **Test-First:** no (documentation; checked by the Verify grep and by victor following it once)
+- **Acceptance:**
+  - `docs/mail-mailgun.md` (Spanish): create the domain `mg.upiixsol.com` in Mailgun (region), the DNS records to add (SPF, DKIM, MX, optional tracking CNAME off) and DMARC on `upiixsol.com`, how to check they are verified, the webhook URL `https://www.upiixsol.com/api/mail/webhooks/mailgun` and its events, where the API key and signing key go (Render dashboard only), the rollout steps of plan §Rollout, the rollback (`MAIL_ENABLED=false`) and the monthly retention run (`python -m app.services.mail_retention`, UPS-081).
+  - `render.yaml` lists the mail variables (`sync: false` for keys); `docs/runbook.md` and `docs/deploy-render.md` link the new doc.
+  - No real key, record value or address beyond the documented `avisos@mg.upiixsol.com` is written in the repo.
+- **Verify:** `bash .uak/bin/q bash -c 'test -s docs/mail-mailgun.md && grep -q mg.upiixsol.com docs/mail-mailgun.md && grep -q MAILGUN_API_KEY render.yaml && bash .uak/bin/secret-scan --tracked'`
+- **Next step:** write the headings from plan §Rollout, then the DNS table from the spike.
+
+## UPS-081 · Mail retention: delete recipient rows 365 days after the campaign
+
+- **Type:** feature
+- **Priority:** P2
+- **Estimate:** 90 min
+- **Rubric / Spec:** `docs/specs/003-correo/spec.md` §Non-functional (privacy), `plan.md` §Data, §STRIDE (disclosure). Human owner: victor.
+- **Depends on:** UPS-077
+- **Uses contract:** None
+- **Related:** UPS-080
+- **Paths:** app/services/mail_retention.py, app/tests/test_mail_retention.py
+- **Freeze-Allowed:** no
+- **Tests:** test_purge_deletes_recipients_of_old_campaigns_only, test_purge_keeps_campaign_counts, test_purge_keeps_suppressions, test_purge_cli_dry_run_prints_counts_only
+- **Acceptance:**
+  - `python -m app.services.mail_retention [--days 365] [--dry-run]` deletes `mail_recipients` rows of campaigns finished more than N days ago, after storing their counts per status on the campaign; suppressions are kept; it prints counts only.
+  - No scheduler is added; `docs/mail-mailgun.md` (UPS-080) already says to run it monthly.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_retention.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-081`; then the query, then the CLI.
+
+## UPS-082 · Web CI: `npm audit` high on picomatch (GHSA-fc5q-39xc-vjpf) without breaking Vite
+
+- **Type:** bug
+- **Priority:** P0
+- **Estimate:** 90 min
+- **Rubric / Spec:** human request (victor) 2026-11-17. The `web` CI job fails on every PR (seen on PR #123, UPS-072) at `npm --prefix web audit --omit=dev --audit-level=high`: picomatch, high, ReDoS through single-branch repeated extglobs (https://github.com/advisories/GHSA-fc5q-39xc-vjpf), reached through `@tailwindcss/vite` → `vite` → `fdir` → `picomatch`. npm's suggestion (`npm audit fix --force`, which installs `vite@6.2.7`) is a breaking downgrade and is NOT an acceptable fix. `.uak/docs/SECURITY.md` §dependencies applies.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-001, UPS-072
+- **Paths:** web/package.json, web/package-lock.json, docs/security-deps.md
+- **Freeze-Allowed:** yes
+- **Test-First:** no (dependency fix: the red check is the failing audit itself; reproduce it first)
+- **Acceptance:**
+  - First reproduce the failure locally (`npm --prefix web ci && npm --prefix web audit --omit=dev --audit-level=high` exits non-zero) and record the advisory's affected and patched versions from the advisory page.
+  - Fix in this order of preference, stopping at the first that works: (a) build-only packages (`@tailwindcss/vite`, `tailwindcss`) move to `devDependencies`, since nothing at runtime imports them, so the production tree no longer contains vite/picomatch; (b) an `overrides` entry pins `picomatch` to the patched version; (c) if no patched version exists, stop and ask the human with `uak decision UPS-082 --class scope` (never disable or weaken the audit step, never `--force`).
+  - Vite stays on its current major (`^8`); `npm --prefix web run lint`, `npm --prefix web run build` and the Docker build stage that runs `npm ci` keep working (check the Dockerfile still installs devDependencies for the build).
+  - `docs/security-deps.md` (Spanish, short) records the advisory, the path, the fix chosen and why, and the date.
+  - CI `web` is green on the PR.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web ci && npm --prefix web audit --omit=dev --audit-level=high && npm --prefix web run lint && npm --prefix web run build'`
+- **Next step:** reproduce the audit failure, then try (a).
+
+## UPS-083 · Tests ignore the developer's `.env`: the backend suite is hermetic
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** human request (victor) 2026-11-17. `Settings` reads `.env` (`app/config.py`, `env_file=".env"`), and `wt new` links the main checkout's `.env` into every worktree, so a developer's `.env` copied from `.env.example` makes 23 backend tests fail in upload, site, auth and analytics code, while the same commit passes all 741 tests and smoke without it (found by victor-2 on UPS-074, recorded with `uak learn`). CI has no `.env`, so CI stays green and hides it. Tests must never depend on a developer's local configuration.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-074, UPS-020
+- **Paths:** app/tests/conftest.py, app/config.py, app/tests/test_settings_isolation.py
+- **Freeze-Allowed:** yes
+- **Tests:** test_settings_ignore_dotenv_under_pytest, test_suite_settings_match_defaults_with_a_full_dotenv_present
+- **Acceptance:**
+  - First find which variables cause the 23 failures (run the suite with a `.env` that has every `.env.example` key, then bisect); record them in the PR description. Never read, print or commit the real `.env`: build a throwaway one from `.env.example` in a temp dir.
+  - Under pytest, `Settings` does not read any `.env` file (e.g. the test settings are built with `_env_file=None`, or `conftest.py` sets that before the app is imported); explicit environment variables and `monkeypatch` still work as today.
+  - The full backend suite passes in a worktree that has the main checkout's `.env` linked, and in a clean checkout without it; the app outside tests still reads `.env` as before (dev and prod unchanged).
+  - No existing test is edited to pass.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x`
+- **Next step:** reproduce with a throwaway `.env` built from `.env.example`, find the variables, then the stub test and `uak red UPS-083`.

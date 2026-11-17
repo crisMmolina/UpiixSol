@@ -52,7 +52,6 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | PATCH | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | DELETE | `/api/events/{event_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ |  |
 | POST | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ | any signed-in user (enrolls on first progress) |
-| DELETE | `/api/lessons/{lesson_id}/complete` | 🔒 | ✅ | ✅ | ✅ | ✅ |  |
 | POST | `/api/projects` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | PUT | `/api/projects/{project_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | DELETE | `/api/projects/{project_id}` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
@@ -71,7 +70,8 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/account/password` | 🔒 | ✅ | ✅ | ✅ | ✅ | also requires the current password |
 | POST | `/api/analytics/events` | 🔒 | ✅ | ✅ | ✅ | ✅ | usage analytics, 30/min per user (UPS-037) |
 | DELETE | `/api/posts/{post_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
-| DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
+| DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ✅ | ❌ | ✅ | author, or the moderators of its channel (UPS-070) |
+| POST | `/api/mail/audience/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | superadmin: any audience; academy_admin: own club, its enrollees and outside addresses |
 
 ## Lecturas sensibles
 
@@ -84,3 +84,5 @@ Cobertura: **64/64 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/admin/academies` | 🔒 | ❌ | ❌ | ❌ | ✅ | inactive clubs included |
 | GET | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
+| GET | `/api/mail/status` | 🔒 | ❌ | ✅ | ✅ | ✅ | daily quota (UPS-074) |
+| GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins; email only for superadmin |

@@ -66,6 +66,13 @@ Las cuentas del seed (`IDEA.md` §2.3) nacen con `must_change_password = true` y
 
 Si se perdió la contraseña inicial antes de que alguien entrara: pon un `SEED_DEFAULT_PASSWORD` nuevo y arranca una vez con `SEED_ON_START=true`. Las cuentas sembradas que nunca se usaron (siguen con contraseña provisional y nadie se la ha cambiado ni restablecido) toman el valor nuevo; las demás no cambian (UPS-031).
 
+### 6.1 Contenido: ruta «De cero a LLMs» de UpiixIA (UPS-047)
+La ruta (9 módulos, 65 clases, del catálogo verificado en `docs/spikes/ruta-ia-catalog.md`) **no** se siembra con el seed normal: la agrega un humano cuando quiere publicarla.
+- Con Docker Compose: `docker compose exec api python -m app.seed --ruta-ia`.
+- En un host con el código y el `.env` de producción: `uv run python -m app.seed --ruta-ia`.
+
+Imprime una línea como `ruta-ia: +9 modules, +65 lessons, 0 updated, 1 drafts`. Es idempotente: correrlo otra vez no duplica nada. Busca ruta, módulos y clases por título, crea lo que falte y solo refresca las clases que siguen en borrador; **nunca** edita una clase publicada (ya es del admin) ni borra nada. Publica solo las clases `ok` del catálogo; la 8.4 (sustituto) queda en borrador hasta que alguien vea el video. La ruta demo «Fundamentos de IA con Python» no se toca: cuando la nueva esté completa, un admin puede despublicarla desde el panel.
+
 ## 7. TLS
 nginx escucha HTTP en `${HTTP_BIND}:${HTTP_PORT}` (default `127.0.0.1:8080`). Pon delante un terminador TLS **en el mismo host** (nginx o Caddy del sistema con Let's Encrypt) que haga proxy a `http://127.0.0.1:8080`. El hosting de producción sigue sin decidirse (spec 001, preguntas abiertas). El terminador debe:
 - Agregar `X-Forwarded-For` con la IP del cliente. nginx usa la **última** dirección de ese encabezado, así que da igual si el terminador sobrescribe o agrega: un valor que mande el cliente nunca se toma.

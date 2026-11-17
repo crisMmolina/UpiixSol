@@ -32,7 +32,7 @@ There are two independent parts, joined by one contract (the lesson fields `star
    - Update: only lessons that are still unpublished get the seed-owned fields refreshed (url, id, segment, description, links, position, published flag from status). Published lessons are left alone. Nothing is deleted.
    - `buscar` rows have no URL yet, so they are **not** created. They live in the spike document until UPS-046 fills them in, because `youtube_url` is required.
 
-   **Why a JSON fixture plus the seed** rather than an admin import endpoint: it needs no new write surface (no new permission-matrix rows, no upload parsing), and the human brief asks for it. Admins edit afterwards in the existing panel.
+   **Why a JSON fixture plus the seed** rather than an admin import endpoint: it needs no new write surface (no new permission-matrix rows, no upload parsing), and the human brief (`.uak/ruta-ia-videos.md` §4) asks for it. Admins edit afterwards in the existing panel.
 
 No ADR: everything here is additive and cheap to reverse (nullable columns, a reversible migration, a fixture). It follows ADR 0001's stack and auth unchanged.
 
@@ -94,7 +94,7 @@ This touches user-supplied URLs that end up in an iframe `src`, an area the spik
 Zero infrastructure or API cost: no YouTube API, no new services. About 55 more `lessons` rows.
 
 ## Risks
-- **Completion on segment end:** completion relies on the iframe's `ended` state (UPS-024). The `end` parameter should stop playback with state 0, but this is **unverified**. UPS-048 checks it in a real browser and records the result. If `ended` does not fire, the fallback is to treat `paused` within 2 s of `end_s` as ended, which is a decision for that task.
+- **Completion on segment end:** completion relies on the iframe's `ended` state (UPS-024). The `end` parameter stops playback with state 0. **Verified in UPS-048** (2026-11-12, Chromium, IFrame API, `aircAruvnKk?start=10&end=14`): states -1 → 1 at t=10.1 → 0 at t=14.0. No fallback is needed.
 - **Link rot:** catalog rows are checked once in UPS-046. Lessons that are not `ok` stay drafts.
 
 ## Tasks

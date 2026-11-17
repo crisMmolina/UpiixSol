@@ -16,6 +16,7 @@ only accepts MEDIA_KEY and the disk mount only reads MEDIA_DIR. Moderators read 
 
 import io
 import logging
+import mimetypes
 import re
 import uuid
 import xml.etree.ElementTree as ET  # noqa: S405 (DTDs/entities are rejected before parsing)
@@ -60,6 +61,20 @@ RULES: dict[str, Rule] = {
 RASTER_FORMATS = {"PNG", "JPEG", "WEBP"}
 CONTENT_TYPES = {"webp": "image/webp", "svg": "image/svg+xml"}
 MEDIA_KEY = re.compile(r"[a-z]+/[0-9a-f]{32}\.(?:webp|svg)")  # what _store writes: <kind>/<uuid>.<ext>
+
+
+def register_media_types() -> None:
+    """Serve what _store writes with its real type whatever the OS mime table holds (UPS-063).
+
+    With MEDIA_STORAGE=disk, StaticFiles guesses the Content-Type with `mimetypes`, whose built-in table has
+    no .webp before Python 3.13: on Windows without it in the registry (or an image without /etc/mime.types)
+    every upload went out as application/octet-stream, which browsers may refuse under `nosniff`.
+    """
+    for extension, content_type in CONTENT_TYPES.items():
+        mimetypes.add_type(content_type, f".{extension}")
+
+
+register_media_types()
 WITHDRAWN = "hidden/"  # prefix of moderator-only copies; never matches MEDIA_KEY
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"

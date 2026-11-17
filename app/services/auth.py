@@ -33,6 +33,7 @@ from app.security import (
     password_needs_rehash,
     verify_password,
 )
+from app.services.nicknames import ensure_available, unique_nickname
 
 INVALID_CREDENTIALS = "Boleta, correo o contraseña incorrectos."
 DUPLICATE_ACCOUNT = "Ya existe una cuenta con ese correo o esa boleta. Inicia sesión o recupera tu acceso."
@@ -62,12 +63,14 @@ def register_member(db: Session, data: RegisterIn) -> User:
     )
     if exists:
         raise AppError(409, DUPLICATE_ACCOUNT, code="account_exists")
+    if data.nickname:
+        ensure_available(db, data.nickname)
     user = User(
         role=Role.member,
         email=data.email,
         password_hash=hash_password(data.password),
         full_name=data.full_name,
-        nickname=data.nickname or default_nickname(data.full_name),
+        nickname=data.nickname or unique_nickname(db, default_nickname(data.full_name)),
         boleta=data.boleta,
     )
     try:

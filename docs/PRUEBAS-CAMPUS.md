@@ -69,7 +69,7 @@ Probar **por API** (curl o tests), no solo ocultando botones en la UI.
 | LRN-01 | Abrir `/a/:slug/rutas`, luego una ruta, un módulo y una clase | La navegación es completa y el orden respeta el que puso el admin | 🟡 |
 | LRN-02 | Reproducir una clase de YouTube en el Player | El video carga y se ve la miniatura | ❌ |
 | LRN-03 | Marcar una clase como completada, **recargar** | El % de la ruta sube y se mantiene tras recargar (criterio de aceptación Alto) | ✅ |
-| LRN-04 | Desmarcar la clase completada | El % baja | 🟡 |
+| LRN-04 | Intentar desmarcar una clase completada | Una clase completada no se puede desmarcar: el Player no ofrece control y la API no tiene esa ruta (405); el % no baja | ✅ |
 | LRN-05 | Completar todas las clases de una ruta | Queda al 100 % y se ve como terminada | ❌ |
 | LRN-06 | Navegación anterior/siguiente en el Player | Salta bien entre clases y entre módulos | ❌ |
 | LRN-07 | Clase con texto o markdown con `<script>` o un `onerror` | Se sanitiza y no se ejecuta nada | 🟡 |

@@ -41,6 +41,7 @@ SUPER = {"superadmin"}
 PUBLIC = set(ROLES)
 CLUB = {"member", "admin_own", "superadmin"}  # UPS-035: the club's members (enrolled) and admins
 AUTHOR = {"member"}  # UPS-035: only the author (the seeded member wrote the target post and comment)
+SENDERS = {"admin_own", "admin_other", "superadmin"}  # UPS-074: email senders, each within their own scope
 
 
 @dataclass
@@ -196,7 +197,6 @@ MATRIX: list[Rule] = [
         ANY,
         note="any signed-in user (enrolls on first progress)",
     ),
-    Rule("DELETE", "/api/lessons/{lesson_id}/complete", ANY),
     # ── Gallery and blog (UPS-017) ───────────────────────────
     Rule("POST", "/api/projects", SUPER, _json(lambda _w: {"title": "Proyecto", "slug": "proyecto-matriz"})),
     Rule(
@@ -251,7 +251,20 @@ MATRIX: list[Rule] = [
     ),
     # ── Community: authors delete their own (UPS-035) ────────
     Rule("DELETE", "/api/posts/{post_id}", AUTHOR, note="author only; moderators hide instead"),
-    Rule("DELETE", "/api/comments/{comment_id}", AUTHOR, note="author only; moderators hide instead"),
+    Rule(
+        "DELETE",
+        "/api/comments/{comment_id}",
+        {"member", "admin_own", "superadmin"},
+        note="author, or the moderators of its channel (UPS-070)",
+    ),
+    # ── Email (UPS-074): audience of the club; all/role/individual 403s in test_mail_audience.py ──
+    Rule(
+        "POST",
+        "/api/mail/audience/preview",
+        OWN,
+        _json(lambda w: {"kind": "academy", "academy_id": w.academy_id}),
+        note="superadmin: any audience; academy_admin: own club, its enrollees and outside addresses",
+    ),
 ]
 
 WRITE_METHODS = {"post", "put", "patch", "delete"}
@@ -410,6 +423,13 @@ READ_MATRIX: list[Rule] = [
     Rule("GET", "/api/admin/academies", SUPER, note="inactive clubs included"),
     Rule("GET", "/api/admin/users", SUPER),
     Rule("GET", "/api/admin/home", SUPER),
+    Rule("GET", "/api/mail/status", SENDERS, note="daily quota (UPS-074)"),
+    Rule(
+        "GET",
+        "/api/mail/recipients",
+        SENDERS,
+        note="own club's enrollees and co-admins; email only for superadmin",
+    ),
 ]
 
 

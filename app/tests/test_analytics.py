@@ -211,22 +211,20 @@ def test_lesson_progress_is_captured_with_club(
     lesson = _lesson(db, seeded["academy_id"])
     assert as_member.get(f"/api/lessons/{lesson.id}").status_code == 200
     assert as_member.post(f"/api/lessons/{lesson.id}/complete").status_code == 200
-    assert as_member.delete(f"/api/lessons/{lesson.id}/complete").status_code == 200
     route_id = db.scalar(select(Module.route_id).where(Module.id == lesson.module_id))
     assert as_member.get(f"/api/routes/{route_id}").status_code == 200
     events = _events(db)
     assert [e.name for e in events] == [
         "lesson.viewed",
         "lesson.completed",
-        "lesson.uncompleted",
         "route.viewed",
     ]
     for event in events:
         assert event.user_id == seeded["member_id"]
         assert event.academy_id == seeded["academy_id"]
         assert event.source == "server" and event.session_id is None
-    assert [(e.subject_type, e.subject_id) for e in events[:3]] == [("lesson", lesson.id)] * 3
-    assert (events[3].subject_type, events[3].subject_id) == ("route", route_id)
+    assert [(e.subject_type, e.subject_id) for e in events[:2]] == [("lesson", lesson.id)] * 2
+    assert (events[2].subject_type, events[2].subject_id) == ("route", route_id)
 
 
 def test_community_actions_are_captured(

@@ -35,14 +35,20 @@ function playerState(data: unknown): number | null {
   return null;
 }
 
-/** Calls `onEnded` once when the video in `frame` finishes. */
-export function useVideoEnded(frame: RefObject<HTMLIFrameElement | null>, onEnded: () => void, enabled = true): void {
-  // The latest callback, read when the video ends: a new `onEnded` each render must not re-subscribe (and
+/** Calls `onEnded` once when the video in `frame` finishes, and `onAlive` on every message the embed sends:
+ * the first one proves the embed runs (a blocked embed never answers, so its frame must not be shown). */
+export function useVideoEnded(
+  frame: RefObject<HTMLIFrameElement | null>,
+  onEnded: () => void,
+  enabled = true,
+  onAlive?: () => void,
+): void {
+  // The latest callbacks, read on each message: new ones each render must not re-subscribe (and
   // postMessage to an iframe that has not loaded yet).
-  const latest = useRef(onEnded);
+  const latest = useRef({ onEnded, onAlive });
   useEffect(() => {
-    latest.current = onEnded;
-  }, [onEnded]);
+    latest.current = { onEnded, onAlive };
+  }, [onEnded, onAlive]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -57,9 +63,10 @@ export function useVideoEnded(frame: RefObject<HTMLIFrameElement | null>, onEnde
 
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== YOUTUBE_ORIGIN || !frame.current || event.source !== frame.current.contentWindow) return;
+      latest.current.onAlive?.();
       if (!fired && playerState(event.data) === ENDED) {
         fired = true;
-        latest.current();
+        latest.current.onEnded();
       }
     };
 

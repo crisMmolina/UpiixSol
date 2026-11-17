@@ -109,7 +109,10 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(() =>
     typeof navigator !== "undefined" && !navigator.onLine ? "unavailable" : "loading",
   );
-  useVideoEnded(frame, onEnded, status !== "unavailable");
+  // Shown only once the embed answers over postMessage. onLoad alone is not enough: a blocked embed still loads
+  // (as an empty white frame), and the timeout below must still be able to show the plan-B message.
+  const alive = useCallback(() => setStatus((s) => (s === "loading" ? "ready" : s)), []);
+  useVideoEnded(frame, onEnded, status !== "unavailable", alive);
 
   useEffect(() => {
     // An <iframe> has no reliable onerror: if it does not load in time (or we are offline) show the fallback.
@@ -142,7 +145,6 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
           referrerPolicy="strict-origin-when-cross-origin"
           allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
-          onLoad={() => setStatus("ready")}
         />
       )}
       {status === "unavailable" && (
@@ -152,7 +154,7 @@ function VideoFrame({ lesson, onEnded }: { lesson: LessonOut; onEnded: () => voi
             <p className="text-lg font-semibold">Video no disponible sin conexión</p>
             <p className="text-sm text-white/80">Revisa tu internet o ábrelo directamente en YouTube.</p>
             <a
-              href={`https://www.youtube.com/watch?v=${lesson.youtube_video_id}`}
+              href={`https://www.youtube.com/watch?v=${lesson.youtube_video_id}${lesson.start_s ? `&t=${lesson.start_s}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 font-semibold text-white underline"

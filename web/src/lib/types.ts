@@ -241,6 +241,8 @@ export interface LessonOut {
   thumbnail_url: string;
   description: string;
   duration_min: number | null;
+  start_s: number | null;
+  end_s: number | null;
   is_published: boolean;
   links: LessonLinkOut[];
   completed: boolean;
@@ -266,6 +268,8 @@ export interface LessonIn {
   youtube_url: string;
   description?: string;
   duration_min?: number | null;
+  start_s?: number | null;
+  end_s?: number | null;
   is_published?: boolean;
   links?: LessonLinkIn[];
 }
@@ -400,4 +404,65 @@ export interface CommentOut {
   body: string; // "" when hidden (redacted by the API)
   created_at: DateTime;
   is_hidden: boolean;
+}
+
+// ── Email channel (spec 003, /api/mail) ──────────────────────
+/** What the sender submits. */
+export type Audience =
+  | { kind: "all" }
+  | { kind: "academy"; academy_id: number }
+  | { kind: "role"; role: Role }
+  | { kind: "individual"; user_ids: number[]; emails: string[] }; // ≤ 50 entries in total, ≤ 20 emails
+
+/** What the API returns: outside addresses are never echoed back, only how many there were. */
+export type AudienceOut =
+  | { kind: "all" }
+  | { kind: "academy"; academy_id: number }
+  | { kind: "role"; role: Role }
+  | { kind: "individual"; user_ids: number[]; email_count: number };
+
+export type CampaignStatus = "draft" | "sending" | "sent" | "partial" | "failed";
+export type MailRecipientStatus =
+  | "pending"
+  | "accepted"
+  | "delivered"
+  | "failed"
+  | "bounced"
+  | "complained";
+
+export interface CampaignIn {
+  subject: string;
+  body: string;
+  audience: Audience;
+}
+
+export interface Campaign {
+  id: number;
+  subject: string;
+  audience: AudienceOut;
+  sender: PublicUser | null;
+  status: CampaignStatus;
+  recipient_count: number;
+  counts_by_status: Partial<Record<MailRecipientStatus, number>>;
+  created_at: DateTime;
+  sent_at: DateTime | null;
+}
+
+/** GET /api/mail/status */
+export interface MailStatus {
+  enabled: boolean;
+  daily_limit: number;
+  sent_today: number;
+  remaining: number;
+}
+
+/** GET/PUT /api/mail/preferences */
+export interface MailPreferences {
+  receive_club_email: boolean;
+}
+
+/** POST /api/mail/audience/preview */
+export interface AudiencePreview {
+  count: number;
+  excluded: { inactive: number; suppressed: number; blocked_domain: number };
 }

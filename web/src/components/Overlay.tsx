@@ -27,6 +27,26 @@ const backdrop: Variants = {
   shown: { opacity: 1, transition: shownTransition },
 };
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
+  'textarea:not([disabled]), details > summary, iframe, [tabindex]:not([tabindex="-1"])';
+
+/** Inside a closed <details> only its <summary> is reachable, yet the rest still reports layout boxes. */
+function inClosedDetails(el: HTMLElement): boolean {
+  const details = el.closest("details:not([open])");
+  return details !== null && !(el.tagName === "SUMMARY" && el.parentElement === details);
+}
+
+/** The controls Tab can reach inside `root`, in DOM order (hidden, collapsed and inert ones left out). */
+function focusStops(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    (el) =>
+      (typeof el.checkVisibility === "function" ? el.checkVisibility() : el.getClientRects().length > 0) &&
+      !inClosedDetails(el) &&
+      !el.closest("[inert], [aria-hidden='true']"),
+  );
+}
+
 /** Phones and tablets: focusing a text field would open the on-screen keyboard over the panel. */
 function touchOrNarrow(): boolean {
   return window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 640;
@@ -91,6 +111,23 @@ function Overlay({
         onClose();
       }}
       onClose={onClose}
+      // Tab wraps inside the dialog: a native modal still lets focus leave the page after its last control (UPS-061).
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        const stops = focusStops(event.currentTarget);
+        if (stops.length === 0) return;
+        const first = stops[0];
+        const last = stops[stops.length - 1];
+        const active = document.activeElement;
+        const inside = active instanceof Node && event.currentTarget.contains(active);
+        if (event.shiftKey && (active === first || !inside)) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (active === last || !inside)) {
+          event.preventDefault();
+          first.focus();
+        }
+      }}
       // overflow-clip, not overflow-hidden: a hidden overflow is still a scroll container, and showModal focusing
       // the close button of a right drawer still off-screen (translateX(100%)) scrolled the dialog sideways, so the
       // panel showed in place before the backdrop and never slid in (UPS-043; iPhone video).

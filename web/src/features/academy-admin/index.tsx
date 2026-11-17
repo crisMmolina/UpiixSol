@@ -37,6 +37,7 @@ import type { AcademyOut, BrandingUpdateIn, LessonLinkOut, Page } from "@/lib/ty
 import { ResourceBoard } from "@/features/resources/ResourceBoard";
 import { CampusLayout } from "@/layouts";
 
+import { formatClock, parseClock, startFromUrl } from "./clock";
 import { useSortable } from "./sortable";
 
 export const order = 50;
@@ -51,6 +52,8 @@ interface LessonAdminOut {
   youtube_video_id: string;
   description: string;
   duration_min: number | null;
+  start_s: number | null;
+  end_s: number | null;
   position: number;
   is_published: boolean;
   links: LessonLinkOut[];
@@ -289,6 +292,16 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
 
 // ── Content ──────────────────────────────────────────────────
 
+const CLOCK_HINT = "mm:ss o h:mm:ss";
+const CLOCK_ERROR = "Usa mm:ss o h:mm:ss.";
+const SEGMENT_ERROR = "El fin del tramo debe ser mayor que el inicio.";
+
+/** "14:10–48:58" for a lesson that plays only part of its video (UPS-048). */
+function segmentLabel(lesson: Pick<LessonAdminOut, "start_s" | "end_s">): string | null {
+  if (lesson.start_s == null && lesson.end_s == null) return null;
+  return `${formatClock(lesson.start_s ?? 0)}–${lesson.end_s == null ? "fin" : formatClock(lesson.end_s)}`;
+}
+
 interface LessonFormState {
   moduleId: number;
   lesson?: LessonAdminOut;
@@ -300,16 +313,32 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [start, setStart] = useState(editing?.start_s != null ? formatClock(editing.start_s) : "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const duration = String(form.get("duration_min") || "").trim();
+    const startText = start.trim();
+    const endText = String(form.get("end_s") || "").trim();
+    const startS = startText ? parseClock(startText) : null;
+    const endS = endText ? parseClock(endText) : null;
+    const segmentErrors: Record<string, string> = {};
+    if (startText && startS === null) segmentErrors.start_s = CLOCK_ERROR;
+    if (endText && endS === null) segmentErrors.end_s = CLOCK_ERROR;
+    else if (endS !== null && endS <= (startS ?? 0)) segmentErrors.end_s = SEGMENT_ERROR;
+    if (Object.keys(segmentErrors).length) {
+      setErrors(segmentErrors);
+      setError(segmentErrors.end_s ?? segmentErrors.start_s);
+      return;
+    }
     const payload = {
       title: String(form.get("title")).trim(),
       youtube_url: String(form.get("youtube_url")).trim(),
       description: String(form.get("description")),
       duration_min: duration ? Number(duration) : null,
+      start_s: startS,
+      end_s: endS,
       is_published: form.get("is_published") === "on",
       links: links.filter((l) => l.label.trim() && l.url.trim()),
     };
@@ -350,7 +379,35 @@ function LessonForm({ state, onClose, onSaved }: { state: LessonFormState; onClo
         placeholder="https://www.youtube.com/watch?v=…"
         hint="Acepta watch, youtu.be, shorts o embed."
         error={errors.youtube_url}
+        onChange={(event) => {
+          // A pasted ?t= fills an empty start; a start the admin typed stays (UPS-048).
+          const fromUrl = startFromUrl(event.currentTarget.value);
+          if (!start.trim() && fromUrl !== null) setStart(formatClock(fromUrl));
+        }}
       />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="Inicio del tramo"
+          name="start_s"
+          value={start}
+          onChange={(event) => setStart(event.currentTarget.value)}
+          inputMode="numeric"
+          placeholder="0:00"
+          hint={CLOCK_HINT}
+          reserve
+          error={errors.start_s}
+        />
+        <TextField
+          label="Fin del tramo"
+          name="end_s"
+          defaultValue={editing?.end_s != null ? formatClock(editing.end_s) : ""}
+          inputMode="numeric"
+          placeholder="Hasta el final"
+          hint={CLOCK_HINT}
+          reserve
+          error={errors.end_s}
+        />
+      </div>
       <TextArea label="Descripción (markdown)" name="description" defaultValue={editing?.description} rows={4} reserve error={errors.description} />
       <TextField
         label="Duración (minutos)"
@@ -477,7 +534,7 @@ function ContentSkeleton() {
       {[0, 1].map((i) => (
         <div key={i} className="grid gap-4 rounded-card border border-line bg-surface p-5">
           <Skeleton className="h-7 w-1/2" />
-          <div className="grid gap-2 rounded-2xl border border-line p-3">
+          <div className="grid gap-2 border-t border-line pt-4">
             <Skeleton className="h-5 w-2/3" />
             <SkeletonText lines={3} />
           </div>
@@ -579,7 +636,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
       {content.routes.length === 0 && <EmptyState title="Aún no hay rutas" description="Crea la primera ruta de tu club." mascotUrl={academy.mascot_url} />}
 
       {content.routes.map((route, routeIndex) => (
-        <Card key={route.id} stripe className="grid gap-4 p-5">
+        <Card key={route.id} className="grid gap-4 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="mr-auto text-xl">{route.title}</h3>
             <Badge tone={route.is_published ? "primary" : "alert"}>{route.is_published ? "Publicada" : "Borrador"}</Badge>
@@ -621,18 +678,19 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
             </span>
           </div>
 
-          <ol className="grid gap-3">
+          {/* Modules are divider sections of the route card, not boxes inside it: one line between them. */}
+          <ol className="grid">
             {route.modules.map((module, moduleIndex) => (
               <li
                 key={module.id}
-                className="rounded-2xl border border-line cursor-grab data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
+                className="cursor-grab rounded-xl border-t border-line pt-4 first:border-t-0 first:pt-0 data-[dragging]:opacity-50 data-[over]:ring-2 data-[over]:ring-secondary"
                 {...sortable.item(`route-${route.id}`, route.modules.map((m) => m.id), module.id, (ids) =>
                   reorder(`/routes/${route.id}/modules/order`, ids),
                 )}
               >
                 {/* Title and controls are two units: on a narrow screen the whole toolbar moves under the
                     title instead of single icons wrapping one by one. */}
-                <div className="flex flex-wrap items-center gap-x-1 border-b border-line px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-1 pb-1">
                   <span className="flex min-w-0 flex-1 basis-48 items-center gap-2 font-semibold">
                     <DotsSixVertical weight="bold" aria-hidden className="shrink-0 text-muted" />
                     Módulo {moduleIndex + 1} · {module.title}
@@ -667,7 +725,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                     </IconButton>
                   </span>
                 </div>
-                <ol className="grid gap-1 p-2">
+                <ol className="grid gap-1 pt-1">
                   {module.lessons.map((lesson, lessonIndex) => (
                     <li
                       key={lesson.id}
@@ -681,6 +739,7 @@ function ContentTab({ academy }: { academy: AcademyOut }) {
                         <span className="min-w-0">
                           {lessonIndex + 1}. {lesson.title}
                           {lesson.duration_min ? <span className="text-muted"> · {lesson.duration_min} min</span> : null}
+                          {segmentLabel(lesson) ? <span className="text-muted tabular-nums"> · {segmentLabel(lesson)}</span> : null}
                         </span>
                         {!lesson.is_published && <Badge tone="alert">Borrador</Badge>}
                       </span>
