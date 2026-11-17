@@ -297,6 +297,12 @@ MATRIX: list[Rule] = [
         note="token in ?t=, same 200 for unknown tokens; rate-limited per IP",
     ),
     Rule(
+        "POST",
+        "/api/mail/webhooks/mailgun",
+        PUBLIC,
+        note="HMAC signature is the credential; really signed payloads in test_mail_webhooks.py",
+    ),
+    Rule(
         "PUT",
         "/api/mail/preferences",
         ANY,
