@@ -6,7 +6,7 @@
 - Why: human decision; keep pages and test assumptions stable; avoid IS NULL match
 - Failing: none in Verify; worktree .env issue tracked as UPS-083
 - Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py
-- Next: Wait for review of SHA 8bc0ad5
+- Next: Integrated in main: f57af1640fd6720a4ddc1ed23e13b5d5d8d1b1a5
 
 ## History
 - 1794939894 | CLAIMED | victor-2 | claim; next: stubs for the Tests names and `uak red UPS-074`; then `resolve_audience`, then the router, then the matrix rows.
@@ -20,3 +20,4 @@
 - 1794943226 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/127; evidence: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_audience.py app/tests/test_permissions_matrix.py exit 0 at 8bc0ad5; new code 100% coverage · red at ec9c2d5: E   AssertionError: {"error":{"code":"not_found","message":"No encontrado.","details":null}}; reviewer: -
 - 1794943246 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA 8bc0ad5
 - 1794943509 | REVIEW | victor-1 | review; approve; SHA 8bc0ad50e1c6d8b55f2964628a54e03a0d07601f; reviewer victor-1
+- 1794943857 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit f57af1640fd6720a4ddc1ed23e13b5d5d8d1b1a5; reviewer victor-1
