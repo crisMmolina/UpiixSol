@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794950016
+Updated: 1794950339
 AVAILABLE: UPS-068 UPS-076 UPS-077 UPS-079 UPS-080 UPS-081 UPS-084 
 CLAIMED: UPS-060 UPS-078 
 BLOCKED: UPS-057 
@@ -16,11 +16,11 @@ UPS-078 | CLAIMED | victor-2 | until 1794964416
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794942360 | UPS-074 | non-superadmin preview blind to typed-address dedup/suppression; individual = enrollees only | Why: security review oracle findings; spec §Audiences
 - 1794943006 | UPS-073 | marathon: human CODEOWNERS merge | Why: mode rule
 - 1794943246 | UPS-074 | sender excluded from own search; club-less admin picks nobody | Why: human decision; keep pages and test assumptions stable; avoid IS NULL match
 - 1794949343 | UPS-075 | Footer links %recipient.unsubscribe_url%; UPS-076 should 303 GET to /baja | Why: Mailgun only gets name and unsubscribe_url variables
 - 1794949390 | UPS-083 | conftest hook sets env_file=None on app.* BaseSettings and gives slowapi an empty config | Why: dotenv DATABASE_URL pointed to remote Postgres; global engi
+- 1794950339 | deadline decision/UPS-075-1794949161/1794950061 | BLOCKED_OTHER_TASK | Option: Footer Darte de baja links to %recipient.unsubscribe_url% (API URL); UPS-076 answers G
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
