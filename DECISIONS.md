@@ -92,3 +92,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794935877 | deadline decision/UPS-072-1794888403/1794889303 | BLOCKED_OTHER_TASK | Option: IDEA §9: los envíos manuales de correo por admins entran al alcance (spec 003); las notificaciones automáticas y la recuperación de contraseña siguen fuera; Why: pedido de victor, responsable de la función de correo; no money, accounts, publishing or scope expansion.
 - 1794936624 | UPS-071 | docs-only, no key used | Why: key in .env unreadable by agents
 - 1794938600 | UPS-072 | dropped prod console+enabled rejection (would edit a committed assertion) | Why: security review LOW, spec only requires keys for mailgun
+- 1794940895 | UPS-082 | tailwind build-only packages -> devDependencies | Why: no picomatch patch exists (<=4.0.7, first_patched null); --force downgrades vite
