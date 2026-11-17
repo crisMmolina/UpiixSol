@@ -103,3 +103,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794950339 | deadline decision/UPS-075-1794949161/1794950061 | BLOCKED_OTHER_TASK | Option: Footer Darte de baja links to %recipient.unsubscribe_url% (API URL); UPS-076 answers GET /api/mail/unsubscribe?t= with 303 to /baja?t= without changing state; Why: Mailgun only receives name and unsubscribe_url variables (UPS-073), so /baja?t=token cannot be built per recipient in a batch; no money, accounts, publishing or scope expansion.
 - 1794950373 | UPS-078 | Own mail_env fixture in e2e/test_mail.py (MAIL_ENABLED, unblocked domain, seed password) | Why: conftest untouched
 - 1794950614 | UPS-078 | types.ts untouched (outside Paths); History reads audience.outside locally | Why: AudienceOut.email_count in types.ts is wrong vs API
+- 1794951335 | UPS-076 | body never read on POST; GET 303 to /baja | Why: scanners prefetch GET; form/JSON/empty all work
