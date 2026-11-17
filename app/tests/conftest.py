@@ -12,6 +12,40 @@ os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="upiixsol-media-"))
 # Seeded accounts have must_change_password; test_auth.py turns the requirement on to test it (UPS-020).
 os.environ.setdefault("REQUIRE_PASSWORD_CHANGE", "false")
 
+# Hermetic suite (UPS-083): never read a developer's dotenv file (`wt new` links the main checkout's one).
+# Settings come only from the environment set here, in CI or by monkeypatch. Dev and prod still read it.
+from pydantic import BaseModel  # noqa: E402
+from pydantic_settings import BaseSettings  # noqa: E402
+
+
+@classmethod
+def _ignore_dotenv(cls: type[BaseSettings], **kwargs: object) -> None:
+    # Runs when each settings class is defined, before any import-time read (DB engine, limiter, lru_caches).
+    if cls.__module__ == "app" or cls.__module__.startswith("app."):
+        cls.model_config["env_file"] = None
+    BaseModel.__pydantic_init_subclass__.__func__(cls, **kwargs)
+
+
+BaseSettings.__pydantic_init_subclass__ = _ignore_dotenv
+
+# slowapi's Limiter also loads `.env` from the cwd unless given a config file: give it an empty one.
+import functools  # noqa: E402
+
+from slowapi import Limiter  # noqa: E402
+
+_NO_DOTENV = tempfile.mkstemp(prefix="upiixsol-no-dotenv-")[1]
+_limiter_init = Limiter.__init__
+
+
+@functools.wraps(_limiter_init)
+def _limiter_without_dotenv(
+    self: Limiter, *args: object, config_filename: str | None = None, **kwargs: object
+) -> None:
+    _limiter_init(self, *args, config_filename=config_filename or _NO_DOTENV, **kwargs)
+
+
+Limiter.__init__ = _limiter_without_dotenv
+
 from collections.abc import Iterator  # noqa: E402
 
 import pytest  # noqa: E402
