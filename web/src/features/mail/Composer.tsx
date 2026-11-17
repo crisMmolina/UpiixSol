@@ -40,14 +40,16 @@ export function Composer({
   status,
   academies,
   kinds,
+  ownClub,
   onSent,
 }: {
   status: MailStatus;
   academies: AcademyChoice[];
   kinds?: AudienceKind[];
+  ownClub?: boolean;
   onSent: (campaign: Campaign) => void;
 }) {
-  const [draft, setDraft] = useState<AudienceDraft>({ ...EMPTY_AUDIENCE, kind: kinds?.[0] ?? "all" });
+  const [draft, setDraft] = useState<AudienceDraft>({ ...EMPTY_AUDIENCE, kind: kinds?.[0] ?? "all", academyId: ownClub ? (academies[0]?.id ?? null) : null });
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [testNote, setTestNote] = useState<{ text: string; tone: "error" | "success" } | null>(null);
@@ -104,7 +106,7 @@ export function Composer({
       setPreview(null);
       setSubject("");
       setBody("");
-      setDraft({ ...EMPTY_AUDIENCE, kind: draft.kind });
+      setDraft({ ...EMPTY_AUDIENCE, kind: draft.kind, academyId: draft.academyId });
       setSentNote("El envío está en curso. Sigue su avance en el historial.");
       onSent(campaign);
     } catch (err) {
@@ -120,7 +122,7 @@ export function Composer({
   return (
     <Card className="grid gap-5 p-5 sm:p-6">
       {off && <Notice tone="alert">El correo está desactivado. Puedes redactar, pero no enviar, hasta que se active.</Notice>}
-      <AudiencePicker draft={draft} onChange={setDraft} academies={academies} kinds={kinds} />
+      <AudiencePicker draft={draft} onChange={setDraft} academies={academies} kinds={kinds} ownClub={ownClub} />
       <TextField label="Asunto" value={subject} maxLength={MAX_SUBJECT} onChange={(e) => setSubject(e.target.value.replace(/[\r\n]+/g, " "))} />
       <div className="grid gap-1">
         <TextArea label="Mensaje" value={body} maxLength={MAX_BODY} rows={8} onChange={(e) => setBody(e.target.value)} hint="Texto sin formato: las líneas en blanco separan párrafos y los enlaces https se vuelven clicables." />

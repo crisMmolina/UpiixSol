@@ -38,9 +38,9 @@ export function isStuck(campaign: Campaign, now = Date.now()): boolean {
   return Number.isFinite(since) && now - since > STALE_MS;
 }
 
-function audienceText(campaign: Campaign, academies: AcademyChoice[]): string {
+function audienceText(campaign: Campaign, academies: AcademyChoice[], ownClub: boolean): string {
   const a = campaign.audience;
-  if (a.kind === "academy") return `${KIND_LABEL.academy} · ${academies.find((x) => x.id === a.academy_id)?.name ?? "club"}`;
+  if (a.kind === "academy") return `${ownClub ? "Mi club" : KIND_LABEL.academy} · ${academies.find((x) => x.id === a.academy_id)?.name ?? "club"}`;
   if (a.kind === "role") return `${KIND_LABEL.role} · ${ROLE_LABEL[a.role]}`;
   if (a.kind === "individual") {
     // The API sends `outside` (types.ts still says `email_count`; not ours to edit, see UPS-075 contract).
@@ -58,7 +58,7 @@ function when(value: string): string {
   return Number.isFinite(t) ? DATE.format(t) : "";
 }
 
-export function History({ academies, reloadKey = 0 }: { academies: AcademyChoice[]; reloadKey?: number }) {
+export function History({ academies, reloadKey = 0, ownClub = false }: { academies: AcademyChoice[]; reloadKey?: number; ownClub?: boolean }) {
   const [items, setItems] = useState<Campaign[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +140,7 @@ export function History({ academies, reloadKey = 0 }: { academies: AcademyChoice
                       </Button>
                     )}
                   </div>
-                  <p className="text-sm text-muted">{audienceText(c, academies)}</p>
+                  <p className="text-sm text-muted">{audienceText(c, academies, ownClub)}</p>
                   <p className="text-sm text-muted">
                     <span>{c.sender?.nickname ?? "—"}</span> · <span>{when(c.created_at)}</span> · <span>{`${c.recipient_count} ${c.recipient_count === 1 ? "destinatario" : "destinatarios"}`}</span>
                   </p>

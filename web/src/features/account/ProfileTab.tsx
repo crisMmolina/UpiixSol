@@ -10,6 +10,7 @@ import { Stagger, StaggerItem } from "@/components/Motion";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { UserMe } from "@/lib/types";
+import { MailPreferenceCard } from "@/features/mail/MailPreferenceCard";
 
 import { statusFor, useFormRequest, type Errors, type Status } from "./status";
 
@@ -158,6 +159,10 @@ export function ProfileTab({ user, play }: { user: UserMe; play: boolean }) {
             </div>
           </form>
         </Card>
+      </StaggerItem>
+
+      <StaggerItem className="lg:col-span-2">
+        <MailPreferenceCard />
       </StaggerItem>
     </Stagger>
   );
