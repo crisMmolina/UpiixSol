@@ -6,7 +6,7 @@
 - Why: no picomatch patch exists (<=4.0.7, first_patched null); --force downgrades vite
 - Failing: local smoke backend fails only from the local .env seed password; CI backend green
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web ci && npm --prefix web audit --omit=dev --audit-level=high && npm --prefix web run lint && npm --prefix web run build'
-- Next: Wait for review of SHA 21d6698
+- Next: Integrated in main: 84da11e110b7829ec644ac57063828b0003d0ef4 (recorded by victor-2)
 
 ## History
 - 1794939688 | CLAIMED | victor-1 | claim; next: reproduce the audit failure, then try (a).
@@ -17,3 +17,4 @@
 - 1794941871 | REVIEW | victor-1 | heartbeat; lease until 1795028271
 - 1794942856 | REVIEW | victor-2 | review; approve; SHA 21d6698bf6177e6414fa0230d1688afa87ce6765; reviewer victor-2
 - 1794943141 | REVIEW | victor-1 | heartbeat; lease until 1795029541
+- 1794943164 | INTEGRATED | victor-2 | integrate; recorded by victor-2; PR https://github.com/crisMmolina/UpiixSol/pull/125; merged 84da11e110b7829ec644ac57063828b0003d0ef4; proof ancestry
