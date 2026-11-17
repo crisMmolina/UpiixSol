@@ -6,7 +6,7 @@
 - Why: AudienceOut.email_count in types.ts is wrong vs API
 - Failing: -
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py'
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/132; run .uak/bin/smoke
+- Next: Integrated in main: b617ba4278a46076a2446eee0c7757c0671db54f
 
 ## History
 - 1794949986 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-078`; then `AudiencePicker`, then the confirm modal, then history.
@@ -20,3 +20,4 @@
 - 1794951046 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/132; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py' exit 0 after rm -rf web/dist: 12 passed; origin/main ec37aa8f already merged, no UI change, shots and critic SHIP in .uak-shots/UPS-078/ still valid · red at c9c5300: FAILED e2e/test_mail.py::test_superadmin_sends_to_a_club_after_preview_and_confirm[desktop]; reviewer: -
 - 1794951639 | REVIEW | victor-2 | heartbeat; lease until 1795038039
 - 1794951717 | REVIEW | victor-1 | review; approve; SHA 7df1ca4883bbb7ebadc42729959a676253585d9b; reviewer victor-1
+- 1794951870 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit b617ba4278a46076a2446eee0c7757c0671db54f; reviewer victor-1
