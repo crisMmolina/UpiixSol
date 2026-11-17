@@ -6,7 +6,7 @@
 - Why: security review LOW, spec only requires keys for mailgun
 - Failing: none
 - Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_contract.py && uv run alembic upgrade head && uv run alembic downgrade base && npm --prefix web run build
-- Next: Wait for review of SHA b1f64d8
+- Next: Integrated in main: ec9c2d543a5afcac304e766c36a838bb966eff0b (recorded by victor-2)
 
 ## History
 - 1794937672 | CLAIMED | victor-1 | claim; next: stubs for the Tests names and `uak red UPS-072`; then the models, then the migration, then the settings.
@@ -15,3 +15,4 @@
 - 1794938600 | REVIEW | victor-1 | checkpoint; next: Wait for review of SHA b1f64d8
 - 1794939482 | REVIEW | victor-2 | review; approve; SHA b1f64d8ce74e170ab998ab0776a014e35493cf82; reviewer victor-2
 - 1794939774 | REVIEW | victor-1 | heartbeat; lease until 1795026174
+- 1794939829 | INTEGRATED | victor-2 | integrate; recorded by victor-2; PR https://github.com/crisMmolina/UpiixSol/pull/123; merged ec9c2d543a5afcac304e766c36a838bb966eff0b; proof ancestry
