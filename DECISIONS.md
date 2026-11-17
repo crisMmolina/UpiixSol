@@ -98,3 +98,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794942360 | UPS-074 | non-superadmin preview blind to typed-address dedup/suppression; individual = enrollees only | Why: security review oracle findings; spec §Audiences
 - 1794943006 | UPS-073 | marathon: human CODEOWNERS merge | Why: mode rule
 - 1794943246 | UPS-074 | sender excluded from own search; club-less admin picks nobody | Why: human decision; keep pages and test assumptions stable; avoid IS NULL match
+- 1794949343 | UPS-075 | Footer links %recipient.unsubscribe_url%; UPS-076 should 303 GET to /baja | Why: Mailgun only gets name and unsubscribe_url variables
