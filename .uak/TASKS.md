@@ -1586,3 +1586,25 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - No existing test is edited to pass.
 - **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x`
 - **Next step:** reproduce with a throwaway `.env` built from `.env.example`, find the variables, then the stub test and `uak red UPS-083`.
+
+## UPS-084 · Migrations refuse `downgrade` against a remote database (incident 2026-11-17)
+
+- **Type:** bug
+- **Priority:** P0
+- **Estimate:** 120 min
+- **Rubric / Spec:** incident 2026-11-17, human request (victor). An agent ran the UPS-072 Verify (`uv run alembic upgrade head && uv run alembic downgrade base`) in a worktree whose linked dotenv file pointed `DATABASE_URL` at the production Neon database: the log (`.git/worktrees/ups-072/uak-out/q-1794938524-15246.log`) shows `Context impl PostgresqlImpl` and `downgrade 0009 → … → base`, which dropped every table. Neon point-in-time restore recovered it. `app/migrations/env.py` takes the URL from `get_settings().database_url` with no guard, and `wt new` links the main checkout's dotenv file into every worktree, so any `alembic downgrade` in any worktree reaches whatever that file points to.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-083, UPS-072, UPS-070
+- **Paths:** app/migrations/env.py, app/tests/test_migration_guard.py, .claude/CLAUDE.md, docs/runbook.md
+- **Freeze-Allowed:** yes
+- **Tests:** test_downgrade_refused_on_remote_postgres, test_downgrade_allowed_on_sqlite_and_localhost, test_downgrade_allowed_on_remote_with_explicit_override, test_upgrade_still_runs_on_remote
+- **Acceptance:**
+  - `app/migrations/env.py` refuses any downgrade (exit non-zero, clear Spanish message, nothing executed) when the URL is not SQLite and its host is not `localhost`/`127.0.0.1`/`::1`, unless `ALEMBIC_ALLOW_REMOTE_DOWNGRADE=yes` is set for that one command. Upgrades are unchanged (the Render entrypoint keeps running `alembic upgrade head`).
+  - CI keeps passing: its round-trip runs against SQLite and the PostgreSQL 16 service on localhost.
+  - Tests never touch a real remote database: they check the guard with fake URLs (no connection is opened before the check).
+  - `.claude/CLAUDE.md` "Migrations must round-trip" line shows the safe form `DATABASE_URL=sqlite:////tmp/rt.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/rt.db uv run alembic downgrade base`. Edit it only when no agent session is running (prompt cache), or record it with `uak decision` first.
+  - `docs/runbook.md` gets a short "Nunca apuntes el .env local a producción" note and how to restore from Neon history (what was done on 2026-11-17).
+  - A `uak learn` line on `app/migrations/` so the next agent sees the rule.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_migration_guard.py && DATABASE_URL=sqlite:////tmp/ups084.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/ups084.db uv run alembic downgrade base'`
+- **Next step:** stubs for the Tests names and `uak red UPS-084`; then the guard in env.py.
