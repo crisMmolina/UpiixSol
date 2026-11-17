@@ -6,7 +6,7 @@
 - Why: AudienceOut.email_count in types.ts is wrong vs API
 - Failing: -
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py'
-- Next: uak wait UPS-078 --for approve, then uak merge UPS-078; fix types.ts email_count -> outside via a followup
+- Next: merge origin/main, rerun Verify, uak done for review
 
 ## History
 - 1794949986 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-078`; then `AudiencePicker`, then the confirm modal, then history.
@@ -16,3 +16,4 @@
 - 1794950614 | REVIEW | victor-2 | checkpoint; next: uak wait UPS-078 --for approve, then uak merge UPS-078; fix types.ts email_count -> outside via a followup
 - 1794950617 | REVIEW | victor-2 | handoff; next: uak wait UPS-078 --for approve, then uak merge UPS-078; fix types.ts email_count -> outside via a followup
 - 1794950622 | AVAILABLE | victor-2 | release; claim released by victor-2; reason: -; summary kept
+- 1794950983 | CLAIMED | victor-2 | claim; next: merge origin/main, rerun Verify, uak done for review
