@@ -198,6 +198,7 @@ def test_us_and_eu_base_urls():
         (lambda request: httpx.Response(429, json={"message": "Too many requests"}), "rate_limited"),
         (lambda request: httpx.Response(502, text="Bad gateway"), "provider_error"),
         (lambda request: httpx.Response(200, text="not json"), "bad_response"),
+        (lambda request: (_ for _ in ()).throw(httpx.ReadTimeout("slow", request=request)), "timeout"),
     ],
 )
 def test_4xx_and_timeout_become_failed_batch_without_secrets(respond, code):
@@ -275,3 +276,28 @@ def test_api_key_never_in_logs_or_errors(caplog):
     assert API_KEY not in joined
     assert base64.b64encode(f"api:{API_KEY}".encode()).decode() not in joined
     assert "@example.com" not in joined
+
+
+def test_plain_http_base_or_bad_url_never_sends_the_key():
+    recorder = Recorder()
+    result = make_transport(recorder, mailgun_api_base="http://api.mailgun.net").send_batch(
+        make_message(), make_recipients(1)
+    )
+    assert result.failed == {1: "auth"}
+    assert recorder.requests == []
+
+    result = make_transport(Recorder(), mailgun_domain="bad domain\n").send_batch(
+        make_message(), make_recipients(1)
+    )
+    assert result.failed == {1: "network"}
+
+
+def test_unsafe_address_or_url_is_rejected_without_a_call():
+    recorder = Recorder()
+    ok, *_ = make_recipients(1)
+    bad_email = MailRecipientVars(2, "a@example.com, b@example.com", "B", "https://x/u?t=2")
+    bad_url = MailRecipientVars(3, "c@example.com", "C", "https://x/u?t=3>\r\nBcc: d@example.com")
+    result = make_transport(recorder).send_batch(make_message(), [ok, bad_email, bad_url])
+    assert result.failed == {2: "rejected", 3: "rejected"}
+    assert list(result.accepted) == [1]
+    assert [form["to"] for form in recorder.forms] == [[ok.email]]

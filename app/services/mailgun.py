@@ -16,6 +16,7 @@ has status, code and counts only.
 
 import json
 import logging
+import re
 from collections.abc import Iterator
 
 import httpx
@@ -29,6 +30,7 @@ TIMEOUT_SECONDS = 10.0
 UNSUBSCRIBE_HEADER_IN_BATCH = False  # flip once spike §3 is verified with a test-mode call
 PER_RECIPIENT_BELOW = 100  # plan §Design fallback: one call per recipient below this many recipients
 ONE_CLICK = "List-Unsubscribe=One-Click"  # RFC 8058 §3.1
+UNSAFE = re.compile(r'[\s,;<>"]')  # never valid in an address or URL; would split `to` or break a header
 
 
 def unsubscribe_headers(recipient: MailRecipientVars | None) -> dict[str, str]:
@@ -70,7 +72,13 @@ class MailgunTransport:
 
     def send_batch(self, message: MailMessage, recipients: list[MailRecipientVars]) -> BatchResult:
         result = BatchResult()
-        for chunk, headers in self._calls(recipients):
+        safe = []
+        for recipient in recipients:
+            if UNSAFE.search(recipient.email) or UNSAFE.search(recipient.unsubscribe_url):
+                result.failed[recipient.recipient_id] = "rejected"  # could add recipients or inject a header
+            else:
+                safe.append(recipient)
+        for chunk, headers in self._calls(safe):
             self._send_one(message, chunk, headers, result)
         return result
 
@@ -124,10 +132,12 @@ class MailgunTransport:
     def _post(self, form: dict) -> str:
         """`id:<message id>` on success, else a short error code. Never raises, never echoes the reply."""
         key = self._settings.mailgun_api_key
-        if key is None:
-            return "auth"
+        if key is None or not self._settings.mailgun_api_base.startswith("https://"):
+            return "auth"  # no key, or a base URL that would send it in clear text
         try:
             response = self._client.post(self._url, data=form, auth=("api", key.get_secret_value()))
+        except httpx.InvalidURL:
+            return "network"
         except httpx.TimeoutException:
             return "timeout"
         except httpx.HTTPError:
