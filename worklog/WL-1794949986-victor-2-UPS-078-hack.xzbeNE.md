@@ -14,3 +14,4 @@
 - 1794950373 | CLAIMED | victor-2 | checkpoint; next: screenshots in .uak-shots/UPS-078, design-critic SHIP, then /uak-ship
 - 1794950580 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/132; evidence: bash .uak/bin/q lint && build && pytest e2e/test_mail.py exit 0 (12 passed); smoke PASS; design-critic SHIP 7df1ca4 · red at c9c5300: FAILED e2e/test_mail.py::test_superadmin_sends_to_a_club_after_preview_and_confirm[desktop]; reviewer: -
 - 1794950614 | REVIEW | victor-2 | checkpoint; next: uak wait UPS-078 --for approve, then uak merge UPS-078; fix types.ts email_count -> outside via a followup
+- 1794950617 | REVIEW | victor-2 | handoff; next: uak wait UPS-078 --for approve, then uak merge UPS-078; fix types.ts email_count -> outside via a followup
