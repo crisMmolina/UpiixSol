@@ -89,3 +89,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794586781 | deadline lease/UPS-060/1794568206 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1794859881 | allow | devmoraless | test change: UPS-070 | Why: nickname unique and admin delete comment, human request
 - 1794863543 | UPS-070 | rules in services/nicknames.py, index on lower(nickname) only in migration (alembic check passes) | Why: avoid owned files app/schemas and models/user.py
+- 1794935877 | deadline decision/UPS-072-1794888403/1794889303 | BLOCKED_OTHER_TASK | Option: IDEA §9: los envíos manuales de correo por admins entran al alcance (spec 003); las notificaciones automáticas y la recuperación de contraseña siguen fuera; Why: pedido de victor, responsable de la función de correo; no money, accounts, publishing or scope expansion.
