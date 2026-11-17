@@ -105,3 +105,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794950614 | UPS-078 | types.ts untouched (outside Paths); History reads audience.outside locally | Why: AudienceOut.email_count in types.ts is wrong vs API
 - 1794951335 | UPS-076 | body never read on POST; GET 303 to /baja | Why: scanners prefetch GET; form/JSON/empty all work
 - 1794952352 | UPS-077 | suppress by address even if campaign unknown; mail_suppressions.py untouched (own _suppress) | Why: complained fixture has no campaign_id; stay inside Paths
+- 1794952588 | UPS-079 | ownClub prop on picker/composer/history | Why: reuse UPS-078 pieces
