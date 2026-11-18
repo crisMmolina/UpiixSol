@@ -6,7 +6,7 @@
 - Why: second run must not zero the snapshot
 - Failing: none
 - Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_retention.py
-- Next: Wait for review of SHA 3cd51404
+- Next: Integrated in main: 48e62ccbdc47d4595ee5677e8ff3d3cbc0729363
 
 ## History
 - 1794954358 | CLAIMED | victor-2 | claim; next: stubs for the Tests names and `uak red UPS-081`; then the query, then the CLI.
@@ -15,3 +15,4 @@
 - 1794954588 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA 3cd51404
 - 1794954672 | REVIEW | victor-1 | review; approve; SHA 3cd51404229bad415fc5d329195d1c60424f6f8a; reviewer victor-1
 - 1794957597 | REVIEW | victor-2 | heartbeat; lease until 1795043997
+- 1794966882 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit 48e62ccbdc47d4595ee5677e8ff3d3cbc0729363; reviewer victor-1
