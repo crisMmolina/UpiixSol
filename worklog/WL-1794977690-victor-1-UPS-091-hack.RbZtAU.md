@@ -1,12 +1,12 @@
 # worklog/WL-1794977690-victor-1-UPS-091-hack.RbZtAU.md · UPS-091
 
 ## Live summary
-- Done: PR 152 open, Verify+smoke+critic SHIP green
+- Done: Verify exit 0 (lint, build, e2e/test_mail_rich.py 10 passed); smoke exit 0; design-critic SHIP ed3861d · existing tests changed with a human's approval (victor) · red at 157d0cf: E   AssertionError: {"error":{"code":"validation_error","message":"Revisa los datos enviados.","details":[{"loc":["body"
 - Decision: done blocked by tests-only-grow on 3 e2e/test_mail.py lines
 - Why: spec change by design
 - Failing: uak done CONFLICT until human allow --tests
 - Commands: uak done UPS-091 --pr https://github.com/crisMmolina/UpiixSol/pull/152 --evidence ...
-- Next: after human allow --tests, rerun uak done
+- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/152; run .uak/bin/smoke
 
 ## History
 - 1794977690 | CLAIMED | victor-1 | claim; next: stubs for the e2e Tests names and `uak red UPS-091`; then the event picker, then the image upload, then Reply-To.
@@ -15,3 +15,4 @@
 - 1794978762 | CLAIMED | victor-1 | checkpoint; next: EventBlockEditor, ImageBlockEditor, ReplyToField, wire blocks.ts/Composer/BlockEditor
 - 1794978919 | CLAIMED | victor-1 | heartbeat; lease until 1794993319
 - 1794979337 | CLAIMED | victor-1 | checkpoint; next: after human allow --tests, rerun uak done
+- 1794980235 | REVIEW | victor-1 | done; PR https://github.com/crisMmolina/UpiixSol/pull/152; evidence: Verify exit 0 (lint, build, e2e/test_mail_rich.py 10 passed); smoke exit 0; design-critic SHIP ed3861d · existing tests changed with a human's approval (victor) · red at 157d0cf: E   AssertionError: {"error":{"code":"validation_error","message":"Revisa los datos enviados.","details":[{"loc":["body"; reviewer: -
