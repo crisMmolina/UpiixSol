@@ -279,7 +279,7 @@ export function SiteBrandTab() {
         <Card className="grid gap-4 p-5" aria-label="Logo y mascota" role="group">
           <div>
             <h2 className="text-lg">Logo y mascota</h2>
-            <p className="mt-1 text-sm text-muted">Se aplican al subirlos. PNG, JPG, WebP o SVG · máx. 2 MB.</p>
+            <p className="mt-1 text-sm text-muted">Se aplican al subirlos. PNG, JPG, WebP o SVG · máx. 2 MB. Para volver al original, súbelo de nuevo sin la casilla.</p>
           </div>
           {/* Plain rows split by a divider, not boxes inside the card (DESIGN.md: no card inside a card). */}
           <div className="grid gap-4 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-line">
@@ -400,15 +400,18 @@ export function SiteBrandTab() {
 
 export const NO_WHITE_BACKGROUND = "No encontramos un fondo blanco para quitar.";
 
-const checker = (base: string, square: string): CSSProperties => ({
-  backgroundColor: base,
-  backgroundImage: `linear-gradient(45deg, ${square} 25%, transparent 25%, transparent 75%, ${square} 75%), linear-gradient(45deg, ${square} 25%, transparent 25%, transparent 75%, ${square} 75%)`,
+// The checkerboard is a transparency indicator; its colors are the theme tokens, and the dark swatch sits in a
+// `data-theme="dark"` scope so it takes the dark values whatever theme the page is in.
+const CHECKER = "linear-gradient(45deg, var(--theme-line) 25%, transparent 25%, transparent 75%, var(--theme-line) 75%)"; // design-lint: ok (transparency checkerboard)
+const checker: CSSProperties = {
+  backgroundColor: "var(--theme-surface)",
+  backgroundImage: `${CHECKER}, ${CHECKER}`,
   backgroundSize: "12px 12px",
   backgroundPosition: "0 0, 6px 6px",
-});
+};
 const SWATCHES = [
-  { id: "light", label: "Sobre claro", style: checker("#FFFFFF", "#E6E8EB") },
-  { id: "dark", label: "Sobre oscuro", style: checker("#1B1E22", "#2B3036") },
+  { id: "light", label: "Sobre claro", theme: undefined },
+  { id: "dark", label: "Sobre oscuro", theme: "dark" },
 ] as const;
 
 /** Whether the image has a transparent pixel; null when it cannot be checked (no wrong notice is shown then). */
@@ -492,16 +495,19 @@ export function TransparencyOptions({ kind, current, checked, onChange, onFix, b
         <span>
           <span className="font-semibold">Quitar el fondo blanco</span>
           <span className="block text-xs text-muted">
-            Solo el blanco pegado al borde; el blanco dentro del dibujo se queda. Para volver al original, súbelo de nuevo
-            sin marcar esta casilla.
+            Solo el blanco del borde; el de dentro del dibujo se queda.
           </span>
         </span>
       </label>
       {current && (
         <div className="grid grid-cols-2 gap-2" data-testid={`swatches-${kind}`}>
-          {SWATCHES.map(({ id, label: swatch, style }) => (
+          {SWATCHES.map(({ id, label: swatch, theme }) => (
             <figure key={id} className="m-0 grid gap-1">
-              <div className="grid h-16 place-items-center overflow-hidden rounded-lg border border-line px-2" style={style}>
+              <div
+                data-theme={theme}
+                className="grid h-16 place-items-center overflow-hidden rounded-lg border border-line px-2"
+                style={checker}
+              >
                 <img src={current} alt="" className="max-h-12 max-w-full object-contain" />
               </div>
               <figcaption className="text-center text-xs text-muted">{swatch}</figcaption>
@@ -510,7 +516,7 @@ export function TransparencyOptions({ kind, current, checked, onChange, onFix, b
         </div>
       )}
       {fixable && (
-        <Button size="sm" variant="secondary" disabled={busy} onClick={onFix} aria-label={`Quitar fondo blanco al ${label} actual`}>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={onFix} aria-label={`Quitar fondo blanco al ${label} actual`}>
           Quitar fondo blanco al {label} actual
         </Button>
       )}
