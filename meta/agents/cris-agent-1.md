@@ -1,11 +1,11 @@
 # cris-agent-1
 Agent: cris-agent-1
 Started: 1794976139
-Events: 4
-Events-Since-Checkpoint: 4
-Checkpoints: 0
+Events: 5
+Events-Since-Checkpoint: 0
+Checkpoints: 1
 Sessions: 2
-Last-Checkpoint: 0
+Last-Checkpoint: 1794981266
 Human: crisMmolina
 Last-Session: cris-agent-1-1794980385
-Updated: 1794981254
+Updated: 1794981266
