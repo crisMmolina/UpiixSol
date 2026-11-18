@@ -13,3 +13,4 @@
 - 1794977714 | CLAIMED | victor-1 | heartbeat; lease until 1794992114
 - 1794977742 | CLAIMED | victor-1 | pending decision UPS-091-1794977742; option: Also edit web/src/features/mail/blocks.ts, Composer.tsx, EmailPreview.tsx (+ web/src/lib/types.ts if needed, e2e/conftest.py); Why: Paths omit them but event/image kinds, Reply-To state and iframe auto-height live there (UPS-090 left the hooks); no other task touches them
 - 1794978762 | CLAIMED | victor-1 | checkpoint; next: EventBlockEditor, ImageBlockEditor, ReplyToField, wire blocks.ts/Composer/BlockEditor
+- 1794978919 | CLAIMED | victor-1 | heartbeat; lease until 1794993319
