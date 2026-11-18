@@ -6,7 +6,7 @@
 - Why: campaign create must succeed, send rejects
 - Failing: none
 - Commands: Verify + smoke exit 0
-- Next: Humano: Edits a file outside Paths: e2e/test_mail.py (Paths of UPS-016). Revert that file on the branch (git checkout origin/main -- e2e/test_mail.py), or the human merges the PR
+- Next: Integrated in main: 4055f26411080b41784593155b0bd5df99b3a078 (recorded by victor-2)
 
 ## History
 - 1794981893 | CLAIMED | victor-2 | claim; next: after the human `uak allow`, stubs for the Tests names and `uak red UPS-097`; then the API cap, then the paste parser, then the UI.
@@ -15,3 +15,4 @@
 - 1794982868 | REVIEW | victor-2 | checkpoint; next: Wait for review of PR 158
 - 1794983546 | REVIEW | victor-3 | review; approve; SHA e6f35e9a3c362c471e4f56e168798d452e9e0b65; reviewer victor-3
 - 1794983636 | REVIEW | victor-2 | merge rechazado; Edits a file outside Paths: e2e/test_mail.py (Paths of UPS-016). Revert that file on the branch (git checkout origin/main -- e2e/test_mail.py), or the human merges the PR
+- 1794983895 | INTEGRATED | victor-2 | integrate; recorded by victor-2; PR https://github.com/crisMmolina/UpiixSol/pull/158; merged 4055f26411080b41784593155b0bd5df99b3a078; proof ancestry
