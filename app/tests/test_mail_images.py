@@ -1,5 +1,6 @@
 """Email images (UPS-088): upload endpoint, PNG/JPEG copies under /media/mail, logo/cover copies."""
 
+import hashlib
 import io
 from pathlib import Path
 
@@ -100,12 +101,12 @@ def test_email_copy_of_site_logo_and_event_cover(seeded: dict) -> None:
 
 def test_svg_club_logo_falls_back_to_site_logo_or_wordmark(seeded: dict) -> None:
     svg = save_image_bytes(SVG, "logo")
-    assert mail_images.email_copy(svg) is None  # no new dependency to rasterize it
+    assert mail_images.email_copy(svg)  # UPS-099: an SVG now has a PNG copy
     site = save_image_bytes(_image("PNG", mode="RGBA", color=(0, 191, 99, 0)), "logo")
     site_copy = mail_images.email_copy(site)
     assert site_copy
-    assert mail_images.email_logo(svg, site) == site_copy  # club SVG → site logo
-    assert mail_images.email_logo(svg, svg) is None  # → the renderer shows the wordmark
+    assert mail_images.email_logo(svg, site) != site_copy  # the club's own SVG logo wins (UPS-099)
+    assert mail_images.email_logo("/media/logo/" + "3" * 32 + ".svg", None) is None  # → wordmark
     assert mail_images.email_logo(None, None) is None
 
 
@@ -140,3 +141,98 @@ def test_email_copy_in_database_storage(db, engine, monkeypatch: pytest.MonkeyPa
     assert mail_images.email_copy(cover) == copy
     assert media.read_public("mail/" + "0" * 32 + ".jpg") is None
     assert media.read_public("bad key") is None
+
+
+# --- UPS-099: SVG logos get a PNG copy on the server (resvg-py); the site keeps its SVG -----------------
+
+WIDE_SVG = (
+    b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">'
+    b'<rect x="0" y="0" width="100" height="50" fill="#00bf63"/></svg>'
+)
+
+
+def _png(url: str | None) -> Image.Image:
+    assert url and url.startswith("/media/mail/") and url.endswith(".png")
+    image = Image.open(Path(get_settings().media_dir) / "mail" / url.rsplit("/", 1)[1])
+    image.load()
+    return image
+
+
+def test_svg_site_logo_gets_a_transparent_png_copy(seeded: dict) -> None:
+    image = _png(mail_images.email_copy(save_image_bytes(WIDE_SVG, "logo")))
+    assert image.height == 144 and image.width == 576  # 3x the 48 px header, width by aspect ratio
+    rgba = image.convert("RGBA")
+    assert rgba.getpixel((image.width - 2, 72))[3] == 0  # the empty half stays transparent
+    assert rgba.getpixel((10, 72))[3] == 255
+
+
+def test_svg_png_copy_is_cached_and_reused(seeded: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+    svg = save_image_bytes(WIDE_SVG, "logo")
+    first = mail_images.email_copy(svg)
+    assert first
+    path = Path(get_settings().media_dir) / "mail" / first.rsplit("/", 1)[1]
+    stamp = path.stat().st_mtime_ns
+    monkeypatch.setattr(mail_images, "_rasterize", lambda *_: pytest.fail("rendered again"), raising=False)
+    assert mail_images.email_copy(svg) == first
+    assert path.stat().st_mtime_ns == stamp
+
+
+def test_svg_club_logo_gets_a_png_copy(seeded: dict) -> None:
+    club_svg = save_image_bytes(SVG, "logo")
+    site_logo = save_image_bytes(_image("PNG", mode="RGBA", color=(0, 1, 2, 0)), "logo")
+    site_png = mail_images.email_copy(site_logo)
+    copy = mail_images.email_logo(club_svg, site_png)
+    assert copy != site_png and _png(copy).height == 144  # the club's own logo wins over the site logo
+
+
+def test_svg_render_never_loads_external_resources(seeded: dict, tmp_path: Path) -> None:
+    secret = tmp_path / "secret.png"
+    Image.new("RGB", (4, 4), (255, 0, 0)).save(secret)
+    hostile = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+        b'viewBox="0 0 10 10"><image xlink:href="' + str(secret).encode()
+        + b'" width="10" height="10"/></svg>'
+    )
+    key = hashlib.sha256(b"logo/" + b"0" * 32 + b".svg").hexdigest()[:32]
+    folder = Path(get_settings().media_dir) / "logo"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ("0" * 32 + ".svg")).write_bytes(hostile)  # bypasses the upload check on purpose
+    copy = mail_images.email_copy("/media/logo/" + "0" * 32 + ".svg")
+    assert copy is None, key  # unsafe by the upload rules: no copy, and nothing was read from disk
+
+
+def test_broken_svg_falls_back_to_none(seeded: dict) -> None:
+    folder = Path(get_settings().media_dir) / "logo"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ("1" * 32 + ".svg")).write_bytes(b"<svg xmlns='http://www.w3.org/2000/svg'><rect")
+    assert mail_images.email_copy("/media/logo/" + "1" * 32 + ".svg") is None
+    assert mail_images.email_copy("/media/logo/" + "2" * 32 + ".svg") is None  # missing source
+    assert mail_images.email_logo("/media/logo/" + "1" * 32 + ".svg", None) is None
+
+
+def test_site_keeps_serving_the_svg(as_superadmin: TestClient) -> None:
+    uploaded = _upload(as_superadmin, WIDE_SVG, "logo.svg", "image/svg+xml")  # via the site logo endpoint
+    files = {"file": ("l.svg", WIDE_SVG, "image/svg+xml")}
+    response = as_superadmin.post("/api/admin/site/logo", files=files)
+    assert response.status_code == 200, uploaded.status_code
+    logo = response.json()["logo_url"]
+    assert logo.endswith(".svg")
+    assert _png(mail_images.email_copy(logo)).height == 144
+    assert as_superadmin.get("/api/site").json()["logo_url"] == logo  # the site still serves the SVG
+
+
+def test_svg_png_copy_is_at_most_1200_wide_and_render_failures_give_none(
+    seeded: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    banner = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 100">'
+        b'<rect width="4000" height="100"/></svg>'
+    )
+    assert _png(mail_images.email_copy(save_image_bytes(banner, "logo"))).width == 1200
+    other = save_image_bytes(SVG, "logo")
+
+    def boom(*_args, **_kwargs):
+        raise ValueError("render failed")
+
+    monkeypatch.setattr(mail_images.resvg_py, "svg_to_bytes", boom)
+    assert mail_images.email_copy(other) is None
