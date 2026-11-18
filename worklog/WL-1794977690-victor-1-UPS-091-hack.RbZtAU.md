@@ -6,7 +6,7 @@
 - Why: spec change by design
 - Failing: uak done CONFLICT until human allow --tests
 - Commands: uak done UPS-091 --pr https://github.com/crisMmolina/UpiixSol/pull/152 --evidence ...
-- Next: Humano: New file outside Paths: app/routers/mail_settings.py. Move it into the task's Paths, or a human adds its dir to Additive-Paths in PROJECT.md (new files there need no reservation)
+- Next: Integrated in main: 96c56355bc3ff88027579802181bb2e8f2d857a3 (recorded by victor-1)
 
 ## History
 - 1794977690 | CLAIMED | victor-1 | claim; next: stubs for the e2e Tests names and `uak red UPS-091`; then the event picker, then the image upload, then Reply-To.
@@ -19,3 +19,4 @@
 - 1794980245 | REVIEW | victor-1 | heartbeat; lease until 1795066645
 - 1794980581 | REVIEW | victor-3 | review; approve; SHA dc7fd8448903b38f9e7473a524d85d3b570fe45c; reviewer victor-3
 - 1794980659 | REVIEW | victor-1 | merge rechazado; New file outside Paths: app/routers/mail_settings.py. Move it into the task's Paths, or a human adds its dir to Additive-Paths in PROJECT.md (new files there need no reservation)
+- 1794980737 | INTEGRATED | victor-1 | integrate; recorded by victor-1; PR https://github.com/crisMmolina/UpiixSol/pull/152; merged 96c56355bc3ff88027579802181bb2e8f2d857a3; proof ancestry
