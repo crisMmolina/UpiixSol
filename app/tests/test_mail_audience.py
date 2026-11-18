@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.models import Academy, Enrollment, Role, User
 from app.models.common import utcnow
 from app.models.mail import MailCampaign, MailRecipient, MailSuppression
+from app.services.mail_audience import billing_period
 from app.services.mailer import new_unsubscribe_token
 from app.tests.conftest import make_user
 
@@ -221,7 +222,7 @@ def test_member_and_anon_get_403_and_401(as_member: TestClient, db: Session) -> 
         assert anon.request(method, path, **kwargs).status_code == 401, path
 
 
-def test_mail_status_reports_quota_from_the_db(
+def test_status_reports_monthly_limit_used_remaining_and_renewal_date(
     as_superadmin: TestClient, as_admin_ia: TestClient, db: Session, seeded: dict
 ) -> None:
     campaign = MailCampaign(
@@ -235,7 +236,7 @@ def test_mail_status_reports_quota_from_the_db(
         ("delivered", now),
         ("failed", now),
         ("pending", now),
-        ("delivered", now - timedelta(days=1, hours=1)),
+        ("delivered", now - timedelta(days=40)),  # an earlier billing period
     ]
     for i, (status, updated_at) in enumerate(statuses):
         db.add(
@@ -249,9 +250,17 @@ def test_mail_status_reports_quota_from_the_db(
             )
         )
     db.flush()
-    expected = {"enabled": False, "daily_limit": 100, "sent_today": 3, "remaining": 97}
-    assert as_superadmin.get(STATUS).json() == expected
-    assert as_admin_ia.get(STATUS).json() == expected
+    body = as_superadmin.get(STATUS).json()
+    start, end = billing_period(now, 1)
+    assert body == {
+        "enabled": False,
+        "monthly_limit": 3000,
+        "sent_this_period": 3,
+        "remaining": 2997,
+        "period_start": start.isoformat().replace("+00:00", "Z"),
+        "period_end": end.isoformat().replace("+00:00", "Z"),
+    }
+    assert as_admin_ia.get(STATUS).json() == body
 
 
 def test_preview_p95_under_300_ms_on_seeded_data(

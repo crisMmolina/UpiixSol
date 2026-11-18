@@ -500,7 +500,7 @@ READ_MATRIX: list[Rule] = [
     Rule("GET", "/api/admin/academies", SUPER, note="inactive clubs included"),
     Rule("GET", "/api/admin/users", SUPER),
     Rule("GET", "/api/admin/home", SUPER),
-    Rule("GET", "/api/mail/status", SENDERS, note="daily quota (UPS-074)"),
+    Rule("GET", "/api/mail/status", SENDERS, note="monthly quota (UPS-074, UPS-092)"),
     Rule(
         "GET",
         "/api/mail/recipients",

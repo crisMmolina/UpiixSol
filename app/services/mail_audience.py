@@ -4,7 +4,7 @@
     resolve_audience(db, sender, audience)         # → list[ResolvedRecipient]: one per deliverable address
     preview(db, sender, audience)                  # → PreviewOut: count and what was excluded, from the DB
     search_recipients(db, sender, q, cursor, limit)  # picker for `individual`; email only for superadmins
-    mail_status(db)                                # daily quota, counted in mail_recipients
+    mail_status(db)                                # monthly quota, counted in mail_recipients
 
 The club scope of an academy_admin is always `sender.academy_id` and `enrollments` (DB rows), never the
 request body. Every audience drops inactive users, non-deliverable domains (`MAIL_BLOCKED_DOMAINS`) and
@@ -13,6 +13,7 @@ suppressed addresses, and counts each normalized address once. Its Pydantic cont
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -108,9 +109,11 @@ class RecipientOut(BaseModel):
 
 class MailStatusOut(BaseModel):
     enabled: bool
-    daily_limit: int
-    sent_today: int
+    monthly_limit: int
+    sent_this_period: int
     remaining: int
+    period_start: datetime
+    period_end: datetime
 
 
 @dataclass(frozen=True)
@@ -285,18 +288,35 @@ def search_recipients(
     )
 
 
+def billing_period(now: datetime, start_day: int) -> tuple[datetime, datetime]:
+    """Mailgun billing period (UTC) containing `now`: [start, end), starting on `start_day` (1–28)."""
+    year, month = (now.year, now.month) if now.day >= start_day else _shift_month(now.year, now.month, -1)
+    end_year, end_month = _shift_month(year, month, 1)
+    return (
+        datetime(year, month, start_day, tzinfo=UTC),
+        datetime(end_year, end_month, start_day, tzinfo=UTC),
+    )
+
+
+def _shift_month(year: int, month: int, delta: int) -> tuple[int, int]:
+    index = year * 12 + (month - 1) + delta
+    return index // 12, index % 12 + 1
+
+
 def mail_status(db: Session) -> MailStatusOut:
-    """Quota used today (UTC) = recipients that left `pending` today: a DB count, never an estimate."""
+    """Quota used in the current Mailgun billing period (UTC): DB count of recipients that left `pending`."""
     settings = get_settings()
-    midnight = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    sent_today = db.scalar(
+    period_start, period_end = billing_period(utcnow(), settings.mail_period_start_day)
+    sent = db.scalar(
         select(func.count())
         .select_from(MailRecipient)
-        .where(MailRecipient.status != "pending", MailRecipient.updated_at >= midnight)
+        .where(MailRecipient.status != "pending", MailRecipient.updated_at >= period_start)
     )
     return MailStatusOut(
         enabled=settings.mail_enabled,
-        daily_limit=settings.mail_daily_limit,
-        sent_today=sent_today,
-        remaining=max(0, settings.mail_daily_limit - sent_today),
+        monthly_limit=settings.mail_monthly_limit,
+        sent_this_period=sent,
+        remaining=max(0, settings.mail_monthly_limit - sent),
+        period_start=period_start,
+        period_end=period_end,
     )

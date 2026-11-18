@@ -43,7 +43,8 @@ class Settings(BaseSettings):
     mailgun_test_mode: bool = False
     mail_from: str = "UpiixSol <avisos@mg.upiixsol.com>"
     mail_reply_to: str = ""
-    mail_daily_limit: int = Field(default=100, ge=0)
+    mail_monthly_limit: int = Field(default=3000, ge=0)
+    mail_period_start_day: int = Field(default=1, ge=1, le=28)  # Mailgun billing period start (UTC)
     mail_blocked_domains: Annotated[list[str], NoDecode] = [
         "upiixsol.dev"
     ]  # seed accounts, never deliverable

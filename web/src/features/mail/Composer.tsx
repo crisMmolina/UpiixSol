@@ -16,6 +16,14 @@ import { AudiencePicker, EMPTY_AUDIENCE, toAudience, type AcademyChoice, type Au
 const MAX_BODY = 20_000;
 const MAX_SUBJECT = 150;
 
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** "1 de diciembre": the period end is a UTC midnight, so read it in UTC. */
+function renewal(iso: string) {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}`;
+}
+
 function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }
@@ -31,7 +39,7 @@ function ConfirmBody({ preview, status }: { preview: AudiencePreview; status: Ma
     <div className="grid gap-3">
       <p className="text-lg font-semibold">{`Se enviará a ${plural(preview.count, "persona", "personas")}`}</p>
       {skipped.length > 0 && <p className="text-sm text-muted">{`No se incluyen: ${skipped.join(", ")}.`}</p>}
-      <p className="text-sm text-muted">{`Hoy puedes enviar ${plural(status.remaining, "correo", "correos")} más (límite diario: ${status.daily_limit}).`}</p>
+      <p className="text-sm text-muted">{`Te quedan ${status.remaining.toLocaleString("en-US")} de ${status.monthly_limit.toLocaleString("en-US")} correos este mes · se renueva el ${renewal(status.period_end)}`}</p>
     </div>
   );
 }
@@ -117,7 +125,7 @@ export function Composer({
   }
 
   const tooMany = preview !== null && preview.count > status.remaining;
-  const confirmHint = preview === null ? null : preview.count === 0 ? "Nadie recibiría este correo: cambia los destinatarios." : tooMany ? `Supera tu cupo de hoy (${status.remaining}).` : null;
+  const confirmHint = preview === null ? null : preview.count === 0 ? "Nadie recibiría este correo: cambia los destinatarios." : tooMany ? `Supera tu cupo de este mes (${status.remaining}).` : null;
 
   return (
     <Card className="grid gap-5 p-5 sm:p-6">

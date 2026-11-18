@@ -7,7 +7,7 @@
     send_pending(campaign_id, transport)                  # BackgroundTasks job: batches, commit per batch
     list_campaigns / get_campaign                         # history: superadmin all, academy_admin own club
 
-The kill switch (`MAIL_ENABLED`), the hourly limit (5 started campaigns per sender) and the daily quota
+The kill switch (`MAIL_ENABLED`), the hourly limit (5 started campaigns per sender) and the monthly quota
 (counted in `mail_recipients`) are checked before anything is sent. Logs carry ids and counts only.
 
 Unsubscribe tokens: only their hash is stored, so the hash written at creation is a placeholder and every
@@ -134,13 +134,21 @@ def _pending(db: Session, campaign_id: int) -> int:
     )
 
 
+MESES = (
+    *("enero", "febrero", "marzo", "abril", "mayo", "junio"),
+    *("julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"),
+)
+
+
 def _check_quota(db: Session, campaign_id: int) -> None:
-    remaining = mail_status(db).remaining
+    quota = mail_status(db)
+    remaining = quota.remaining
     needed = _pending(db, campaign_id)
     if needed > remaining:
         raise AppError(
             422,
-            f"Hoy quedan {remaining} envíos y esta campaña necesita {needed}.",
+            f"Este periodo quedan {remaining} envíos y esta campaña necesita {needed}; "
+            f"la cuota se renueva el {quota.period_end.day} de {MESES[quota.period_end.month - 1]}.",
             code="quota_exceeded",
             details={"remaining": remaining},
         )

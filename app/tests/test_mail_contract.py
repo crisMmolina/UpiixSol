@@ -33,7 +33,8 @@ MAIL_ENV = (
     "MAILGUN_TEST_MODE",
     "MAIL_FROM",
     "MAIL_REPLY_TO",
-    "MAIL_DAILY_LIMIT",
+    "MAIL_MONTHLY_LIMIT",
+    "MAIL_PERIOD_START_DAY",
     "MAIL_BLOCKED_DOMAINS",
     "PUBLIC_BASE_URL",
 )
@@ -192,7 +193,7 @@ def test_mail_disabled_by_default(clean_env: pytest.MonkeyPatch) -> None:
     assert settings.mailgun_test_mode is False
     assert settings.mail_from == "UpiixSol <avisos@mg.upiixsol.com>"
     assert settings.mail_reply_to == ""
-    assert settings.mail_daily_limit == 100
+    assert settings.mail_monthly_limit == 3000 and settings.mail_period_start_day == 1
     assert settings.mail_blocked_domains == ["upiixsol.dev"]
     assert settings.public_base_url == "https://www.upiixsol.com"
 
@@ -231,7 +232,7 @@ def test_prod_mail_settings_ok_when_complete_or_not_needed(clean_env: pytest.Mon
 
 
 def test_secrets_never_appear_in_validation_errors(clean_env: pytest.MonkeyPatch) -> None:
-    _prod_mailgun_env(clean_env, MAIL_DAILY_LIMIT="many")  # an unrelated bad value next to real keys
+    _prod_mailgun_env(clean_env, MAIL_MONTHLY_LIMIT="many")  # an unrelated bad value next to real keys
     with pytest.raises(ValidationError) as raised:
         Settings(_env_file=None)
     assert API_KEY not in str(raised.value) and SIGNING_KEY not in str(raised.value)

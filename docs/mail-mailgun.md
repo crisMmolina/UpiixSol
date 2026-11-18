@@ -45,7 +45,7 @@ Se cargan en **Render → servicio `upiixsol` → Environment**, **todas de una 
 | `MAIL_FROM` | `UpiixSol <avisos@mg.upiixsol.com>` |
 | `PUBLIC_BASE_URL` | `https://www.upiixsol.com` (con él se arman los enlaces de `/baja`) |
 
-Opcionales: `MAIL_DAILY_LIMIT` (por defecto 100 destinatarios por día UTC; ajústalo al plan de Mailgun), `MAIL_REPLY_TO`, `MAIL_BLOCKED_DOMAINS`.
+Opcionales: `MAIL_MONTHLY_LIMIT` (por defecto 3000 destinatarios por periodo de facturación, el tope del plan Free de Mailgun), `MAIL_PERIOD_START_DAY` (1–28, por defecto 1: día del mes, en UTC, en que inicia tu periodo; míralo en Mailgun → Billing). Mailgun también cuenta los envíos hechos fuera de la app (pruebas con curl, otras herramientas): deja un margen, porque el contador de la app solo ve lo que la app envió. Un `MAIL_DAILY_LIMIT` viejo en el entorno se ignora. También: `MAIL_REPLY_TO`, `MAIL_BLOCKED_DOMAINS`.
 
 **Qué falla al arrancar** (con `ENV=prod`, la API no levanta y el deploy se queda en rojo; el log muestra el `ValueError`):
 - `MAIL_ENABLED=true` y `MAILGUN_API_BASE` o `PUBLIC_BASE_URL` sin `https://`.
