@@ -27,14 +27,14 @@ Migration `0009_mail` (down_revision `0008_unique_nickname`, UPS-070), expand-on
 | `mail_recipients` | id, campaign_id → CASCADE, user_id → users SET NULL nullable, email (254, normalized lowercase), name, status (`pending`/`accepted`/`delivered`/`failed`/`bounced`/`complained`), provider_message_id, error_code (short, no PII), unsubscribe_token_hash (64, unique), updated_at | unique (campaign_id, email); index (status), (created_at) for quota and purge |
 | `mail_suppressions` | email PK (normalized), reason (`unsubscribed`/`bounced`/`complained`), campaign_id nullable, created_at | covers campus users and outside addresses; Mi cuenta toggle adds/removes the row of the current address |
 
-Quota = rows of `mail_recipients` with status ≠ `pending` and `updated_at` since the start of the current Mailgun billing period (UTC, starts on `MAIL_PERIOD_START_DAY`) — a DB count, never an estimate. Purge (UPS-081): recipient rows of campaigns older than 365 days are deleted, keeping the campaign's counts.
+Daily quota = rows of `mail_recipients` with status ≠ `pending` and `updated_at` today (UTC) — a DB count, never an estimate. Purge (UPS-081): recipient rows of campaigns older than 365 days are deleted, keeping the campaign's counts.
 
 ## Contracts
 All under `/api/mail`, JSON, errors `{"error": {...}}`, lists = cursor pages ≤ 50. Schemas live next to their service (as `app/services/site.py` does), so `app/schemas/` stays untouched; `web/src/lib/types.ts` mirrors them.
 
 | Method · path | Who | Body / answer |
 |---|---|---|
-| `GET /status` | superadmin, academy_admin | `{enabled, monthly_limit, sent_this_period, remaining, period_start, period_end}` |
+| `GET /status` | superadmin, academy_admin | `{enabled, daily_limit, sent_today, remaining}` |
 | `POST /audience/preview` | superadmin; academy_admin own club | `Audience` → `{count, excluded: {inactive, suppressed, blocked_domain}}` |
 | `GET /recipients?q=` | superadmin (all users); academy_admin (own club's enrollees and co-admins) | page of `{id, full_name, nickname, avatar_url}`; email only for superadmin |
 | `POST /test` | superadmin, academy_admin | `{subject, body}` → 202, sent to the caller only |
@@ -46,7 +46,7 @@ All under `/api/mail`, JSON, errors `{"error": {...}}`, lists = cursor pages ≤
 | `POST /webhooks/mailgun` | public (HMAC) | Mailgun event JSON; 403 on bad signature |
 
 `Audience = {kind: "all"} | {kind: "academy", academy_id} | {kind: "role", role} | {kind: "individual", user_ids: int[], emails: str[]}` (≤ 50 entries, ≤ 20 emails).
-Settings (`app/config.py`, `.env.example`): `MAIL_ENABLED` (false), `MAIL_BACKEND` (`console`|`mailgun`), `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` (`mg.upiixsol.com`), `MAILGUN_API_BASE` (`https://api.mailgun.net`, EU: `https://api.eu.mailgun.net`), `MAILGUN_WEBHOOK_SIGNING_KEY`, `MAILGUN_TEST_MODE` (false), `MAIL_FROM` (`UpiixSol <avisos@mg.upiixsol.com>`), `MAIL_REPLY_TO` (empty), `MAIL_MONTHLY_LIMIT` (3000), `MAIL_PERIOD_START_DAY` (1), `MAIL_BLOCKED_DOMAINS` (`upiixsol.dev`), `PUBLIC_BASE_URL` (`https://www.upiixsol.com`). With `ENV=prod`, `MAIL_ENABLED=true` and `MAIL_BACKEND=mailgun`, the API key, domain and signing key are required at startup.
+Settings (`app/config.py`, `.env.example`): `MAIL_ENABLED` (false), `MAIL_BACKEND` (`console`|`mailgun`), `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` (`mg.upiixsol.com`), `MAILGUN_API_BASE` (`https://api.mailgun.net`, EU: `https://api.eu.mailgun.net`), `MAILGUN_WEBHOOK_SIGNING_KEY`, `MAILGUN_TEST_MODE` (false), `MAIL_FROM` (`UpiixSol <avisos@mg.upiixsol.com>`), `MAIL_REPLY_TO` (empty), `MAIL_DAILY_LIMIT` (100), `MAIL_BLOCKED_DOMAINS` (`upiixsol.dev`), `PUBLIC_BASE_URL` (`https://www.upiixsol.com`). With `ENV=prod`, `MAIL_ENABLED=true` and `MAIL_BACKEND=mailgun`, the API key, domain and signing key are required at startup.
 Consumers: superadmin panel and club panel (new "Correos" tab), Mi cuenta (toggle), new SPA route `/baja`. Permission matrix: every new write endpoint gets a row (OWN rules use `{kind: "academy", academy_id: world.academy_id}`); payload-dependent 403s are tested in `test_mail_*`.
 
 ## Threat model (STRIDE)
@@ -58,7 +58,7 @@ Consumers: superadmin panel and club panel (new "Correos" tab), Mi cuenta (toggl
 | Repudiation | "I never sent that" | Campaign stores sender, audience, subject, body, timestamps; history visible to superadmins | test_history_shows_sender_and_counts |
 | Information disclosure | Recipient list leaks (To/Cc), admins harvest member emails, addresses in logs | Batch with recipient-variables (one To each); search returns no emails to academy_admins; logs carry ids and counts only; recipient rows purged at 365 days | test_each_recipient_gets_only_their_address, test_recipient_search_hides_email_from_academy_admin, test_console_transport_logs_no_addresses, test_purge_* |
 | Information disclosure | Unsubscribe endpoint as an oracle (which addresses exist) | Same 200 answer for unknown tokens; token random, hashed, in the query string | test_unknown_token_answers_like_a_valid_one |
-| Denial of service | Spam to outside addresses / burning the Mailgun quota | ≤ 20 outside addresses per campaign, 5 campaigns per hour per user, period quota from the DB, `MAIL_ENABLED` kill switch, history visible to superadmins | test_rate_limit_6th_campaign_is_429, test_monthly_quota_exceeded_is_422_before_sending |
+| Denial of service | Spam to outside addresses / burning the Mailgun quota | ≤ 20 outside addresses per campaign, 5 campaigns per hour per user, daily quota from the DB, `MAIL_ENABLED` kill switch, history visible to superadmins | test_rate_limit_6th_campaign_is_429, test_quota_exceeded_is_422_before_sending |
 | Denial of service | Double click / retried confirm sends twice | `draft → sending` conditional update; resume sends only `pending` | test_confirm_twice_sends_once, test_resume_sends_only_pending |
 | Elevation of privilege | academy_admin mails all users, another club or non-members | Audience scope checked in the service from DB rows (`users.academy_id`), never from the body | test_academy_admin_cannot_mail_all / _role / _other_club / _non_enrolled_user |
 
@@ -76,7 +76,7 @@ Consumers: superadmin panel and club panel (new "Correos" tab), Mi cuenta (toggl
 Promotion criterion: delivered ≥ 95 % and no complaint in the first two campaigns. Rollback: `MAIL_ENABLED=false` (no redeploy of code; migration 0009 is additive and can stay).
 
 ## Cost
-Infra: none (same Render service, three small tables in Neon). Mailgun: depends on the plan victor picks (unverified here; check the current pricing page). The Free plan caps 3,000 emails per billing period, which `MAIL_MONTHLY_LIMIT` enforces. Any paid plan is a spend a human authorizes.
+Infra: none (same Render service, three small tables in Neon). Mailgun: depends on the plan victor picks (unverified here; check the current pricing page). The free tier, if available, caps daily volume, which `MAIL_DAILY_LIMIT` enforces. Any paid plan is a spend a human authorizes.
 
 ## Tasks
 UPS-071 (spike) · UPS-072 (contract) · UPS-073 (Mailgun transport) · UPS-074 (audience) · UPS-075 (campaigns) · UPS-076 (unsubscribe + preference) · UPS-077 (webhook) · UPS-078 (web: superadmin tab) · UPS-079 (web: club tab, Mi cuenta, /baja) · UPS-080 (runbook) · UPS-081 (retention purge). Each starts with its `Tests:`; `uak graph` and `uak lint` pass.
