@@ -122,11 +122,15 @@ export function EventItem({ event }: { event: EventOut }) {
       <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-accent/20 text-ink">
         <CalendarBlank size={22} weight="bold" aria-hidden />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="font-semibold text-ink">{event.title}</p>
         <p className="text-sm text-muted first-letter:uppercase">{formatDate(event.starts_at)}</p>
         {event.location && <p className="truncate text-sm text-muted">{event.location}</p>}
       </div>
+      {event.cover_url?.startsWith("/media/") && (
+        // Fixed aspect ratio: the box is reserved before the photo loads (no layout shift).
+        <img src={event.cover_url} alt="" loading="lazy" className="ml-auto aspect-[4/3] w-20 shrink-0 self-start rounded-xl bg-bg object-cover sm:w-28" />
+      )}
     </li>
   );
 }

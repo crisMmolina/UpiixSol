@@ -1,9 +1,9 @@
 // UPS-013: events and calendar (month view + list, academy filter). Completes flow step 6 (global event).
 //   /calendario           → campus calendar (all academies + global)
 //   /a/:slug/eventos      → the academy's events (+ global ones)
-import { CalendarBlank, CaretLeft, CaretRight, LinkSimple, ListBullets, MapPin, Plus, SquaresFour, Trash, X } from "@phosphor-icons/react";
+import { CalendarBlank, CaretLeft, CaretRight, ImageSquare, LinkSimple, ListBullets, MapPin, PencilSimple, Plus, SquaresFour, Trash, X } from "@phosphor-icons/react";
 import { useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useSearchParams, type RouteObject } from "react-router";
 
 import { Badge } from "@/components/Badge";
@@ -92,28 +92,82 @@ function validLink(value: string): boolean {
   }
 }
 
-function EventForm({ user, academies, fixedAcademyId, onSaved, onClose }: {
+const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
+const isMedia = (url: string | null): url is string => Boolean(url?.startsWith("/media/"));
+
+function EventForm({ user, academies, fixedAcademyId, event, onSaved, onClose }: {
   user: UserMe;
   academies: AcademyCardOut[];
   fixedAcademyId?: number;
+  /** The event being edited; absent when creating. */
+  event?: EventOut;
   onSaved: () => void;
   onClose: () => void;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The event this form saves into. A create whose photo failed becomes an edit of the new event, so
+  // pressing the button again never publishes a second copy.
+  const [current, setCurrent] = useState<EventOut | undefined>(event);
+  const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
+  const [removeCurrent, setRemoveCurrent] = useState(false);
+  const [photoError, setPhotoError] = useState<string | undefined>();
+  const [inputKey, setInputKey] = useState(0);
   // Default: tomorrow 17:00–19:00 (computed once, not on every render).
   const [{ start, end }] = useState(() => {
+    if (event) return { start: new Date(event.starts_at), end: new Date(event.ends_at) };
     const begin = new Date();
     begin.setDate(begin.getDate() + 1);
     begin.setHours(17, 0, 0, 0);
     return { start: begin, end: new Date(begin.getTime() + 2 * 3600_000) };
   });
+  const photoUrl = useRef<string | null>(null);
+  const message = useRef<HTMLDivElement>(null);
+  // The form scrolls inside its modal on phones: a new message (e.g. the photo failed) must be in view.
+  useEffect(() => {
+    if (error) message.current?.scrollIntoView({ block: "nearest" });
+  }, [error]);
+  useEffect(() => () => {
+    if (photoUrl.current) URL.revokeObjectURL(photoUrl.current);
+  }, []);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const academyValue = fixedAcademyId ?? (user.role === "academy_admin" ? user.academy_id : Number(form.get("academy_id")) || null);
+  function setPreview(file: File | null) {
+    if (photoUrl.current) URL.revokeObjectURL(photoUrl.current);
+    photoUrl.current = file ? URL.createObjectURL(file) : null;
+    setPhoto(file && photoUrl.current ? { file, url: photoUrl.current } : null);
+    setInputKey((k) => k + 1); // a fresh input: choosing the same file again still fires onChange
+  }
+
+  function pickPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setPreview(null);
+      return setPhotoError("Usa una foto PNG, JPG o WebP.");
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      setPreview(null);
+      return setPhotoError("La foto pesa más de 5 MB. Elige una más ligera.");
+    }
+    setPhotoError(undefined);
+    setRemoveCurrent(false);
+    setPreview(file);
+  }
+
+  const currentPhoto = isMedia(current?.cover_url ?? null) && !removeCurrent ? current?.cover_url : null;
+  const shownPhoto = photo?.url ?? currentPhoto ?? null;
+
+  async function submit(submitEvent: FormEvent<HTMLFormElement>) {
+    submitEvent.preventDefault();
+    const form = new FormData(submitEvent.currentTarget);
+    const academyValue = current
+      ? user.role === "superadmin" && fixedAcademyId === undefined
+        ? Number(form.get("academy_id")) || null
+        : current.academy_id
+      : (fixedAcademyId ?? (user.role === "academy_admin" ? user.academy_id : Number(form.get("academy_id")) || null));
     const title = String(form.get("title")).trim();
     const link = String(form.get("link")).trim();
     const startsAt = new Date(String(form.get("starts_at")));
@@ -128,33 +182,52 @@ function EventForm({ user, academies, fixedAcademyId, onSaved, onClose }: {
     if (Object.keys(local).length > 0) return setError("Revisa los campos marcados.");
     setBusy(true);
     setError(null);
+    let saved: EventOut | undefined;
     try {
-      await api("/events", {
-        method: "POST",
-        json: {
-          academy_id: academyValue,
-          title,
-          description: String(form.get("description")),
-          location: String(form.get("location")).trim() || null,
-          link: link || null,
-          starts_at: startsAt.toISOString(),
-          ends_at: endsAt.toISOString(),
-        },
-      });
-      onSaved();
-      onClose();
+      const json = {
+        academy_id: academyValue,
+        title,
+        description: String(form.get("description")),
+        location: String(form.get("location")).trim() || null,
+        link: link || null,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      };
+      saved = current
+        ? await api<EventOut>(`/events/${current.id}`, { method: "PATCH", json })
+        : await api<EventOut>("/events", { method: "POST", json });
     } catch (err) {
       const fields = err instanceof ApiError && err.status === 422 ? fieldErrors(err.details) : {};
       setErrors(fields);
       setError(Object.keys(fields).length > 0 ? "Revisa los campos marcados." : errorMessage(err));
-    } finally {
       setBusy(false);
+      return;
     }
+    // The event is saved; the photo is a second request, and its failure never undoes the event.
+    try {
+      if (photo) {
+        const upload = new FormData();
+        upload.append("file", photo.file);
+        saved = await api<EventOut>(`/events/${saved.id}/cover`, { method: "POST", form: upload });
+      } else if (removeCurrent && current?.cover_url) {
+        saved = await api<EventOut>(`/events/${saved.id}/cover`, { method: "DELETE" });
+      }
+    } catch {
+      const wasCreate = !current;
+      setCurrent(saved);
+      setError(wasCreate ? "El evento se publicó, pero la foto no se pudo subir. Intenta de nuevo." : "Los cambios se guardaron, pero la foto no se pudo subir. Intenta de nuevo.");
+      onSaved();
+      setBusy(false);
+      return;
+    }
+    onSaved();
+    onClose();
+    setBusy(false);
   }
 
   // Typing in a field clears its own error (the form-level message stays until the next submit).
-  function clearFieldError(event: FormEvent<HTMLFormElement>) {
-    const name = (event.target as HTMLInputElement).name;
+  function clearFieldError(changeEvent: FormEvent<HTMLFormElement>) {
+    const name = (changeEvent.target as HTMLInputElement).name;
     if (!name || !errors[name]) return;
     setErrors((previous) => {
       const next = { ...previous };
@@ -165,9 +238,9 @@ function EventForm({ user, academies, fixedAcademyId, onSaved, onClose }: {
 
   return (
     <form onSubmit={submit} onChange={clearFieldError} className="grid gap-4" noValidate>
-      <TextField label="Título" name="title" required maxLength={120} reserve error={errors.title} />
+      <TextField label="Título" name="title" required maxLength={120} reserve defaultValue={event?.title} error={errors.title} />
       {user.role === "superadmin" && fixedAcademyId === undefined && (
-        <SelectField label="Club" name="academy_id" defaultValue="" error={errors.academy_id}>
+        <SelectField label="Club" name="academy_id" defaultValue={event?.academy_id ?? ""} error={errors.academy_id}>
           <option value="">Evento global (todo el club)</option>
           {academies.map((a) => (
             <option key={a.id} value={a.id}>
@@ -180,55 +253,106 @@ function EventForm({ user, academies, fixedAcademyId, onSaved, onClose }: {
         <TextField label="Empieza" name="starts_at" type="datetime-local" required defaultValue={toLocalInput(start)} reserve error={errors.starts_at} />
         <TextField label="Termina" name="ends_at" type="datetime-local" required defaultValue={toLocalInput(end)} reserve error={errors.ends_at} />
       </div>
-      <TextField label="Lugar" name="location" maxLength={200} placeholder="UPIIZ · Laboratorio de cómputo" error={errors.location} />
-      <TextField label="Link (opcional)" name="link" type="url" inputMode="url" placeholder="https://…" reserve error={errors.link} />
-      <TextArea label="Descripción" name="description" rows={3} error={errors.description} />
+      <TextField label="Lugar" name="location" maxLength={200} placeholder="UPIIZ · Laboratorio de cómputo" defaultValue={event?.location ?? ""} error={errors.location} />
+      <TextField label="Link (opcional)" name="link" type="url" inputMode="url" placeholder="https://…" reserve defaultValue={event?.link ?? ""} error={errors.link} />
+      <TextArea label="Descripción" name="description" rows={3} defaultValue={event?.description} error={errors.description} />
+      <fieldset className="grid gap-2">
+        <legend className="mb-1.5 text-sm font-semibold text-ink">Foto del evento (opcional)</legend>
+        {/* Fixed 16:9 box: choosing or removing a photo never moves the fields under it. */}
+        <div className="grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-2xl border border-line bg-bg">
+          {shownPhoto ? (
+            <img src={shownPhoto} alt="Vista previa de la foto del evento" className="size-full object-cover" />
+          ) : (
+            <p className="inline-flex items-center gap-2 text-sm text-muted">
+              <ImageSquare size={22} weight="bold" aria-hidden /> Sin foto
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The real input is visually hidden: the label shows its keyboard focus. */}
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-ink outline-offset-2 hover:bg-subtle has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-secondary">
+            <ImageSquare weight="bold" aria-hidden /> {shownPhoto ? "Cambiar foto" : "Elegir foto"}
+            <input key={inputKey} type="file" name="cover" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-describedby="event-photo-hint" onChange={pickPhoto} />
+          </label>
+          {photo ? (
+            <Button variant="ghost" onClick={() => setPreview(null)}>
+              Descartar la foto nueva
+            </Button>
+          ) : currentPhoto ? (
+            <Button variant="ghost" onClick={() => setRemoveCurrent(true)}>
+              Quitar foto
+            </Button>
+          ) : (
+            removeCurrent && (
+              <Button variant="ghost" onClick={() => setRemoveCurrent(false)}>
+                Conservar la foto
+              </Button>
+            )
+          )}
+        </div>
+        <p id="event-photo-hint" className={`min-h-5 text-xs ${photoError ? "font-semibold text-accent-2" : "text-muted"}`} role={photoError ? "alert" : undefined}>
+          {photoError ?? "PNG, JPG o WebP de hasta 5 MB."}
+        </p>
+      </fieldset>
       <div className="grid gap-2">
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
           <Button type="submit" loading={busy}>
-            Publicar evento
+            {current ? "Guardar cambios" : "Publicar evento"}
           </Button>
         </div>
-        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
+        <div ref={message}>
+          <FormMessage message={error} lines={{ base: 3, sm: 2 }} />
+        </div>
       </div>
     </form>
   );
 }
 
-function EventRow({ event, manageable, onDelete }: { event: EventOut; manageable: boolean; onDelete: () => void }) {
+function EventRow({ event, manageable, onEdit, onDelete }: { event: EventOut; manageable: boolean; onEdit: () => void; onDelete: () => void }) {
   return (
-    <li className="flex gap-3 rounded-2xl border border-line bg-surface p-4">
-      <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-accent/20 text-center leading-tight text-ink">
-        <span className="text-lg font-bold">{new Date(event.starts_at).getDate()}</span>
-        <span className="text-[0.7rem] uppercase">{new Intl.DateTimeFormat("es-MX", { month: "short" }).format(new Date(event.starts_at))}</span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-lg">{event.title}</h3>
-          <Badge tone={event.academy_slug ? "primary" : "accent"}>{event.academy_slug ? `#${event.academy_slug}` : "Todo el club"}</Badge>
+    <li className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 sm:flex-row">
+      <div className="flex min-w-0 flex-1 gap-3">
+        <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-accent/20 text-center leading-tight text-ink">
+          <span className="text-lg font-bold">{new Date(event.starts_at).getDate()}</span>
+          <span className="text-[0.7rem] uppercase">{new Intl.DateTimeFormat("es-MX", { month: "short" }).format(new Date(event.starts_at))}</span>
         </div>
-        <p className="text-sm text-muted first-letter:uppercase">
-          {dayTime.format(new Date(event.starts_at))} – {timeOnly.format(new Date(event.ends_at))}
-        </p>
-        {event.location && (
-          <p className="inline-flex items-center gap-1 text-sm text-muted">
-            <MapPin weight="bold" aria-hidden /> {event.location}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg">{event.title}</h3>
+            <Badge tone={event.academy_slug ? "primary" : "accent"}>{event.academy_slug ? `#${event.academy_slug}` : "Todo el club"}</Badge>
+          </div>
+          <p className="text-sm text-muted first-letter:uppercase">
+            {dayTime.format(new Date(event.starts_at))} – {timeOnly.format(new Date(event.ends_at))}
           </p>
-        )}
-        {event.description && <Markdown source={event.description} className="mt-1 text-sm" />}
-        {event.link && (
-          <a href={event.link} target="_blank" rel="noopener noreferrer nofollow" className="mt-1 inline-flex items-center gap-1 text-sm font-semibold">
-            <LinkSimple weight="bold" aria-hidden /> Más información
-          </a>
+          {event.location && (
+            <p className="inline-flex items-center gap-1 text-sm text-muted">
+              <MapPin weight="bold" aria-hidden /> {event.location}
+            </p>
+          )}
+          {event.description && <Markdown source={event.description} className="mt-1 text-sm" />}
+          {event.link && (
+            <a href={event.link} target="_blank" rel="noopener noreferrer nofollow" className="mt-1 inline-flex items-center gap-1 text-sm font-semibold">
+              <LinkSimple weight="bold" aria-hidden /> Más información
+            </a>
+          )}
+        </div>
+        {manageable && (
+          <div className="flex items-start self-start">
+            <button type="button" aria-label={`Editar ${event.title}`} onClick={onEdit} className="grid size-11 place-items-center rounded-full text-muted hover:bg-line/50 hover:text-ink">
+              <PencilSimple weight="bold" />
+            </button>
+            <button type="button" aria-label={`Eliminar ${event.title}`} onClick={onDelete} className="grid size-11 place-items-center rounded-full text-accent-2 hover:bg-line/50">
+              <Trash weight="bold" />
+            </button>
+          </div>
         )}
       </div>
-      {manageable && (
-        <button type="button" aria-label={`Eliminar ${event.title}`} onClick={onDelete} className="self-start rounded-full p-2 text-accent-2 hover:bg-line/50">
-          <Trash weight="bold" />
-        </button>
+      {isMedia(event.cover_url) && (
+        // Fixed aspect ratio: the photo reserves its box before it loads (no layout shift).
+        <img src={event.cover_url} alt="" loading="lazy" className="order-first aspect-[16/9] w-full rounded-xl bg-bg object-cover sm:order-last sm:aspect-[4/3] sm:w-44 sm:self-start" />
       )}
     </li>
   );
@@ -260,7 +384,8 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
   const [actionError, setActionError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const [academies, setAcademies] = useState<AcademyCardOut[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<EventOut | "new">("new");
+  const [formOpen, setFormOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [today] = useState(() => new Date());
   const detailRef = useRef<HTMLElement>(null);
@@ -351,8 +476,14 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
     setParam("dia", isSelected ? "" : toKey(day));
   }
 
+  function openForm(target: EventOut | "new") {
+    setFormKey((k) => k + 1); // a fresh form each time it opens
+    setEditing(target);
+    setFormOpen(true);
+  }
+
   const row = (event: EventOut) => (
-    <EventRow key={event.id} event={event} manageable={canManage(user, event)} onDelete={() => void remove(event)} />
+    <EventRow key={event.id} event={event} manageable={canManage(user, event)} onEdit={() => openForm(event)} onDelete={() => void remove(event)} />
   );
 
   return (
@@ -395,13 +526,7 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
             </button>
           </div>
           {canManage(user) && (
-            <Button
-              icon={<Plus weight="bold" />}
-              onClick={() => {
-                setFormKey((k) => k + 1); // a fresh form each time it opens
-                setCreating(true);
-              }}
-            >
+            <Button icon={<Plus weight="bold" />} onClick={() => openForm("new")}>
               Nuevo evento
             </Button>
           )}
@@ -529,8 +654,8 @@ function Calendar({ academySlug, fixedAcademyId }: { academySlug?: string; fixed
         </>
       )}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo evento">
-        {user && <EventForm key={formKey} user={user} academies={academies} fixedAcademyId={fixedAcademyId} onSaved={reload} onClose={() => setCreating(false)} />}
+      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing === "new" ? "Nuevo evento" : "Editar evento"}>
+        {user && <EventForm key={formKey} user={user} academies={academies} fixedAcademyId={fixedAcademyId} event={editing === "new" ? undefined : editing} onSaved={reload} onClose={() => setFormOpen(false)} />}
       </Modal>
     </div>
   );
