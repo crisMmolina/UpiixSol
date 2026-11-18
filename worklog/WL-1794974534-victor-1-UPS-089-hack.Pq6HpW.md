@@ -10,3 +10,4 @@
 
 ## History
 - 1794974534 | CLAIMED | victor-1 | claim; next: after the human `uak allow`, stubs for the Tests names and `uak red UPS-089`; then create + preview, then send, then the removal.
+- 1794974565 | CLAIMED | victor-1 | heartbeat; lease until 1794988965
