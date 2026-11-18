@@ -181,7 +181,7 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
       const saved = await api<AcademyOut>(`/academies/${academy.id}/${kind}`, { method: "POST", form });
       onSaved(saved);
       setDraft((d) => ({ ...d, logo_url: saved.logo_url, mascot_url: saved.mascot_url }));
-      const notice = await whiteBackgroundNotice(kind === "logo" ? saved.logo_url : saved.mascot_url, removeBackground);
+      const notice = await whiteBackgroundNotice(file, kind === "logo" ? saved.logo_url : saved.mascot_url, removeBackground);
       setMessage({ tone: "ok", text: `${kind === "logo" ? "Logo actualizado." : "Mascota actualizada."}${notice}` });
     } catch (err) {
       setMessage({ tone: "error", text: errorMessage(err) });

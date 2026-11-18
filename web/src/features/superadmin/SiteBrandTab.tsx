@@ -126,7 +126,7 @@ export function SiteBrandTab() {
     setMessage(null);
     try {
       const next = await api<SiteSettings>(`/admin/site/${kind}`, { method: "POST", form });
-      const notice = await whiteBackgroundNotice(kind === "logo" ? next.logo_url : next.mascot_url, removeBackground);
+      const notice = await whiteBackgroundNotice(file, kind === "logo" ? next.logo_url : next.mascot_url, removeBackground);
       done(next, `${IMAGE[kind].uploaded}${notice}`, "images", true);
     } catch (err) {
       setMessage({ tone: "error", text: errorMessage(err), where: "images" });
@@ -411,8 +411,8 @@ const SWATCHES = [
   { id: "dark", label: "Sobre oscuro", style: checker("#1B1E22", "#2B3036") },
 ] as const;
 
-/** The stored image has a transparent pixel (true when it cannot be checked, so no wrong notice is shown). */
-export function hasTransparentPixels(url: string): Promise<boolean> {
+/** Whether the image has a transparent pixel; null when it cannot be checked (no wrong notice is shown then). */
+export function hasTransparentPixels(url: string): Promise<boolean | null> {
   return new Promise((resolve) => {
     const image = new Image();
     image.onload = () => {
@@ -422,24 +422,33 @@ export function hasTransparentPixels(url: string): Promise<boolean> {
         canvas.width = side;
         canvas.height = side;
         const context = canvas.getContext("2d", { willReadFrequently: true });
-        if (!context) return resolve(true);
+        if (!context) return resolve(null);
         context.drawImage(image, 0, 0, side, side);
         const pixels = context.getImageData(0, 0, side, side).data;
         for (let i = 3; i < pixels.length; i += 4) if (pixels[i] < 255) return resolve(true);
         resolve(false);
       } catch {
-        resolve(true);
+        resolve(null);
       }
     };
-    image.onerror = () => resolve(true);
+    image.onerror = () => resolve(null);
     image.src = url;
   });
 }
 
-/** What to add to "Logo actualizado." when the box was ticked: the notice if there was no white to remove. */
-export async function whiteBackgroundNotice(url: string | null, removeWhite: boolean): Promise<string> {
-  if (!removeWhite || !url || url.endsWith(".svg")) return "";
-  return (await hasTransparentPixels(url)) ? "" : ` ${NO_WHITE_BACKGROUND}`;
+/**
+ * What to add to "Logo actualizado." when the box was ticked and there was no white to remove: the file
+ * already had transparency (stored as is) or the stored result still has none (no white border).
+ */
+export async function whiteBackgroundNotice(sent: File, stored: string | null, removeWhite: boolean): Promise<string> {
+  if (!removeWhite || !stored || stored.endsWith(".svg") || sent.type === "image/svg+xml") return "";
+  const local = URL.createObjectURL(sent);
+  try {
+    if ((await hasTransparentPixels(local)) === true) return ` ${NO_WHITE_BACKGROUND}`;
+  } finally {
+    URL.revokeObjectURL(local);
+  }
+  return (await hasTransparentPixels(stored)) === false ? ` ${NO_WHITE_BACKGROUND}` : "";
 }
 
 /** The current image only when it is one of our own uploads that can be processed (same origin, raster). */
