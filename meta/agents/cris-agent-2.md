@@ -1,0 +1,10 @@
+# cris-agent-2
+Agent: cris-agent-2
+Started: 1794980361
+Events: 1
+Events-Since-Checkpoint: 1
+Checkpoints: 0
+Sessions: 1
+Last-Checkpoint: 0
+Last-Session: stable
+Updated: 1794980361
