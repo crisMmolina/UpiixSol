@@ -367,7 +367,7 @@ function RoleChangeForm({
       <p className="text-sm text-muted">
         {mode === "promote"
           ? "Verá el panel del club desde su siguiente visita y podrá administrar su contenido, eventos e inscripciones."
-          : "Pierde el panel del club de inmediato. Conserva sus inscripciones y los correos que ya envió no cambian."}
+          : "Pierde el panel del club de inmediato. Sus inscripciones y los correos que ya envió no cambian."}
       </p>
       <div className="grid gap-2">
         <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
@@ -375,7 +375,7 @@ function RoleChangeForm({
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" loading={busy} disabled={mode === "promote" && active.length === 0}>
+          <Button type="submit" variant={mode === "demote" ? "danger" : "primary"} loading={busy} disabled={mode === "promote" && active.length === 0}>
             {mode === "promote" ? "Hacer admin" : "Quitar admin"}
           </Button>
         </div>
@@ -437,6 +437,39 @@ function UsersTab() {
     }
   }
 
+  // The same actions twice: in their own column from `sm` up, under the name on phones (no sideways scroll).
+  function rowActions(user: UserAdminOut, compact: boolean) {
+    return (
+      <div className={compact ? "flex flex-wrap gap-1" : "flex justify-end gap-1"}>
+        {user.is_active && user.role === "member" && (
+          <Button size="sm" variant="ghost" icon={<ShieldCheck weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "promote" })}>
+            Hacer admin de un club
+          </Button>
+        )}
+        {user.is_active && user.role === "academy_admin" && (
+          <Button size="sm" variant="ghost" icon={<ShieldSlash weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "demote" })}>
+            Quitar admin
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" icon={<Key weight="bold" />} onClick={() => void resetPassword(user)}>
+          Restablecer
+        </Button>
+        {user.id !== me?.id ? (
+          <Button size="sm" variant="ghost" icon={<Power weight="bold" />} onClick={() => void toggle(user)}>
+            {user.is_active ? "Desactivar" : "Activar"}
+          </Button>
+        ) : (
+          !compact && (
+            // Keeps "Restablecer" aligned with the other rows; the reason is under the name.
+            <Button size="sm" variant="ghost" icon={<Power weight="bold" />} className="invisible" aria-hidden tabIndex={-1}>
+              Desactivar
+            </Button>
+          )
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-5">
       <form
@@ -471,15 +504,15 @@ function UsersTab() {
         <PageSkeleton />
       ) : (
         <Card className="overflow-x-auto">
-          <table className="w-full min-w-[48rem] text-left text-sm">
+          <table className="w-full text-left text-sm sm:min-w-[48rem]">
             <thead className="border-b border-line text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold">Nombre</th>
-                <th className="px-4 py-3 font-semibold">Rol</th>
-                <th className="px-4 py-3 font-semibold">Club</th>
-                <th className="px-4 py-3 font-semibold">Boleta</th>
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">Rol</th>
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">Club</th>
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">Boleta</th>
                 <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 font-semibold">
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">
                   <span className="sr-only">Acciones</span>
                 </th>
               </tr>
@@ -501,41 +534,24 @@ function UsersTab() {
                         No puedes desactivar tu propia cuenta; otro superadmin sí puede.
                       </span>
                     )}
+                    <div className="mt-2 grid gap-2 sm:hidden">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <Badge tone={ROLE_TONE[user.role]}>{ROLE_LABEL[user.role]}</Badge>
+                        {user.role === "academy_admin" && <span className="text-xs text-muted">{academyName(user.academy_id)}</span>}
+                      </span>
+                      {rowActions(user, true)}
+                    </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="hidden px-4 py-3 sm:table-cell">
                     <Badge tone={ROLE_TONE[user.role]}>{ROLE_LABEL[user.role]}</Badge>
                   </td>
-                  <td className="px-4 py-3">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
-                  <td className="px-4 py-3 tabular-nums">{user.boleta ?? "—"}</td>
+                  <td className="hidden px-4 py-3 sm:table-cell">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
+                  <td className="hidden px-4 py-3 tabular-nums sm:table-cell">{user.boleta ?? "—"}</td>
                   <td className="px-4 py-3">
                     <Badge tone={user.is_active ? "primary" : "alert"}>{user.is_active ? "Activo" : "Inactivo"}</Badge>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      {user.is_active && user.role === "member" && (
-                        <Button size="sm" variant="ghost" icon={<ShieldCheck weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "promote" })}>
-                          Hacer admin de un club
-                        </Button>
-                      )}
-                      {user.is_active && user.role === "academy_admin" && (
-                        <Button size="sm" variant="ghost" icon={<ShieldSlash weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "demote" })}>
-                          Quitar admin
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" icon={<Key weight="bold" />} onClick={() => void resetPassword(user)}>
-                        Restablecer
-                      </Button>
-                      {user.id !== me?.id ? (
-                        <Button size="sm" variant="ghost" icon={<Power weight="bold" />} onClick={() => void toggle(user)}>
-                          {user.is_active ? "Desactivar" : "Activar"}
-                        </Button>
-                      ) : (
-                        // Keeps "Restablecer" aligned with the other rows; the reason is under the name.
-                        <Button size="sm" variant="ghost" icon={<Power weight="bold" />} className="invisible" aria-hidden tabIndex={-1}>
-                          Desactivar
-                        </Button>
-                      )}
-                    </div>
+                  <td className="hidden px-4 py-3 sm:table-cell">
+                    {rowActions(user, false)}
                   </td>
                 </tr>
               ))}

@@ -38,7 +38,7 @@ def test_superadmin_makes_the_member_a_club_admin(site: Site) -> None:
     sign_in(site, SUPERADMIN, "/admin?tab=usuarios")
     page = site.page
     row = member_row(page)
-    expect(row.get_by_text("Miembro", exact=True)).to_be_visible()
+    expect(row.get_by_text("Miembro", exact=True).locator("visible=true")).to_be_visible()
     site.shot("roles-before")
     row.get_by_role("button", name="Hacer admin de un club").click()
     dialog = page.get_by_role("dialog", name="Hacer admin de un club")
@@ -49,7 +49,7 @@ def test_superadmin_makes_the_member_a_club_admin(site: Site) -> None:
     dialog.get_by_role("button", name="Hacer admin", exact=True).click()
     expect(dialog).to_be_hidden()
     expect(page.get_by_text(f"{NAME} ahora es admin de {CLUB}.")).to_be_visible()
-    expect(row.get_by_text("Admin de club", exact=True)).to_be_visible()
+    expect(row.get_by_text("Admin de club", exact=True).locator("visible=true")).to_be_visible()
     expect(row.get_by_role("button", name="Quitar admin")).to_be_visible()
     site.shot("roles-after-promote")
 
@@ -72,16 +72,18 @@ def test_superadmin_removes_admin_with_a_confirmation(site: Site) -> None:
     # Cancelling changes nothing.
     dialog.get_by_role("button", name="Cancelar").click()
     expect(dialog).to_be_hidden()
-    expect(row.get_by_text("Admin de club", exact=True)).to_be_visible()
-    # Keyboard only: focus the action, open with Enter, confirm with Enter.
-    row.get_by_role("button", name="Quitar admin").focus()
-    page.keyboard.press("Enter")
+    expect(row.get_by_text("Admin de club", exact=True).locator("visible=true")).to_be_visible()
+    # Keyboard only: open with Enter, confirm with Enter. The native dialog reports its close in a later task;
+    # let it land first so a reopen this fast (faster than a person) is not closed by the stale event.
+    page.wait_for_timeout(300)
+    row.get_by_role("button", name="Quitar admin").press("Enter")
     expect(dialog).to_be_visible()
-    dialog.get_by_role("button", name="Quitar admin", exact=True).focus()
-    page.keyboard.press("Enter")
+    stable_box(modal_panel(page, "Quitar admin"))  # the dialog is done opening
+    confirm = dialog.get_by_role("button", name="Quitar admin", exact=True)
+    confirm.press("Enter")
     expect(dialog).to_be_hidden()
     expect(page.get_by_text(f"{NAME} ya no es admin de {CLUB}.")).to_be_visible()
-    expect(row.get_by_text("Miembro", exact=True)).to_be_visible()
+    expect(row.get_by_text("Miembro", exact=True).locator("visible=true")).to_be_visible()
     expect(row.get_by_role("button", name="Hacer admin de un club")).to_be_visible()
     site.shot("roles-after-demote")
 
@@ -94,6 +96,6 @@ def test_the_demoted_member_loses_the_club_panel(site: Site) -> None:
 def test_superadmin_rows_have_no_role_action(site: Site) -> None:
     sign_in(site, SUPERADMIN, "/admin?tab=usuarios")
     own = site.page.get_by_role("row").filter(has_text=SUPERADMIN)
-    expect(own.get_by_text("Superadmin", exact=True)).to_be_visible()
+    expect(own.get_by_text("Superadmin", exact=True).locator("visible=true")).to_be_visible()
     expect(own.get_by_role("button", name="Hacer admin de un club")).to_have_count(0)
     expect(own.get_by_role("button", name="Quitar admin")).to_have_count(0)
