@@ -37,8 +37,7 @@ from app.schemas.common import InModel, Page
 from app.schemas.users import Email
 from app.services.mailer import normalize_email
 
-MAX_ENTRIES = 50
-MAX_OUTSIDE = 20
+MAX_ENTRIES = 50  # campus users picked one by one; outside addresses have no per-campaign cap (UPS-097)
 _IN_CHUNK = 900  # keeps every IN (...) under SQLite's bound-parameter limit
 
 
@@ -62,15 +61,12 @@ class RoleAudience(InModel):
 class IndividualAudience(InModel):
     kind: Literal["individual"]
     user_ids: list[int] = Field(default_factory=list, max_length=MAX_ENTRIES)
-    emails: list[Email] = Field(default_factory=list, max_length=MAX_OUTSIDE)
+    emails: list[Email] = Field(default_factory=list)  # only the monthly quota limits them (_check_outside)
 
     @model_validator(mode="after")
     def _size(self) -> "IndividualAudience":
-        total = len(self.user_ids) + len(self.emails)
-        if total == 0:
+        if not self.user_ids and not self.emails:
             raise ValueError("Elige al menos una persona o un correo.")
-        if total > MAX_ENTRIES:
-            raise ValueError(f"Como máximo {MAX_ENTRIES} destinatarios en total.")
         return self
 
 
@@ -204,10 +200,9 @@ def _compute(
         for row in (db.execute(stmt) if stmt is not None else ())
     ]
     if isinstance(audience, IndividualAudience):
-        candidates += [
-            (None, email, email.partition("@")[0], True, True)
-            for email in map(normalize_email, audience.emails)
-        ]
+        typed = list(dict.fromkeys(map(normalize_email, audience.emails)))
+        _check_outside(db, len(typed))
+        candidates += [(None, email, email.partition("@")[0], True, True) for email in typed]
     suppressed = _suppressed(
         db, {email for _, email, _, _, typed in candidates if not (blind_typed and typed)}
     )
@@ -229,6 +224,19 @@ def _compute(
         else:
             kept.append(ResolvedRecipient(user_id=user_id, email=email, name=name))
     return kept, excluded
+
+
+def _check_outside(db: Session, count: int) -> None:
+    """Typed addresses have no per-campaign cap: only the month's remaining quota (UPS-097)."""
+    remaining = mail_status(db).remaining
+    if count > remaining:
+        raise AppError(
+            422,
+            f"Este periodo quedan {remaining} envíos y escribiste {count} correos de fuera; "
+            "quita algunos o espera a que se renueve la cuota.",
+            code="quota_exceeded",
+            details={"remaining": remaining},
+        )
 
 
 def _suppressed(db: Session, emails: set[str]) -> set[str]:
