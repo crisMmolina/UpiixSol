@@ -192,6 +192,8 @@ MATRIX: list[Rule] = [
     Rule("POST", "/api/events", OWN, _json(_event)),
     Rule("PATCH", "/api/events/{event_id}", OWN, _json(_event)),
     Rule("DELETE", "/api/events/{event_id}", OWN),
+    Rule("POST", "/api/events/{event_id}/cover", OWN, _file()),
+    Rule("DELETE", "/api/events/{event_id}/cover", OWN),
     # ── Learning progress ────────────────────────────────────
     Rule(
         "POST",

@@ -18,6 +18,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) · versione
 - Eventos y calendario (mes y lista), globales o por academia (UPS-013).
 - Flujo de aceptación end-to-end de 6 pasos con Playwright en escritorio y celular (UPS-016).
 - El superadmin hace admin de un club a un miembro y lo regresa a miembro desde la pestaña Usuarios, con insignia de rol y confirmación que nombra a la persona y al club; el cambio aplica en la siguiente petición y queda en el registro sin datos personales (UPS-093).
+- Foto en los eventos: quien administra el evento la sube, la cambia o la quita desde el formulario (ahora también para editar) y se ve en el calendario, en la página del club y en la principal; si la foto falla, el evento se conserva y el formulario lo avisa (UPS-094).
 
 ### Fixed
 - Comunidad ya no se desplaza de lado en celular (UPS-011).
