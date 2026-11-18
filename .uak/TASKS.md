@@ -1694,7 +1694,7 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Priority:** P1
 - **Estimate:** 300 min
 - **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Preview, test send and Reply-To, §Compatibility, `plan.md` §Contracts. Human owner: victor.
-- **Depends on:** UPS-086, UPS-087, UPS-088
+- **Depends on:** UPS-086, UPS-087, UPS-088, UPS-092
 - **Uses contract:** None
 - **Related:** UPS-090, UPS-091
 - **Paths:** app/services/mail_campaigns.py, app/routers/mail_campaigns.py, app/tests/test_mail_campaigns.py, app/tests/test_mail_preview.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, docs/mail-mailgun.md
@@ -1752,3 +1752,24 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - 1280 and 390 wide, AA, reduced motion; `.uak-shots/UPS-091/` and a design-critic SHIP.
 - **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_rich.py'`
 - **Next step:** stubs for the e2e Tests names and `uak red UPS-091`; then the event picker, then the image upload, then Reply-To.
+
+## UPS-092 · Mail quota per Mailgun billing period (3,000 a month) instead of 100 a day
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** human request (victor) 2026-11-17. The daily cap `MAIL_DAILY_LIMIT=100` was a placeholder from plan 003, never verified. victor's Mailgun plan is **Free: 3,000 emails per month, counted per billing period** (screenshot in the chat: "Emails sent this billing period 2 / 3,000"). Replace the daily cap with a monthly one that follows the billing period. Spec 003 §Composing and sending (quota) changes from "today" to "this billing period".
+- **Depends on:** UPS-085
+- **Uses contract:** None
+- **Related:** UPS-089, UPS-090
+- **Paths:** app/config.py, .env.example, render.yaml, app/services/mail_audience.py, app/services/mail_campaigns.py, web/src/lib/types.ts, web/src/features/mail/Composer.tsx, docs/mail-mailgun.md, docs/specs/003-correo/spec.md, app/tests/test_mail_quota.py, app/tests/test_mail_audience.py, app/tests/test_mail_campaigns.py, app/tests/test_mail_contract.py, app/tests/test_settings_isolation.py
+- **Freeze-Allowed:** no
+- **Tests:** test_quota_counts_the_current_billing_period, test_period_starts_on_configured_day, test_period_rolls_over_at_month_end_for_short_months, test_monthly_quota_exceeded_is_422_before_sending, test_status_reports_monthly_limit_used_remaining_and_renewal_date, test_monthly_settings_defaults_and_validation
+- **Acceptance:**
+  - Settings: `MAIL_MONTHLY_LIMIT` (default 3000, ≥ 0) and `MAIL_PERIOD_START_DAY` (1–28, default 1: the day of the month the Mailgun billing period starts, UTC). `MAIL_DAILY_LIMIT` is removed (an old value in the environment is ignored).
+  - The quota is a DB count of recipients sent (status ≠ `pending`) since the start of the current period; a send that would exceed `remaining` is refused with 422 before calling Mailgun, with the remaining number and the renewal date in Spanish.
+  - `GET /api/mail/status` returns `{enabled, monthly_limit, sent_this_period, remaining, period_start, period_end}`; the composer says "Te quedan N de 3,000 correos este mes · se renueva el D de mes".
+  - Note in `docs/mail-mailgun.md`: Mailgun also counts sends made outside the app (curl tests, other tools), so leave a margin; set `MAIL_PERIOD_START_DAY` to the day shown in Mailgun → Billing.
+  - Existing tests that assert the daily cap change (`test_mail_audience.py` status, `test_mail_campaigns.py` quota, `test_mail_contract.py` and `test_settings_isolation.py` setting names). A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-092 --tests --reason 'victor: monthly Mailgun quota replaces the daily placeholder'`.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_quota.py app/tests/test_mail_audience.py app/tests/test_mail_campaigns.py app/tests/test_mail_contract.py app/tests/test_settings_isolation.py && npm --prefix web run build'`
+- **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-092`; then the period math, then status and the send check, then the composer text.
