@@ -11,3 +11,4 @@ Append-only. Format: - ID | epoch | human | reason. Why: a test is a spec; chang
 - UPS-089 | 1794973426 | victor | victor removed the test send (spec 004)
 - UPS-090 | 1794973445 | victor | victor: block composer replaces the plain body and the test send (spec 004)
 - UPS-091 | 1794980223 | victor | UPS-091 changes sandbox and enables Evento/Imagen
+- UPS-096 | 1794981508 | victor | victor verified the per-recipient List-Unsubscribe in a batch

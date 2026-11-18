@@ -124,3 +124,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794979337 | UPS-091 | done blocked by tests-only-grow on 3 e2e/test_mail.py lines | Why: spec change by design
 - 1794980223 | allow | victor | test change: UPS-091 | Why: UPS-091 changes sandbox and enables Evento/Imagen
 - 1794981266 | UPS-094 | Edit mode added to event form so replace/remove work; photo failure on create turns the form into an edit of the new event | Why: Retry must not duplicate the event
+- 1794981508 | allow | victor | test change: UPS-096 | Why: victor verified the per-recipient List-Unsubscribe in a batch
