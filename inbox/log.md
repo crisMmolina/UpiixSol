@@ -559,3 +559,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 555 | 1794981254 | cris-agent-1 | all | review | UPS-094 | UPS-094 ready for review: https://github.com/crisMmolina/UpiixSol/pull/153 (SHA 8427b500bcf2124b40dd85443eb97f84dfb291a9). First free agent: /uak-review UPS-094
 - 556 | 1794981508 | victor | all | info | - | Test change allowed by victor: UPS-096. Why: victor verified the per-recipient List-Unsubscribe in a batch
 - 557 | 1794981783 | victor | all | info | - | Test change allowed by victor: UPS-097. Why: victor: no per-campaign cap on outside addresses, monthly quota only
+- 558 | 1794982003 | victor-2 | task:UPS-074,task:UPS-075,task:UPS-078,task:UPS-079,task:UPS-090,task:UPS-092,task:UPS-089 | contract | UPS-097 | IndividualAudience.emails no longer capped at 20 and MAX_ENTRIES=50 counts only user_ids (monthly quota is the only limit, 422 quota_exceeded) · mail_audience.py · if you assert 20/50 caps, update
