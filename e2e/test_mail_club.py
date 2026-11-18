@@ -53,7 +53,7 @@ def test_club_admin_mails_their_club_only(site: Site) -> None:
         expect(page.get_by_role("radio", name=name)).to_have_count(0)
     page.get_by_role("radio", name="Mi club").check()
     page.get_by_label("Asunto").fill(SUBJECT)
-    page.get_by_label("Mensaje").fill(BODY)
+    page.get_by_label("Texto del párrafo").first.fill(BODY)
     site.shot("club-mail-composer")
     view(site, "club-mail")
     page.get_by_role("button", name="Revisar y enviar").click()
@@ -67,6 +67,21 @@ def test_club_admin_mails_their_club_only(site: Site) -> None:
     expect(row.get_by_text("Mi club")).to_be_visible()
     expect(row).not_to_contain_text("undefined")
     site.shot("club-mail-sent")
+
+
+def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> None:
+    page = open_club_mail(site)
+    expect(page.get_by_label("Enviado por")).to_have_count(0)  # not editable
+    expect(page.get_by_text("Enviado por UpiixIA", exact=True)).to_be_visible()
+    page.get_by_label("Asunto").fill("Aviso del club")
+    page.get_by_label("Texto del párrafo").first.fill("Hola club")
+    page.get_by_role("radio", name="Mi club").check()
+    preview = page.frame_locator("iframe[title='Vista previa del correo']")
+    expect(preview.get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
+    expect(page.get_by_role("button", name="Enviarme una prueba")).to_have_count(0)
+    page.get_by_role("button", name="Agregar Botón").click()
+    page.get_by_role("button", name="Ver el club").click()
+    expect(page.get_by_label("Enlace del botón")).to_have_value("https://www.upiixsol.com/a/upiixia")
 
 
 def test_club_admin_picker_lists_only_their_enrollees(site: Site) -> None:
@@ -145,7 +160,7 @@ def test_club_mail_tab_at_390_wide(site: Site) -> None:
     expect(page.get_by_role("radio", name="Mi club")).to_be_visible()
     expect(page.get_by_role("radio", name="Personas")).to_be_visible()
     page.get_by_label("Asunto").fill("Revisión de pantalla")
-    page.get_by_label("Mensaje").fill(BODY)
+    page.get_by_label("Texto del párrafo").first.fill(BODY)
     page.get_by_role("radio", name="Mi club").check()
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")

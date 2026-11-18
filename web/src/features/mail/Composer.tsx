@@ -1,19 +1,23 @@
-// Composer (spec 003): audience, subject, plain-text body, test send, and the review-and-confirm modal.
+// Composer (specs 003, 004): audience, sender, subject, block editor with live preview, and the review-and-confirm modal.
 import { PaperPlaneTilt } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { TextArea, TextField } from "@/components/Field";
+import { SelectField, TextField } from "@/components/Field";
 import { FormMessage } from "@/components/FormMessage";
 import { Modal } from "@/components/Overlay";
 import { Notice } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
-import type { AudiencePreview, Campaign, MailStatus } from "@/lib/types";
+import type { AcademyCardOut, AudiencePreview, Campaign, MailStatus, Page } from "@/lib/types";
 
+import { BlockEditor } from "./BlockEditor";
+import { incompleteCount, newDraft, toBlocks, type Draft } from "./blocks";
+import { EmailPreview } from "./EmailPreview";
 import { AudiencePicker, EMPTY_AUDIENCE, toAudience, type AcademyChoice, type AudienceDraft, type AudienceKind } from "./AudiencePicker";
 
-const MAX_BODY = 20_000;
+const MAX_PREHEADER = 140;
+const BOARD = "La mesa directiva de UpiixSol";
 const MAX_SUBJECT = 150;
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -59,9 +63,11 @@ export function Composer({
 }) {
   const [draft, setDraft] = useState<AudienceDraft>({ ...EMPTY_AUDIENCE, kind: kinds?.[0] ?? "all", academyId: ownClub ? (academies[0]?.id ?? null) : null });
   const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [testNote, setTestNote] = useState<{ text: string; tone: "error" | "success" } | null>(null);
-  const [testing, setTesting] = useState(false);
+  const [preheader, setPreheader] = useState("");
+  const [drafts, setDrafts] = useState<Draft[]>(() => [newDraft("paragraph")]);
+  // undefined = follow the audience's club; null = the board; a number = that club (superadmin only).
+  const [picked, setPicked] = useState<number | null | undefined>(undefined);
+  const [slugs, setSlugs] = useState<Record<number, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [preview, setPreview] = useState<AudiencePreview | null>(null);
@@ -69,28 +75,37 @@ export function Composer({
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentNote, setSentNote] = useState<string | null>(null);
 
-  const audience = toAudience(draft);
-  const ready = subject.trim().length > 0 && body.trim().length > 0;
-  const off = !status.enabled;
+  useEffect(() => {
+    api<Page<AcademyCardOut>>("/academies", { query: { limit: 50 } })
+      .then((page) => setSlugs(Object.fromEntries(page.items.map((a) => [a.id, a.slug]))))
+      .catch(() => setSlugs({})); // only the "Ver el club" preset needs it
+  }, []);
 
-  async function sendTest() {
-    setSentNote(null);
-    if (!ready) return setTestNote({ text: "Escribe un asunto y un mensaje para enviar la prueba.", tone: "error" });
-    setTesting(true);
-    try {
-      await api("/mail/test", { method: "POST", json: { subject: subject.trim(), body } });
-      setTestNote({ text: "Prueba enviada a tu correo.", tone: "success" });
-    } catch (err) {
-      setTestNote({ text: errorMessage(err), tone: "error" });
-    } finally {
-      setTesting(false);
-    }
-  }
+  const audience = toAudience(draft);
+  const off = !status.enabled;
+  const blocks = useMemo(() => toBlocks(drafts), [drafts]);
+  const unfinished = incompleteCount(drafts);
+
+  // The sender: a club admin's is their club (the server takes it from their account); a superadmin's follows
+  // the audience's club until they pick one. The board cannot be picked for a club audience (the server
+  // would still send as that club), so that option is off then.
+  const audienceClub = draft.kind === "academy" ? draft.academyId : null;
+  const senderId = ownClub ? (academies[0]?.id ?? null) : (picked ?? audienceClub);
+
+  const payload = {
+    subject: subject.trim() || "Sin asunto",
+    audience,
+    blocks,
+    ...(preheader.trim() ? { preheader: preheader.trim() } : {}),
+    ...(!ownClub && senderId !== null ? { sender_academy_id: senderId } : {}),
+  };
+  const previewPayload = audience && blocks.length > 0 ? payload : null;
 
   async function review() {
-    setTestNote(null);
     setSentNote(null);
-    if (!ready) return setFormError("Escribe un asunto y un mensaje.");
+    if (!subject.trim()) return setFormError("Escribe un asunto.");
+    if (blocks.length === 0) return setFormError("Agrega al menos un bloque con contenido.");
+    if (unfinished > 0) return setFormError("Completa o elimina los bloques vacíos.");
     if (!audience) return setFormError("Elige a quién enviar el correo.");
     setFormError(null);
     setChecking(true);
@@ -109,11 +124,13 @@ export function Composer({
     setSending(true);
     setSendError(null);
     try {
-      const created = await api<Campaign>("/mail/campaigns", { method: "POST", json: { subject: subject.trim(), body, audience } });
+      const created = await api<Campaign>("/mail/campaigns", { method: "POST", json: payload });
       const campaign = await api<Campaign>(`/mail/campaigns/${created.id}/send`, { method: "POST" });
       setPreview(null);
       setSubject("");
-      setBody("");
+      setPreheader("");
+      setDrafts([newDraft("paragraph")]);
+      setPicked(undefined);
       setDraft({ ...EMPTY_AUDIENCE, kind: draft.kind, academyId: draft.academyId });
       setSentNote("El envío está en curso. Sigue su avance en el historial.");
       onSent(campaign);
@@ -130,21 +147,37 @@ export function Composer({
   return (
     <Card className="grid gap-5 p-5 sm:p-6">
       {off && <Notice tone="alert">El correo está desactivado. Puedes redactar, pero no enviar, hasta que se active.</Notice>}
-      <AudiencePicker draft={draft} onChange={setDraft} academies={academies} kinds={kinds} ownClub={ownClub} />
-      <TextField label="Asunto" value={subject} maxLength={MAX_SUBJECT} onChange={(e) => setSubject(e.target.value.replace(/[\r\n]+/g, " "))} />
-      <div className="grid gap-1">
-        <TextArea label="Mensaje" value={body} maxLength={MAX_BODY} rows={8} onChange={(e) => setBody(e.target.value)} hint="Texto sin formato: las líneas en blanco separan párrafos y los enlaces https se vuelven clicables." />
-        <p className="text-right text-xs tabular-nums text-muted">{`${body.length.toLocaleString("es-MX")} / ${MAX_BODY.toLocaleString("es-MX")}`}</p>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="grid min-w-0 content-start gap-5">
+          <AudiencePicker draft={draft} onChange={(next) => { setPicked(undefined); setDraft(next); }} academies={academies} kinds={kinds} ownClub={ownClub} />
+          {ownClub ? (
+            <p className="text-sm">{`Enviado por ${academies[0]?.name ?? ""}`}</p>
+          ) : (
+            <SelectField label="Enviado por" value={senderId ?? ""} onChange={(e) => setPicked(e.target.value ? Number(e.target.value) : null)}>
+              <option value="" disabled={audienceClub !== null}>
+                {BOARD}
+              </option>
+              {academies.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </SelectField>
+          )}
+          <TextField label="Asunto" value={subject} maxLength={MAX_SUBJECT} onChange={(e) => setSubject(e.target.value.replace(/[\r\n]+/g, " "))} />
+          <TextField label="Texto de vista previa (opcional)" value={preheader} maxLength={MAX_PREHEADER} hint="Lo que se ve junto al asunto en la bandeja de entrada." onChange={(e) => setPreheader(e.target.value.replace(/[\r\n]+/g, " "))} />
+          <BlockEditor drafts={drafts} onChange={setDrafts} clubSlug={senderId === null ? null : (slugs[senderId] ?? null)} />
+        </div>
+        <div className="min-w-0 lg:sticky lg:top-4">
+          <EmailPreview payload={previewPayload} emptyHint={audience ? "Agrega contenido para ver cómo queda el correo." : "Elige a quién enviar el correo para ver la vista previa."} />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="secondary" onClick={() => void sendTest()} disabled={off} loading={testing}>
-          Enviarme una prueba
-        </Button>
         <Button type="button" icon={<PaperPlaneTilt weight="bold" />} onClick={() => void review()} disabled={off} loading={checking}>
           Revisar y enviar
         </Button>
       </div>
-      <FormMessage message={formError ?? testNote?.text} tone={formError ? "error" : (testNote?.tone ?? "error")} />
+      <FormMessage message={formError} tone="error" />
       {sentNote && <p role="status" className="text-sm font-semibold text-link">{sentNote}</p>}
 
       <Modal open={preview !== null} onClose={() => !sending && setPreview(null)} title="Revisar envío">
