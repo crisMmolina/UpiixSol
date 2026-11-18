@@ -618,4 +618,3 @@ def test_superadmin_cannot_create_a_user_with_a_taken_boleta(as_superadmin: Test
         },
     )
     assert response.status_code == 409
-

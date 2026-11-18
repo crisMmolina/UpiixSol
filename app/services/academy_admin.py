@@ -7,7 +7,7 @@ an academy_admin can only touch their own academy; superadmins can touch any.
 import math
 from datetime import datetime
 
-from fastapi import UploadFile
+from fastapi import Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -149,12 +149,22 @@ def update_branding(db: Session, academy: Academy, data: BrandingUpdateIn) -> Ac
     return AcademyOut.model_validate(academy)
 
 
-async def upload_image(db: Session, academy: Academy, file: UploadFile, kind: str) -> AcademyOut:
+async def upload_image(
+    db: Session,
+    academy: Academy,
+    file: UploadFile,
+    kind: str,
+    *,
+    transparent_background: bool = False,
+    response: Response | None = None,
+) -> AcademyOut:
     """Store the new file, commit, and only then delete the previous one.
 
     If the commit fails, the new file is removed and the previous one is kept (no orphans, no data loss).
     """
-    url = await media.save_upload(file, kind)  # type: ignore[arg-type]
+    stored = await media.store_upload(file, kind, transparent_background=transparent_background)  # type: ignore[arg-type]
+    url = stored.url
+    media.announce_background(response, stored)
     field = f"{kind}_url"
     previous = getattr(academy, field)
     try:

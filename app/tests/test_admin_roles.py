@@ -98,9 +98,7 @@ def test_new_role_applies_on_next_request_and_logs_without_pii(
     assert client.get(enrollments, headers=headers).status_code == 403
 
     caplog.set_level(logging.INFO)
-    promote = _put(
-        as_superadmin, member.id, {"role": "academy_admin", "academy_id": seeded["academy_id"]}
-    )
+    promote = _put(as_superadmin, member.id, {"role": "academy_admin", "academy_id": seeded["academy_id"]})
     assert promote.status_code == 200
     assert client.get(enrollments, headers=headers).status_code == 200  # same token, new role
 

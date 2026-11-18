@@ -1,6 +1,6 @@
 """Academy panel endpoints (flow step 5). Scope: own academy for academy_admin, any for superadmin."""
 
-from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -31,29 +31,43 @@ def update_branding(
     return result
 
 
-async def _upload(academy_id: int, kind: str, file: UploadFile, user: User, db: Session) -> AcademyOut:
+async def _upload(
+    academy_id: int,
+    kind: str,
+    file: UploadFile,
+    user: User,
+    db: Session,
+    response: Response,
+    transparent_background: bool,
+) -> AcademyOut:
     academy = service.academy_for(db, academy_id, user)  # scope check before reading the upload
-    return await service.upload_image(db, academy, file, kind)  # commits itself (file cleanup on failure)
+    return await service.upload_image(  # commits itself (file cleanup on failure)
+        db, academy, file, kind, transparent_background=transparent_background, response=response
+    )
 
 
 @router.post("/academies/{academy_id}/logo", response_model=AcademyOut)
 async def upload_logo(
     academy_id: int,
+    response: Response,
     file: UploadFile = File(...),
+    transparent_background: bool = Form(False),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> AcademyOut:
-    return await _upload(academy_id, "logo", file, user, db)
+    return await _upload(academy_id, "logo", file, user, db, response, transparent_background)
 
 
 @router.post("/academies/{academy_id}/mascot", response_model=AcademyOut)
 async def upload_mascot(
     academy_id: int,
+    response: Response,
     file: UploadFile = File(...),
+    transparent_background: bool = Form(False),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> AcademyOut:
-    return await _upload(academy_id, "mascot", file, user, db)
+    return await _upload(academy_id, "mascot", file, user, db, response, transparent_background)
 
 
 # ── Content ──────────────────────────────────────────────────

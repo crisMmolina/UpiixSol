@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -34,16 +34,28 @@ def put_site(data: SiteIn, _user: Superadmin, db: Session = Depends(get_db)) -> 
 
 @router.post("/admin/site/logo", response_model=SiteOut)
 async def upload_logo(
-    _user: Superadmin, file: UploadFile = File(...), db: Session = Depends(get_db)
+    _user: Superadmin,
+    response: Response,
+    file: UploadFile = File(...),
+    transparent_background: bool = Form(False),
+    db: Session = Depends(get_db),
 ) -> SiteOut:
-    return await service.upload_image(db, file, "logo")  # commits itself (file cleanup on failure)
+    return await service.upload_image(  # commits itself (file cleanup on failure)
+        db, file, "logo", transparent_background=transparent_background, response=response
+    )
 
 
 @router.post("/admin/site/mascot", response_model=SiteOut)
 async def upload_mascot(
-    _user: Superadmin, file: UploadFile = File(...), db: Session = Depends(get_db)
+    _user: Superadmin,
+    response: Response,
+    file: UploadFile = File(...),
+    transparent_background: bool = Form(False),
+    db: Session = Depends(get_db),
 ) -> SiteOut:
-    return await service.upload_image(db, file, "mascot")
+    return await service.upload_image(
+        db, file, "mascot", transparent_background=transparent_background, response=response
+    )
 
 
 @router.delete("/admin/site/logo", response_model=SiteOut)

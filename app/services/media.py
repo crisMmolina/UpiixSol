@@ -25,8 +25,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from fastapi import UploadFile
-from PIL import Image, ImageOps
+from fastapi import Response, UploadFile
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -150,6 +150,10 @@ SVG_ATTRIBUTES = {
 _LOCAL_REF = re.compile(r"^#[A-Za-z][\w.-]*$")
 _URL_FUNC = re.compile(r"url\(\s*(?!#)", re.IGNORECASE)
 _XML_DECLARATION = re.compile(rb"\A\s*<\?xml\s[^>]*\?>", re.IGNORECASE)
+WHITE_FLOOR = 245  # UPS-095: a pixel is "white" when every channel is at least this
+MAX_TRANSPARENT_SHARE = 0.98  # more than this would leave an (almost) empty logo
+EDGE_BLUR = 0.8  # px: the soft edge of the cut-out
+NO_WHITE_BACKGROUND = "No encontramos un fondo blanco para quitar."
 MAX_USE_ELEMENTS = 20  # `use` copies render once each: a small cap keeps a logo cheap to paint
 
 
@@ -287,7 +291,53 @@ def encode_for_email(image: Image.Image, max_width: int = 1200) -> tuple[bytes, 
     return output.getvalue(), "jpg"
 
 
-def save_image_bytes(data: bytes, kind: Kind) -> str:
+def remove_white_background(image: Image.Image) -> tuple[Image.Image, bool]:
+    """(image, changed): near-white pixels connected to the border become transparent (UPS-095).
+
+    White enclosed by the artwork (the hole of a letter, an eye) stays opaque. Images that already have real
+    transparency, or no white border, come back untouched with `changed=False`. Refuses with 422 when more
+    than MAX_TRANSPARENT_SHARE of the picture would vanish. The alpha is softened with a slight blur that can
+    only lower it, so the cut never brings a white fringe back outside the artwork.
+    """
+    if _has_transparency(image):
+        return image, False
+    rgba = image.convert("RGBA")
+    red, green, blue, _ = rgba.split()
+    lightest = ImageChops.darker(ImageChops.darker(red, green), blue)  # per pixel: the darkest channel
+    white = lightest.point(lambda value: 255 if value >= WHITE_FLOOR else 0)
+    # A 1 px ring of white around the mask joins every white pixel on any edge to one seed at (0, 0).
+    padded = ImageOps.expand(white, border=1, fill=255)
+    ImageDraw.floodfill(padded, (0, 0), 128)
+    background = padded.crop((1, 1, padded.width - 1, padded.height - 1)).point(
+        lambda value: 255 if value == 128 else 0
+    )
+    cut = background.histogram()[255]
+    if cut == 0:
+        return image, False
+    if cut / (rgba.width * rgba.height) > MAX_TRANSPARENT_SHARE:
+        raise AppError(
+            422,
+            "La imagen es casi toda blanca: no se puede quitar el fondo sin dejarla vacía.",
+            code="invalid_image",
+        )
+    hard = ImageChops.invert(background)
+    alpha = ImageChops.darker(hard.filter(ImageFilter.GaussianBlur(EDGE_BLUR)), hard)
+    rgba.putalpha(alpha)
+    return rgba, True
+
+
+@dataclass(frozen=True)
+class StoredImage:
+    url: str
+    background_removed: bool | None = None  # None: the option did not apply (off, SVG, other kind)
+
+
+def save_image_bytes(data: bytes, kind: Kind, *, transparent_background: bool = False) -> str:
+    return store_image(data, kind, transparent_background=transparent_background).url
+
+
+def store_image(data: bytes, kind: Kind, *, transparent_background: bool = False) -> StoredImage:
+    """Validate, resize, re-encode and store; `transparent_background` acts on logos and mascots only."""
     rule = RULES[kind]
     if len(data) > rule.max_bytes:
         raise _too_large(rule)
@@ -299,7 +349,7 @@ def save_image_bytes(data: bytes, kind: Kind) -> str:
             raise AppError(422, "Este tipo de imagen solo acepta PNG, JPG o WebP.", code="invalid_image")
         if not _svg_is_safe(data):
             raise AppError(422, "El SVG contiene elementos no permitidos.", code="invalid_image")
-        return _store(data, kind, "svg")
+        return StoredImage(_store(data, kind, "svg"))
 
     invalid = AppError(422, "El archivo no es una imagen válida.", code="invalid_image")
     try:
@@ -314,22 +364,40 @@ def save_image_bytes(data: bytes, kind: Kind) -> str:
         with Image.open(io.BytesIO(data)) as image:
             if kind == "mail":
                 encoded, extension = encode_for_email(image, rule.max_side)
-                return _store(encoded, kind, extension)
+                return StoredImage(_store(encoded, kind, extension))
             image.thumbnail((rule.max_side, rule.max_side))
+            removed = None
+            if transparent_background and kind in ("logo", "mascot"):
+                image, removed = remove_white_background(image)
             output = io.BytesIO()
             mode = "RGBA" if image.mode in ("RGBA", "LA", "P") else "RGB"
             image.convert(mode).save(output, "WEBP", quality=85, method=4)
+    except AppError:
+        raise  # the 422 of a mostly white image is already user-facing
     except Exception as exc:  # verify() does not decode pixels: broken data fails here
         raise invalid from exc
-    return _store(output.getvalue(), kind, "webp")
+    return StoredImage(_store(output.getvalue(), kind, "webp"), removed)
 
 
-async def save_upload(file: UploadFile, kind: Kind) -> str:
+BACKGROUND_HEADER = "X-Background-Removed"
+
+
+def announce_background(response: Response | None, stored: StoredImage) -> None:
+    """Tell the form whether the white background was found ("true"/"false"); silent when it did not apply."""
+    if response is not None and stored.background_removed is not None:
+        response.headers[BACKGROUND_HEADER] = "true" if stored.background_removed else "false"
+
+
+async def store_upload(file: UploadFile, kind: Kind, *, transparent_background: bool = False) -> StoredImage:
     rule = RULES[kind]
     data = await file.read(rule.max_bytes + 1)  # never read more than the limit
     if len(data) > rule.max_bytes:
         raise _too_large(rule)
-    return save_image_bytes(data, kind)
+    return store_image(data, kind, transparent_background=transparent_background)
+
+
+async def save_upload(file: UploadFile, kind: Kind, *, transparent_background: bool = False) -> str:
+    return (await store_upload(file, kind, transparent_background=transparent_background)).url
 
 
 def delete_media(url: str | None) -> None:

@@ -11,7 +11,7 @@ Its Pydantic contracts live here (app/schemas has a single owner). Old uploads a
 
 from typing import Annotated, Literal
 
-from fastapi import UploadFile
+from fastapi import Response, UploadFile
 from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -119,12 +119,21 @@ def _out(db: Session) -> SiteOut:
     return SiteOut.model_validate(db.get(SiteSettings, 1, populate_existing=True))
 
 
-async def upload_image(db: Session, file: UploadFile, kind: ImageKind) -> SiteOut:
+async def upload_image(
+    db: Session,
+    file: UploadFile,
+    kind: ImageKind,
+    *,
+    transparent_background: bool = False,
+    response: Response | None = None,
+) -> SiteOut:
     """Store the new file, swap it in, commit, and only then delete the file it replaced.
 
     If anything fails the new file is removed and the previous one is kept (no orphans, no data loss).
     """
-    url = await media.save_upload(file, kind)
+    stored = await media.store_upload(file, kind, transparent_background=transparent_background)
+    url = stored.url
+    media.announce_background(response, stored)
     try:
         previous = _swap(db, kind, url)
         db.commit()

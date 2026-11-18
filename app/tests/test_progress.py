@@ -79,9 +79,7 @@ def test_all_complete_is_100_and_no_next(db: Session, academy: Academy, member: 
     assert (progress.percent, progress.next_lesson_id) == (100, None)
 
 
-def test_complete_is_idempotent_and_stays_completed(
-    db: Session, academy: Academy, member: User
-) -> None:
+def test_complete_is_idempotent_and_stays_completed(db: Session, academy: Academy, member: User) -> None:
     route = _route(db, academy, lessons_per_module=(1,))
     lesson = _lessons(db, route)[0]
     first = complete_lesson(db, member.id, lesson.id)
