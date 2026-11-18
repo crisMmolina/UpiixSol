@@ -42,7 +42,7 @@ Club platform (IPN · UPIIZ): academies, learning routes with progress, communit
 - Setup: `uv sync` · `npm --prefix web ci` · `uv run alembic upgrade head` (copy `.env.example` → `.env`, fill `JWT_SECRET`, `SEED_DEFAULT_PASSWORD`).
 - Run: `uv run uvicorn app.main:app --reload --port $UAK_PORT` (docs at `/api/docs`) · `npm --prefix web run dev` (Vite reads `$UAK_PORT+1`).
 - Backend: `uv run ruff check app` · `uv run pytest --cov=app` (target 100 %, CI floor 90) · one test: `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_learning.py::test_name`.
-- Migrations must round-trip (CI): `uv run alembic upgrade head && uv run alembic downgrade base`. CI also runs pytest on PostgreSQL 16: no SQLite-only SQL.
+- Migrations must round-trip (CI). Locally always on a throwaway SQLite, never the dotenv DB (incident 2026-11-17): `DATABASE_URL=sqlite:////tmp/rt.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/rt.db uv run alembic downgrade base`. `env.py` refuses `downgrade` on a remote DB. CI also runs pytest on PostgreSQL 16: no SQLite-only SQL.
 - Web: `npm --prefix web run lint` (oxlint) · `npm --prefix web run build` (`tsc -b` + vite).
 - E2E (Playwright, outside default `testpaths`): `npm --prefix web run build && uv run pytest e2e` — serves `web/dist` on a fresh seeded SQLite DB, at 1280 and 390 wide; screenshots in `e2e/artifacts/`.
 - Everything: `bash .uak/bin/smoke`.
