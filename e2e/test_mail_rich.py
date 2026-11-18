@@ -51,12 +51,27 @@ def site(mail_env: None, site: Site) -> Site:  # noqa: ARG001 - overrides confte
     return site
 
 
-def shot(site: Site, step: str) -> None:
-    """Full-page layout check plus a viewport shot (iframes below the fold are not in full-page shots)."""
+HIDE_TOAST = """
+  [...document.querySelectorAll('body *')]
+    .filter((el) => el.children.length === 0 && el.textContent.includes('Cambia tu contraseña'))
+    .forEach((el) => { let n = el; while (n && getComputedStyle(n).position !== 'fixed') n = n.parentElement; if (n) n.style.display = 'none'; })
+"""
+
+
+def shot(site: Site, step: str, focus=None) -> None:  # noqa: ANN001 - playwright Locator
+    """Full-page layout check plus viewport shots for the design review (iframes below the fold are not in
+    full-page shots). `focus` is scrolled into view first; the composer overview is saved as 1280/390.png."""
+    page = site.page
+    size = "1280" if site.name == "desktop" else "390"
+    page.evaluate(HIDE_TOAST)
     site.shot(step)
     SHOTS.mkdir(parents=True, exist_ok=True)
-    site.page.wait_for_timeout(1000)
-    site.page.screenshot(path=SHOTS / f"{step}-{'1280' if site.name == 'desktop' else '390'}.png")
+    page.wait_for_timeout(1000)
+    page.screenshot(path=SHOTS / f"{step}-{size}.png", full_page=True)
+    if focus is not None:
+        focus.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
+        page.screenshot(path=SHOTS / f"{step}-focus-{size}.png")
 
 
 def open_composer(site: Site, email: str = SUPERADMIN) -> Page:
@@ -105,7 +120,8 @@ def test_event_block_from_campus_calendar_shows_card_and_calendar_links(site: Si
     expect(card(page).get_by_role("link", name="Google Calendar")).to_have_attribute(
         "href", re.compile(r"^https://calendar\.google\.com/")
     )
-    shot(site, "mail-event-calendar")
+    shot(site, "mail-event-calendar", block)
+    page.screenshot(path=SHOTS / f"{'1280' if site.name == 'desktop' else '390'}.png", full_page=True)
 
 
 def test_event_block_typed_by_hand(site: Site) -> None:
@@ -153,7 +169,7 @@ def test_image_block_uploads_and_previews(site: Site, tmp_path: Path) -> None:
     expect(image).to_be_visible(timeout=10_000)
     expect(card(page).get_by_role("link").filter(has=image)).to_have_attribute("href", "https://www.upiixsol.com/a/upiixia")
     assert image.evaluate("(el) => el.complete && el.naturalWidth > 0")  # noqa: S101 - the upload really loads
-    shot(site, "mail-image")
+    shot(site, "mail-image", block)
 
 
 def test_reply_to_prefilled_and_editable(site: Site) -> None:
@@ -168,7 +184,7 @@ def test_reply_to_prefilled_and_editable(site: Site) -> None:
     expect(page.get_by_text("Escribe un correo válido.")).to_have_count(0)
     page.get_by_label("Texto del párrafo").first.fill("Hola")
     expect(card(page).get_by_text("Responde este correo")).to_be_visible(timeout=10_000)
-    shot(site, "mail-reply-to")
+    shot(site, "mail-reply-to", reply)
 
 
 def test_club_admin_sees_only_global_and_own_club_events(site: Site) -> None:
