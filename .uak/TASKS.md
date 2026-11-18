@@ -1840,3 +1840,22 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - `assets/brand/` and the built-in wordmark are never processed. `CHANGELOG.md` entry; `bash .uak/bin/smoke` exits 0.
 - **Verify:** `bash .uak/bin/q bash -c 'uv run ruff check app && uv run pytest -q --tb=short -x app/tests/test_logo_transparency.py app/tests/test_media.py app/tests/test_media_storage.py app/tests/test_academy_admin.py app/tests/test_permissions_matrix.py && npm --prefix web run lint && npm --prefix web run build'`
 - **Next step:** stubs for the `Tests:` names and `uak red UPS-095`; then `remove_white_background` with `ImageDraw.floodfill` on a border-padded mask, the flag in `save_image_bytes`, the form field in the two routers, then the checkbox, preview and button.
+
+## UPS-096 · Turn on Mailgun batch sending: the per-recipient unsubscribe header is verified
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 60 min
+- **Rubric / Spec:** human-verified 2026-11-18 (victor): one Mailgun call to 2 recipients with `recipient-variables` and `h:List-Unsubscribe=<https://www.upiixsol.com/baja?t=%recipient.token%>` delivered `List-Unsubscribe: <…?t=tok-uno>` and `<…?t=tok-dos>` respectively (Gmail "Mostrar original"; SPF, DKIM and DMARC pass for mg.upiixsol.com). So `docs/spikes/mailgun.md` §3 is verified and `UNSUBSCRIBE_HEADER_IN_BATCH` can be on: every campaign goes in batches of ≤ 1 000 with the per-recipient one-click header, instead of one call per recipient below 100 and no header above 100.
+- **Depends on:** UPS-091
+- **Uses contract:** None
+- **Related:** UPS-073, UPS-071
+- **Paths:** app/services/mailgun.py, app/tests/test_mailgun.py, docs/spikes/mailgun.md
+- **Freeze-Allowed:** no
+- **Tests:** test_batch_sends_per_recipient_unsubscribe_header_variable, test_small_audience_also_batches_in_one_call, test_header_points_to_the_api_one_click_url
+- **Acceptance:**
+  - `UNSUBSCRIBE_HEADER_IN_BATCH = True` (or the switch and the per-recipient fallback removed if nothing else uses them); every send is ≤ 1 000 recipients per call with `h:List-Unsubscribe=<%recipient.unsubscribe_url%>` and `h:List-Unsubscribe-Post`, and the recipient variables carry `unsubscribe_url` (the API URL `/api/mail/unsubscribe?t=…`, so the RFC 8058 one-click POST suppresses and a GET only redirects to `/baja`).
+  - `docs/spikes/mailgun.md` §3 changes from "unverified" to "verified 2026-11-18" with the result above (no addresses, no message ids).
+  - Tests that assert the old fallback (one call per recipient below 100, no header above 100) change only there; a human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-096 --tests --reason 'victor verified the per-recipient List-Unsubscribe in a batch'`.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mailgun.py app/tests/test_mail_campaigns.py`
+- **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-096`; then flip the switch, then the spike note.
