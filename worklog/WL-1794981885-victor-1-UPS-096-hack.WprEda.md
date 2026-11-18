@@ -13,3 +13,4 @@
 - 1794981923 | CLAIMED | victor-1 | heartbeat; lease until 1794996323
 - 1794982089 | REVIEW | victor-1 | done; PR https://github.com/crisMmolina/UpiixSol/pull/156; evidence: pytest test_mailgun+test_mail_campaigns exit 0; smoke PRODUCT_PASS; switch and per-recipient fallback removed, spike §3 verified 2026-11-18 · existing tests changed with a human's approval (victor) · red at 87a8de9: E   assert 3 == 1; reviewer: -
 - 1794982319 | REVIEW | victor-1 | checkpoint; next: Wait for review of PR 156
+- 1794982406 | REVIEW | victor-3 | review; approve; SHA 8d775e847781da564641b1899b4ed7db22a393fb; reviewer victor-3
