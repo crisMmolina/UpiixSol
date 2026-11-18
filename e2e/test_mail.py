@@ -124,7 +124,7 @@ def test_preview_iframe_is_sandboxed(site: Site) -> None:
     page = open_mail(site)
     compose(page, "Aviso", "Hola <script>alert(1)</script>")  # shown as text, never run
     frame = page.locator(PREVIEW)
-    expect(frame).to_have_attribute("sandbox", "")
+    expect(frame).to_have_attribute("sandbox", "allow-same-origin")  # UPS-091: no allow-scripts, so no code runs; same-origin only lets the page fit the height
     expect(frame).to_have_attribute("srcdoc", re.compile(r"<html|<!DOCTYPE", re.IGNORECASE), timeout=10_000)
     expect(page.frame_locator(PREVIEW).get_by_text("alert(1)")).to_be_visible()
 
@@ -170,8 +170,8 @@ def test_blocks_reorder_and_delete(site: Site) -> None:
     expect(blocks(page)).to_have_count(1)
     expect(blocks(page).nth(0)).to_have_attribute("aria-label", "Bloque 1: Título")
     # Event and image blocks arrive with UPS-091: offered, not usable yet.
-    expect(page.get_by_role("button", name="Agregar Evento")).to_be_disabled()
-    expect(page.get_by_role("button", name="Agregar Imagen")).to_be_disabled()
+    expect(page.get_by_role("button", name="Agregar Evento")).to_be_enabled()  # UPS-091
+    expect(page.get_by_role("button", name="Agregar Imagen")).to_be_enabled()  # UPS-091
 
 
 def test_button_presets_campus_and_club(site: Site) -> None:
