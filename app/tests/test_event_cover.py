@@ -156,3 +156,18 @@ def test_event_payload_carries_cover_url_and_no_personal_data(
     assert set(listed[own_event.id]) == expected
     assert listed[own_event.id]["cover_url"] == uploaded["cover_url"]
     assert set(as_admin_ia.delete(f"/api/events/{own_event.id}/cover").json()) == expected
+
+
+def test_cover_kept_when_commit_fails_and_the_new_file_is_discarded(
+    as_admin_ia: TestClient, db: Session, own_event: Event, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = as_admin_ia.post(f"/api/events/{own_event.id}/cover", files=_file()).json()["cover_url"]
+
+    def boom() -> None:
+        raise RuntimeError("db down")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(db, "commit", boom)
+        assert as_admin_ia.post(f"/api/events/{own_event.id}/cover", files=_file("b.png")).status_code == 500
+    assert db.get(Event, own_event.id).cover_url == first
+    assert as_admin_ia.get(first).status_code == 200  # the old photo stays; the new file was removed
