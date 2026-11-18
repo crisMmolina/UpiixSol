@@ -38,6 +38,6 @@ Role assignment
 - Several photos per event, cropping, drag and drop, alt text editing.
 - Bulk role changes and an audit-log screen.
 
-## Open questions
-1. Should a demoted club admin keep access to the club's mail campaigns they already created? Default: no change to history, the sender stays on the campaign, new sends need the role. [To validate: cris]
-2. Do you want to allow promoting to `superadmin` later with a second confirmation? Default: not in v1. [To validate: cris]
+## Decisions (cris 2026-11-17: use the defaults)
+1. A demoted club admin keeps no new access: the history of campaigns they sent stays as it is (the sender stays on the campaign) and new sends need the role. [Decided]
+2. Promoting to `superadmin` is not in v1; it stays a manual operation. [Decided]
