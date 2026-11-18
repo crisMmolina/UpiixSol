@@ -274,12 +274,13 @@ def _button(block: ButtonBlock, theme: Theme) -> str:
 
 
 def _image(block: ImageBlock) -> str:
-    return (
-        '<tr><td style="padding:0 32px 20px">'
+    img = (
         f'<img src="{escape(_absolute(block.url))}" alt="{escape(block.alt)}" width="536" '
         'style="display:block;width:100%;max-width:536px;height:auto;border:0;border-radius:12px">'
-        "</td></tr>"
     )
+    if block.link:
+        img = f'<a href="{escape(block.link)}" style="text-decoration:none">{img}</a>'
+    return f'<tr><td style="padding:0 32px 20px">{img}</td></tr>'
 
 
 def _divider() -> str:
@@ -532,7 +533,7 @@ def _render_text(
         elif isinstance(block, ButtonBlock):
             parts.append(f"{block.label}: {block.url}")
         elif isinstance(block, ImageBlock):
-            parts.append(f"[Imagen: {block.alt}] {_absolute(block.url)}")
+            parts.append(f"[Imagen: {block.alt}] {block.link or _absolute(block.url)}")
         elif isinstance(block, DividerBlock):
             parts.append("---")
         elif isinstance(block, EventBlock):

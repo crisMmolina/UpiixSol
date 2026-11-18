@@ -301,6 +301,7 @@ MATRIX: list[Rule] = [
         _file(),
         note="UPS-088: email image (PNG/JPEG copy under /media/mail); rate-limited per user",
     ),
+    Rule("GET", "/api/mail/reply-to", SENDERS, note="UPS-091: default Reply-To the composer prefills"),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/send", OWN, note="the campaign's sender or superadmin"),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/resume", OWN, note="the campaign's sender or superadmin"),
     # ── Email opt-out (UPS-076): real-token tests in test_mail_unsubscribe.py ──

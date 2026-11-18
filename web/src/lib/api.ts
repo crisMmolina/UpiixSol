@@ -150,6 +150,38 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   return (await response.json()) as T;
 }
 
+/** Multipart upload with progress (fetch has no upload progress). One 401 refreshes the session and retries.
+ * `onProgress` gets 0–100. Rejects with ApiError like `api`. */
+export function apiUpload<T>(path: string, form: FormData, onProgress?: (percent: number) => void): Promise<T> {
+  const send = () =>
+    new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", buildUrl(path));
+      xhr.withCredentials = true;
+      xhr.setRequestHeader("X-Requested-With", CSRF_HEADER["X-Requested-With"]);
+      if (accessToken) xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+      xhr.upload.onprogress = (event) => event.lengthComputable && onProgress?.(Math.round((event.loaded / event.total) * 100));
+      xhr.onerror = () => reject(new ApiError(0, "network", "No se pudo conectar. Revisa tu conexión e intenta de nuevo."));
+      xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText });
+      xhr.send(form);
+    });
+  return (async () => {
+    let result = await send();
+    if (result.status === 401) {
+      const session = await refreshSession();
+      if (session) result = await send();
+    }
+    if (result.status >= 200 && result.status < 300) return JSON.parse(result.body) as T;
+    let error: ApiErrorBody["error"] | undefined;
+    try {
+      error = (JSON.parse(result.body) as ApiErrorBody).error;
+    } catch {
+      /* not JSON */
+    }
+    throw new ApiError(result.status, error?.code ?? "error", error?.message ?? "No se pudo subir la imagen.", error?.details ?? null);
+  })();
+}
+
 /** Human message for any thrown value (es-MX). */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
