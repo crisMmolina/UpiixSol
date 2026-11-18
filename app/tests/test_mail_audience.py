@@ -7,10 +7,12 @@ people each test counts are created here with `@ipn.mx` addresses. Everything go
 import time
 from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import Academy, Enrollment, Role, User
 from app.models.common import utcnow
 from app.models.mail import MailCampaign, MailRecipient, MailSuppression
@@ -101,19 +103,37 @@ def test_individual_mixes_users_and_outside_addresses(as_superadmin: TestClient,
     assert _preview(as_superadmin, audience)["count"] == 4
 
 
-def test_individual_over_50_entries_or_20_emails_is_422(as_superadmin: TestClient, db: Session) -> None:
+def test_individual_accepts_hundreds_of_outside_addresses(as_superadmin: TestClient, db: Session) -> None:
+    emails = [f"fuera{i}@gmail.com" for i in range(300)]
+    ids = [_person(db, f"p{i}@ipn.mx").id for i in range(50)]
+    assert _preview(as_superadmin, {"kind": "individual", "emails": emails})["count"] == 300
+    mixed = _preview(as_superadmin, {"kind": "individual", "user_ids": ids, "emails": emails})
+    assert mixed["count"] == 350
+
+
+def test_outside_addresses_over_the_monthly_remaining_is_422(
+    as_superadmin: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "mail_monthly_limit", 30)
+    emails = [f"fuera{i}@gmail.com" for i in range(31)]
+    over = as_superadmin.post(PREVIEW, json={"kind": "individual", "emails": emails})
+    assert over.status_code == 422
+    assert "30" in over.json()["error"]["message"]
+    repeated = emails[:30] + [e.upper() for e in emails[:30]]
+    assert _preview(as_superadmin, {"kind": "individual", "emails": repeated})["count"] == 30
+
+
+def test_outside_addresses_are_normalized_and_deduplicated(as_superadmin: TestClient) -> None:
+    emails = ["  Fuera@Gmail.com ", "fuera@gmail.com", "FUERA@GMAIL.COM", "otra@gmail.com"]
+    assert _preview(as_superadmin, {"kind": "individual", "emails": emails})["count"] == 2
+
+
+def test_campus_users_still_at_most_50(as_superadmin: TestClient, db: Session) -> None:
     ids = [_person(db, f"p{i}@ipn.mx").id for i in range(51)]
-    emails = [f"fuera{i}@gmail.com" for i in range(21)]
-    too_many = as_superadmin.post(PREVIEW, json={"kind": "individual", "user_ids": ids, "emails": []})
+    too_many = as_superadmin.post(PREVIEW, json={"kind": "individual", "user_ids": ids})
     assert too_many.status_code == 422
-    too_many_emails = as_superadmin.post(PREVIEW, json={"kind": "individual", "emails": emails})
-    assert too_many_emails.status_code == 422
-    mixed = as_superadmin.post(
-        PREVIEW, json={"kind": "individual", "user_ids": ids[:31], "emails": emails[:20]}
-    )
-    assert mixed.status_code == 422
-    limit = _preview(as_superadmin, {"kind": "individual", "user_ids": ids[:30], "emails": emails[:20]})
-    assert limit["count"] == 50
+    with_outside = {"kind": "individual", "user_ids": ids[:50], "emails": ["a@gmail.com", "b@gmail.com"]}
+    assert _preview(as_superadmin, with_outside)["count"] == 52
 
 
 def test_invalid_outside_address_is_422(as_superadmin: TestClient) -> None:

@@ -14,7 +14,7 @@ Today the club reaches its people through WhatsApp groups and personal mail. A s
 
 ## Acceptance criteria (EARS)
 Audiences and permissions
-- When a superadmin asks for the audience preview, the system shall return the number of recipients computed with a DB query, for one of: `all` (every active user), `academy` (active users enrolled in that club plus its academy_admins), `role` (`superadmin`, `academy_admin` or `member`), `individual` (campus user ids plus outside addresses typed by hand: at most 50 entries in total, at most 20 outside addresses, each a valid email).
+- When a superadmin asks for the audience preview, the system shall return the number of recipients computed with a DB query, for one of: `all` (every active user), `academy` (active users enrolled in that club plus its academy_admins), `role` (`superadmin`, `academy_admin` or `member`), `individual` (campus user ids plus outside addresses typed or pasted: at most 50 campus users, no per-campaign cap on outside addresses, each a valid email, deduplicated; the only limit is the monthly quota, and above the remaining quota the system shall respond 422).
 - If an academy_admin requests `all`, `role`, another club, or an `individual` audience with a campus user who is neither enrolled in their own club (`users.academy_id`) nor a co-admin of it, the system shall respond 403 (outside addresses and the club's co-admins are allowed; decided by victor 2026-11-17); a member shall get 403 and an anonymous caller 401, on every email endpoint.
 - While computing any audience, the system shall exclude inactive users, every suppressed address (unsubscribed, hard bounce or complaint; suppressions are kept per normalized email, so they cover outside addresses too) and addresses on non-deliverable domains (`MAIL_BLOCKED_DOMAINS`, default `upiixsol.dev`, the seed accounts), and count each address once.
 - While a sender who is not a superadmin builds an `individual` audience, the system shall never return the email of a campus user (they pick by name or nickname); outside addresses are shown only to whoever typed them and to superadmins.
@@ -52,7 +52,7 @@ History and delivery status
 ## Open questions
 - [x] Can an academy_admin send? Yes: their own club's members, some of them, and outside addresses · victor 2026-11-16
 - [x] Sending domain: `mg.upiixsol.com`, From `UpiixSol <avisos@mg.upiixsol.com>` · victor 2026-11-16
-- [x] Outside addresses: yes, for superadmin and academy_admin, at most 20 per campaign · victor 2026-11-16
+- [x] Outside addresses: yes, for superadmin and academy_admin; no per-campaign cap on outside addresses, monthly quota only (`MAIL_MONTHLY_LIMIT`), pasted in bulk from Gmail, Outlook or a spreadsheet · victor 2026-11-18 (was: at most 20 per campaign, 2026-11-16)
 - [x] `https://www.upiixsol.com` already points to the Render service: `PUBLIC_BASE_URL=https://www.upiixsol.com` · victor 2026-11-16
 - [x] Unsubscribed addresses are excluded from every campaign, direct ones included (an outside address has no other way to opt out) · default, victor can change it in the plan PR
 - [x] Club admins may also pick the co-admins of their own club in `individual` · victor 2026-11-17
