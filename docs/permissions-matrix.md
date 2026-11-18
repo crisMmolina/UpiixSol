@@ -72,8 +72,8 @@ Cobertura: **72/72 endpoints de escritura (100 %)** × 5 roles.
 | DELETE | `/api/posts/{post_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
 | DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ✅ | ❌ | ✅ | author, or the moderators of its channel (UPS-070) |
 | POST | `/api/mail/audience/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | superadmin: any audience; academy_admin: own club, its enrollees and outside addresses |
-| POST | `/api/mail/test` | 🔒 | ❌ | ✅ | ✅ | ✅ | only to the caller's own address |
 | POST | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ❌ | ✅ | draft; same audience scope as the preview |
+| POST | `/api/mail/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | UPS-089: {html, text} of the email; same audience scope as create |
 | POST | `/api/mail/images` | 🔒 | ❌ | ✅ | ✅ | ✅ | UPS-088: email image (PNG/JPEG copy under /media/mail); rate-limited per user |
 | POST | `/api/mail/campaigns/{campaign_id}/send` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
 | POST | `/api/mail/campaigns/{campaign_id}/resume` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |

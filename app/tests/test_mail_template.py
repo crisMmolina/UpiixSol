@@ -51,12 +51,19 @@ def test_body_html_is_escaped_and_urls_become_links() -> None:
 
 
 def test_subject_with_newline_is_422(as_superadmin: TestClient, fake: FakeTransport) -> None:
-    for path, extra in (("/api/mail/test", {}), ("/api/mail/campaigns", {"audience": {"kind": "all"}})):
-        response = as_superadmin.post(path, json={"subject": "Hola\nBcc: x@ipn.mx", "body": "Texto", **extra})
+    audience = {"kind": "all"}
+    for path in ("/api/mail/preview", "/api/mail/campaigns"):
+        response = as_superadmin.post(
+            path, json={"subject": "Hola\nBcc: x@ipn.mx", "body": "Texto", "audience": audience}
+        )
         assert response.status_code == 422, response.text
-    too_long = as_superadmin.post("/api/mail/test", json={"subject": "a" * 151, "body": "Texto"})
+    too_long = as_superadmin.post(
+        "/api/mail/preview", json={"subject": "a" * 151, "body": "Texto", "audience": audience}
+    )
     assert too_long.status_code == 422
-    empty_body = as_superadmin.post("/api/mail/test", json={"subject": "Hola", "body": " "})
+    empty_body = as_superadmin.post(
+        "/api/mail/preview", json={"subject": "Hola", "body": " ", "audience": audience}
+    )
     assert empty_body.status_code == 422
     assert fake.calls == []
 

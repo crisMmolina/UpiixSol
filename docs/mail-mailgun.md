@@ -63,8 +63,8 @@ Con `MAIL_ENABLED=false` nada de esto se exige y la pestaña «Correos» muestra
 ## 5. Primer envío (plan §Rollout)
 1. **Merge con `MAIL_ENABLED=false`** (valor por defecto): nada se envía.
 2. Carga las variables de §3 con `MAILGUN_TEST_MODE=true` y `MAIL_ENABLED=true`. Espera a que el deploy quede en verde.
-3. Entra a `/admin` → **Correos** → **Enviarme una prueba**. En modo de prueba Mailgun acepta el envío pero no entrega; revisa **Mailgun → Logs** y que la campaña aparezca en el historial.
-4. Apaga el modo de prueba (`MAILGUN_TEST_MODE=false`) y repite **Enviarme una prueba**: debe llegar a tu buzón (revisa spam y los encabezados SPF/DKIM = pass).
+3. Entra a `/admin` → **Correos** y envía una campaña a tu propia dirección (audiencia «Personas», solo tú; ya no hay envío de prueba). En modo de prueba Mailgun acepta el envío pero no entrega; revisa **Mailgun → Logs** y que la campaña aparezca en el historial.
+4. Apaga el modo de prueba (`MAILGUN_TEST_MODE=false`) y repite ese envío a ti: debe llegar a tu buzón (revisa spam y los encabezados SPF/DKIM = pass).
 5. Primera campaña real **a los superadmins** (audiencia «Un rol»).
 6. Después **a un club** (pestaña Correos del club o «Un club»).
 7. Por último **a todos** («Todo UpiixSol»).
@@ -94,3 +94,17 @@ Pon `MAIL_ENABLED=false` en Render y guarda: el servicio se reinicia y deja de e
 
 ## 10. Nota de incidente: nunca apuntes el `.env` local a producción
 Nunca pongas la `DATABASE_URL` de Neon (producción) en tu `.env` local. Con ella, `alembic`, el seed, los scripts o los tests corren contra la base real y pueden migrar, sembrar o borrar datos de usuarios, además de enviar correo real a personas reales. Local usa SQLite o un Postgres de desarrollo. Para el paso del §7 y el §8 usa la llave en `.env` pero **la base local**; la retención de producción se corre solo desde el Shell de Render. Si ya pasó: cambia la contraseña de Neon, restaura el respaldo más reciente (runbook §5) y avisa al equipo.
+
+## 11. Correo con bloques, imágenes y calendario (UPS-089, spec 004)
+- **Reply-To.** `MAIL_REPLY_TO` es el buzón al que llegan las respuestas cuando la campaña no trae el suyo (déjalo en el buzón del club o de la mesa; se define en Render → Environment). Una campaña con `reply_to` usa el suyo, no el de la variable. Sin ninguno, el correo sale sin Reply-To y el pie dice que no recibe respuestas.
+- **Remitente.** La dirección `From` siempre es la de `MAIL_FROM`; solo cambia el nombre: «<club> · UpiixSol», o «UpiixSol» cuando sale como la mesa. Un admin de club siempre envía como su club; un superadmin elige un club activo o, si no elige, el de la audiencia (y sin club, UpiixSol). El historial muestra el remitente.
+- **Vista previa.** `POST /api/mail/preview` devuelve `{html, text}` con el mismo renderizador que el envío (nombre de ejemplo y un enlace de baja de relleno). **Ya no existe el envío de prueba** (`POST /api/mail/test`): revisa con la vista previa.
+- **Imágenes.** Se suben con `POST /api/mail/images` (PNG/JPEG, hasta 5 MB, se re-codifican a ≤ 1200 px bajo `/media/mail`) y el correo las enlaza con la URL pública (`PUBLIC_BASE_URL`). En el plan gratis de Render, durante un arranque en frío las imágenes pueden tardar o no cargar en el primer minuto.
+- **Calendario.** Un bloque de evento adjunta `evento.ics` en cada correo y enlaza `GET /api/mail/ics/<token>.ics` (token aleatorio por campaña). El evento se lee de la base **al enviar**: si cambias el evento antes de enviar, el correo y el `.ics` llevan los datos nuevos.
+- **Campañas viejas** (solo `body`) siguen enviándose y apareciendo en el historial (`format: "legacy"`).
+- **Lista de revisión con un envío real** (a tu propia cuenta, audiencia de una sola persona):
+  1. Gmail web: diseño, imagen, botón, tarjeta de evento, botón «Agregar al calendario» y `evento.ics`.
+  2. Gmail en iOS con modo oscuro: el logo y los textos se leen; los botones conservan su fondo.
+  3. Apple Mail: se muestra el preencabezado y el `.ics` se abre en Calendario.
+  4. Outlook: tablas sin recortes y enlace «Outlook» del evento.
+  5. Responder: el Reply-To es el esperado. Baja: el enlace del pie funciona.
