@@ -10,3 +10,4 @@ Append-only. Format: - ID | epoch | human | reason. Why: a test is a spec; chang
 - UPS-092 | 1794971067 | victor | victor: monthly Mailgun quota replaces the daily placeholder
 - UPS-089 | 1794973426 | victor | victor removed the test send (spec 004)
 - UPS-090 | 1794973445 | victor | victor: block composer replaces the plain body and the test send (spec 004)
+- UPS-091 | 1794980223 | victor | UPS-091 changes sandbox and enables Evento/Imagen
