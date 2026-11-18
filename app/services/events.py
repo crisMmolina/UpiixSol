@@ -3,6 +3,7 @@ academy scope (an academy_admin manages only their own academy's events)."""
 
 from datetime import datetime
 
+from fastapi import UploadFile
 from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,7 @@ from app.sanitize import clean_markdown
 from app.schemas.common import Page
 from app.schemas.content import EventIn, EventOut
 from app.security import ensure_academy_scope
+from app.services import media
 
 
 def _out(row) -> EventOut:
@@ -103,6 +105,40 @@ def update_event(db: Session, user: User, event_id: int, data: EventIn) -> Event
     return _out(event).model_copy(update={"academy_slug": slug})
 
 
-def delete_event(db: Session, user: User, event_id: int) -> None:
-    db.delete(_get_event(db, event_id, user))
+def _out_with_slug(db: Session, event: Event) -> EventOut:
+    slug = db.scalar(select(Academy.slug).where(Academy.id == event.academy_id)) if event.academy_id else None
+    return _out(event).model_copy(update={"academy_slug": slug})
+
+
+async def replace_cover(db: Session, user: User, event_id: int, file: UploadFile) -> EventOut:
+    """Store the new photo, commit, and only then delete the previous one (no orphans, no data loss)."""
+    event = _get_event(db, event_id, user)  # scope first: a denied caller never writes a file
+    url = await media.save_upload(file, "cover")
+    previous = event.cover_url
+    try:
+        event.cover_url = url
+        db.commit()
+    except Exception:
+        db.rollback()
+        media.delete_media(url)
+        raise
+    media.delete_media(previous)
+    return _out_with_slug(db, event)
+
+
+def remove_cover(db: Session, user: User, event_id: int) -> EventOut:
+    event = _get_event(db, event_id, user)
+    previous = event.cover_url
+    event.cover_url = None
+    db.commit()
+    media.delete_media(previous)
+    return _out_with_slug(db, event)
+
+
+def delete_event(db: Session, user: User, event_id: int) -> str | None:
+    """Delete the row; returns its photo url so the caller removes the file once the commit succeeded."""
+    event = _get_event(db, event_id, user)
+    cover = event.cover_url
+    db.delete(event)
     db.flush()
+    return cover

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, File, Path, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -13,8 +13,10 @@ from app.schemas.common import Page, UTCDatetime
 from app.schemas.content import EventIn, EventOut
 from app.security import current_user, require_role
 from app.services import events as service
+from app.services import media
 
 router = APIRouter(prefix="/api/events", tags=["events"])
+DbId = Annotated[int, Path(ge=1, le=2**31 - 1)]  # out-of-range ids are a 422, never a DB overflow 500
 Manager = Annotated[User, Depends(require_role(Role.superadmin, Role.academy_admin))]
 
 
@@ -51,6 +53,19 @@ def update_event(event_id: int, data: EventIn, user: Manager, db: Session = Depe
 
 @router.delete("/{event_id}", status_code=204)
 def delete_event(event_id: int, user: Manager, db: Session = Depends(get_db)) -> Response:
-    service.delete_event(db, user, event_id)
+    cover = service.delete_event(db, user, event_id)
     db.commit()
+    media.delete_media(cover)  # only after the commit: a failed delete keeps the photo
     return Response(status_code=204)
+
+
+@router.post("/{event_id}/cover", response_model=EventOut)
+async def upload_cover(
+    event_id: DbId, user: Manager, file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> EventOut:
+    return await service.replace_cover(db, user, event_id, file)
+
+
+@router.delete("/{event_id}/cover", response_model=EventOut)
+def delete_cover(event_id: DbId, user: Manager, db: Session = Depends(get_db)) -> EventOut:
+    return service.remove_cover(db, user, event_id)
