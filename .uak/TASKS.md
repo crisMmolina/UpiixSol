@@ -1773,3 +1773,48 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Existing tests that assert the daily cap change (`test_mail_audience.py` status, `test_mail_campaigns.py` quota, `test_mail_contract.py` and `test_settings_isolation.py` setting names). A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-092 --tests --reason 'victor: monthly Mailgun quota replaces the daily placeholder'`.
 - **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_quota.py app/tests/test_mail_audience.py app/tests/test_mail_campaigns.py app/tests/test_mail_contract.py app/tests/test_settings_isolation.py && npm --prefix web run build'`
 - **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-092`; then the period math, then status and the send check, then the composer text.
+
+## UPS-093 · The superadmin turns members into club admins and back
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 150 min
+- **Rubric / Spec:** human request (cris) 2026-11-17 · `docs/specs/005-eventos-foto-y-roles/spec.md`. Reverses, for the club-admin role only, the 2026-11-12 decision that dropped UPS-066 and left ROL-07 unimplemented.
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-094
+- **Paths:** app/routers/admin.py, app/services/admin.py, app/schemas/users.py, app/tests/test_admin_roles.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, docs/specs/001-campus/spec.md, web/src/features/superadmin/index.tsx, e2e/test_admin_roles.py, CHANGELOG.md
+- **Freeze-Allowed:** no
+- **Tests:** superadmin_makes_a_member_a_club_admin_of_an_active_club, superadmin_makes_a_club_admin_a_member_and_clears_the_club, rejects_superadmin_role_and_missing_or_inactive_club_with_422, refuses_own_role_and_superadmin_targets_with_409, new_role_applies_on_next_request_and_logs_without_pii
+- **Acceptance:**
+  - `PUT /api/admin/users/{user_id}/role` with `{"role": "academy_admin", "academy_id": N}` sets the role and club of an active member and returns `UserAdminOut`; with `{"role": "member"}` it sets `member` and clears `academy_id`, keeping the user's enrollments. `PATCH /api/admin/users/{id}` still rejects `role` (the mass-assignment guard and its tests are untouched).
+  - `superadmin` as the new role is 422; a missing, unknown or inactive club for `academy_admin` is 422; an unknown user is 404; an inactive user is 409; changing your own role is 409 ("No puedes cambiar tu propio rol."); a target that is already `superadmin` is 409.
+  - The role is read from the DB on every request, so the user gets (or loses) the club panel on their next request; a demoted admin gets 403 on club-admin endpoints at once. One structured log line `role.changed` with actor id, target id, old and new role, with no email or name.
+  - The matrix gets a row for `PUT /api/admin/users/{user_id}/role`: only the superadmin is allowed (member, both admins and anonymous denied); `docs/permissions-matrix.md` is regenerated with `uv run python -m app.tests.test_permissions_matrix`; `docs/specs/001-campus/spec.md` ROL-07 note updated.
+  - Recipe: list · Hero: the role badge and the "Hacer admin de un club" action in each row of the Usuarios tab. A club picker and a confirmation dialog that names the person and the club ("¿Hacer admin de UpiixIA a Ana Pérez?"); "Quitar admin" asks too; success and error messages in Spanish; keyboard-operable; screenshots at 1280 and 390 in `.uak-shots/UPS-093/` and a `design-critic` SHIP.
+  - E2E in a real browser: the superadmin promotes the demo member, who then reaches the club panel, and demotes them again.
+  - `CHANGELOG.md` entry; `bash .uak/bin/smoke` exits 0.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run ruff check app && uv run pytest -q --tb=short -x app/tests/test_admin_roles.py app/tests/test_admin.py app/tests/test_permissions_matrix.py && npm --prefix web run lint && npm --prefix web run build'`
+- **Next step:** stubs for the `Tests:` names and `uak red UPS-093`; then `change_role` in `app/services/admin.py`, the route and schema, the matrix row, then the Usuarios tab.
+
+## UPS-094 · Photo on events: upload, replace, remove and show
+
+- **Type:** feature
+- **Priority:** P0
+- **Estimate:** 150 min
+- **Rubric / Spec:** human request (cris) 2026-11-17 · `docs/specs/005-eventos-foto-y-roles/spec.md`
+- **Depends on:** UPS-093 (only because both add rows to `app/tests/test_permissions_matrix.py` and `docs/permissions-matrix.md`)
+- **Uses contract:** None
+- **Related:** UPS-093, UPS-087
+- **Paths:** app/routers/events.py, app/services/events.py, app/schemas/content.py, app/tests/test_events.py, app/tests/test_event_cover.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/features/events/index.tsx, web/src/features/home/index.tsx, web/src/features/academy/index.tsx, web/src/lib/types.ts, e2e/test_events_cover.py, CHANGELOG.md
+- **Freeze-Allowed:** no
+- **Tests:** manager_uploads_replaces_and_removes_an_event_cover, academy_admin_cannot_touch_the_cover_of_another_club_or_a_global_event, rejects_svg_fake_image_and_oversized_cover, deleting_an_event_deletes_its_cover_after_commit, event_payload_carries_cover_url_and_no_personal_data
+- **Acceptance:**
+  - `POST /api/events/{event_id}/cover` (multipart `file`) stores the image as kind `cover` (real type from the bytes, ≤ 5 MB, ≤ 1600 px, re-encoded, no SVG), sets `events.cover_url` and returns the event; `DELETE /api/events/{event_id}/cover` clears it. The old file is deleted only after the commit (same flow as the blog cover upload); deleting an event deletes its cover the same way.
+  - `superadmin` can do it on any event; `academy_admin` only on events of their own club, with the scope read from the event row; another club's event or a global event is 403; member 403; anonymous 401. A bad file leaves the event unchanged (422 or 413 with the existing media error).
+  - The permission matrix gets rows for both routes; `docs/permissions-matrix.md` is regenerated.
+  - Recipe: flow · Hero: the "Foto del evento" field with its preview in the event form (create and edit). PNG, JPG or WebP; the form sends the event first and then the photo; if the photo fails it says "El evento se publicó, pero la foto no se pudo subir. Intenta de nuevo." and keeps the event. The calendar list, the club page and the home show the photo when `cover_url` starts with `/media/`, with `alt=""` and no layout shift (fixed aspect ratio), and the current layout when there is none. Screenshots at 1280 and 390 in `.uak-shots/UPS-094/` and a `design-critic` SHIP.
+  - E2E in a real browser: publish an event with a photo, see it in the calendar, replace it, remove it.
+  - `CHANGELOG.md` entry; `bash .uak/bin/smoke` exits 0.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run ruff check app && uv run pytest -q --tb=short -x app/tests/test_event_cover.py app/tests/test_events.py app/tests/test_permissions_matrix.py && npm --prefix web run lint && npm --prefix web run build'`
+- **Next step:** stubs for the `Tests:` names and `uak red UPS-094`; then `replace_cover` and `remove_cover` in `app/services/events.py` copying the blog cover flow, the two routes, the matrix rows, then the form field and the cards.
