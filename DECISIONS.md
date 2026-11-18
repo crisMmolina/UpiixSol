@@ -115,3 +115,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794971700 | UPS-087 | token lookup, 404 fail-closed | Why: no leak across campaigns
 - 1794973426 | allow | victor | test change: UPS-089 | Why: victor removed the test send (spec 004)
 - 1794973445 | allow | victor | test change: UPS-090 | Why: victor: block composer replaces the plain body and the test send (spec 004)
+- 1794973788 | UPS-088 | copy name = sha256(source key)[:32], no table; endpoint allowed for SENDERS | Why: cache without schema change; spec says academy_admin
