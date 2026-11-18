@@ -6,7 +6,7 @@
 - Why: no leak across campaigns
 - Failing: none
 - Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_ics.py
-- Next: Wait for review of PR 143
+- Next: Integrated in main: 14fd29a3a9dce2b974e825dce7a4c02212a058c6
 
 ## History
 - 1794971006 | CLAIMED | victor-2 | claim; next: stubs for the Tests names and `uak red UPS-087`; then the ICS writer, then the URLs, then the endpoint.
@@ -15,3 +15,4 @@
 - 1794971700 | REVIEW | victor-2 | checkpoint; next: Wait for review of PR 143
 - 1794972312 | REVIEW | victor-2 | heartbeat; lease until 1795058712
 - 1794972370 | REVIEW | victor-1 | review; approve; SHA bde1b8fa9c646b7154b89b3c63d59861c8f82ea6; reviewer victor-1
+- 1794973124 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit 14fd29a3a9dce2b974e825dce7a4c02212a058c6; reviewer victor-1
