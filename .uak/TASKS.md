@@ -1892,9 +1892,9 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Related:** UPS-086, UPS-088, UPS-089
 - **Paths:** app/services/mail_campaigns.py, app/services/mail_render.py, app/tests/test_mail_logos.py, app/tests/fixtures/mail_render/
 - **Freeze-Allowed:** no
-- **Tests:** test_svg_site_logo_falls_back_to_bundled_wordmark_png, test_webp_site_logo_uses_email_copy, test_svg_club_logo_falls_back_to_club_name, test_webp_event_cover_uses_email_copy, test_preview_and_send_use_the_same_logo
+- **Tests:** test_svg_site_logo_never_uses_the_outdated_bundled_wordmark, test_webp_site_logo_uses_email_copy, test_png_site_logo_uploaded_in_marca_del_sitio_shows_in_email, test_svg_club_logo_falls_back_to_club_name, test_webp_event_cover_uses_email_copy, test_preview_and_send_use_the_same_logo
 - **Acceptance:**
-  - The site logo in emails: `email_logo(site.logo_url)`; when that gives None (SVG, missing), use the bundled brand PNG `/brand/upiixsol/wordmark.png` (`assets/brand/` used as-is, served from `web/public/brand/`), and only if that is missing the text wordmark.
+  - The site logo in emails: `email_logo(site.logo_url)` (a WebP/PNG/JPEG logo uploaded in Marca del sitio gets its PNG/JPEG email copy); when that gives None (SVG, missing), the text wordmark as today. Do NOT fall back to the bundled `/brand/upiixsol/wordmark.png`: it is the outdated version (dark-green "x"), while the current brand set in Marca del sitio has the "x" in #b92d5d (victor 2026-11-18). The fix for the SVG case is operational: victor uploads a PNG export of the official SVG in Marca del sitio.
   - Club logos: `email_logo(club.logo_url)`, else the club name as a wordmark (as today). Event covers: `email_copy(cover_url)`, else no cover.
   - Preview and send build the theme and sender through the same function (the preview must show exactly what is sent).
   - Golden fixtures in `app/tests/fixtures/mail_render/` refreshed if their header changes.
