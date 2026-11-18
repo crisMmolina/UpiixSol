@@ -3,13 +3,14 @@
 import io
 from datetime import UTC, datetime
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.models import Academy, Event
 from app.models.site import SiteSettings
-from app.services import mail_campaigns
+from app.services import mail_campaigns, mail_images
 from app.services.media import save_image_bytes
 from app.services.site import DEFAULTS
 
@@ -50,9 +51,19 @@ def _preview(client: TestClient, blocks: list[dict] | None = None, **extra: obje
     return response.json()["html"]
 
 
+def _renderer_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """UPS-099 rasterizes SVG logos; the text wordmark is what an SVG that cannot be rendered gets."""
+
+    def boom(*_args, **_kwargs):
+        raise ValueError("render failed")
+
+    monkeypatch.setattr(mail_images.resvg_py, "svg_to_bytes", boom)
+
+
 def test_svg_site_logo_never_uses_the_outdated_bundled_wordmark(
-    as_superadmin: TestClient, db: Session
+    as_superadmin: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _renderer_fails(monkeypatch)
     _set_site_logo(db, save_image_bytes(SVG, "logo"))
     html = _preview(as_superadmin)
     assert OLD_WORDMARK not in html and ".svg" not in html
@@ -77,7 +88,10 @@ def test_png_site_logo_uploaded_in_marca_del_sitio_shows_in_email(
     assert 'alt="UpiixSol"' in html
 
 
-def test_svg_club_logo_falls_back_to_club_name(as_superadmin: TestClient, db: Session) -> None:
+def test_svg_club_logo_falls_back_to_club_name(
+    as_superadmin: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _renderer_fails(monkeypatch)
     club = _club(db, save_image_bytes(SVG, "logo"))
     html = _preview(as_superadmin, sender_academy_id=club.id)
     assert f">{club.name}</span>" in html and ".svg" not in html
