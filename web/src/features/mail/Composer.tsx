@@ -168,7 +168,7 @@ export function Composer({
           <TextField label="Texto de vista previa (opcional)" value={preheader} maxLength={MAX_PREHEADER} hint="Lo que se ve junto al asunto en la bandeja de entrada." onChange={(e) => setPreheader(e.target.value.replace(/[\r\n]+/g, " "))} />
           <BlockEditor drafts={drafts} onChange={setDrafts} clubSlug={senderId === null ? null : (slugs[senderId] ?? null)} />
         </div>
-        <div className="min-w-0 lg:sticky lg:top-4">
+        <div className="min-w-0 lg:sticky lg:top-20">
           <EmailPreview payload={previewPayload} emptyHint={audience ? "Agrega contenido para ver cómo queda el correo." : "Elige a quién enviar el correo para ver la vista previa."} />
         </div>
       </div>
