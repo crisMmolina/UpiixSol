@@ -11,13 +11,19 @@ The first real campaign (2026-11-17) arrived with the logo and plain paragraphs:
 - As a sender, I want to pick an event from the campus calendar or type one, so that recipients get a card with date, time and place plus "Agregar a Google Calendar", "Outlook" and "Apple / .ics".
 - As a sender, I want buttons like "Ir al campus" or "Ver el club", and to upload a cover or inline images.
 - As a recipient, I want my reply to reach a real person of the board.
+- As a recipient, I want to see who sends the email (UpiixSol, UpiixIA, UpiixSky, UpiixFounders…), so that I know which club is talking to me. [victor 2026-11-17]
 
 ## Acceptance criteria (EARS)
 Content and rendering
 - When a sender submits a campaign, the system shall accept `subject` (1–150, one line), optional `preheader` (≤ 140, the inbox preview text), optional `reply_to` (one valid email) and `blocks`: 1–30 blocks of kinds `heading`, `paragraph`, `list`, `button`, `event`, `image`, `divider`, at most 1 `event` block; any other shape is 422 with a Spanish message.
-- While rendering, the system shall produce one HTML part and one plain-text part from the same blocks with one server renderer (used by preview and by sending): table layout ≤ 600 px, inline styles, the logo of the audience's club (or the site's) at the top, accent colors from that club (or the site), a hidden preheader, buttons that work without images (cell background), a design that stays readable when Gmail dark mode inverts colors, alt text on every image, absolute `https://www.upiixsol.com` URLs.
+- While rendering, the system shall produce one HTML part and one plain-text part from the same blocks with one server renderer (used by preview and by sending): table layout ≤ 600 px, inline styles, the UpiixSol logo at the top and the sender block below it (see Sender), accent colors from the sender club (or the site), a hidden preheader, buttons that work without images (cell background), a design that stays readable when Gmail dark mode inverts colors, alt text on every image, absolute `https://www.upiixsol.com` URLs.
 - In `paragraph` and `list` items, the system shall support `**negritas**`, `*cursivas*` and `[texto](https://…)`, escape everything else, and accept only links that `app/sanitize.safe_url` accepts; raw HTML is never passed through.
 - `button` blocks have a label (≤ 40) and an http(s) URL; the composer offers presets "Ir al campus" (`/`) and "Ver el club" (`/a/<slug>`).
+
+Sender (who sends it)
+- Every campaign has a sender: `UpiixSol` (the board) or one club. An academy_admin's campaigns are always sent by their own club (from `users.academy_id`, never from the body); a superadmin picks UpiixSol or any active club, defaulting to the audience's club when the audience is one club, else UpiixSol.
+- The email shall always show the UpiixSol logo at the top and, right below it, "Enviado por <club>" with that club's logo (or its name as a wordmark) and its accent color; for UpiixSol it shows "Enviado por la mesa directiva de UpiixSol". The footer repeats the sender.
+- The `From` display name shall carry the sender: `UpiixIA · UpiixSol <avisos@mg.upiixsol.com>` (the address never changes); for UpiixSol it stays `UpiixSol <avisos@mg.upiixsol.com>`. The club name is sanitized (one line, no quotes or angle brackets).
 
 Events and calendar
 - When an `event` block references a campus event by id, the system shall read title, description, place, link, start, end and cover from the DB at send time; an academy_admin may only reference global events or events of their own club (403 otherwise).
@@ -51,4 +57,5 @@ Compatibility
 - [x] Replies go to a real inbox of the board (Reply-To) · victor 2026-11-17
 - [x] Images: cover and inline uploads · victor 2026-11-17
 - [x] Remove the test send · victor 2026-11-17
+- [x] The email shows who sends it (UpiixSol or a club) below the UpiixSol logo, and in the From name · victor 2026-11-17
 - [ ] Which inbox is the default `MAIL_REPLY_TO` (victor sets it in Render; never committed) · victor
