@@ -1608,3 +1608,145 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - A `uak learn` line on `app/migrations/` so the next agent sees the rule.
 - **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_migration_guard.py && DATABASE_URL=sqlite:////tmp/ups084.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/ups084.db uv run alembic downgrade base'`
 - **Next step:** stubs for the Tests names and `uak red UPS-084`; then the guard in env.py.
+
+## UPS-085 · Contract: email blocks schema, migration 0010, attachments and Reply-To in the transport
+
+- **Type:** contract
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Content and rendering, `plan.md` §Data and migrations, §Contracts. Human owner: victor.
+- **Depends on:** UPS-081
+- **Uses contract:** None
+- **Related:** UPS-086, UPS-087, UPS-088, UPS-089
+- **Paths:** app/services/mail_blocks.py, app/models/mail.py, app/migrations/versions/0010_mail_blocks.py, app/services/mailer.py, app/services/mailgun.py, app/tests/test_mail_blocks.py, app/tests/test_mailgun.py, web/src/lib/types.ts
+- **Freeze-Allowed:** no
+- **Tests:** test_blocks_accept_each_kind, test_blocks_reject_unknown_kind_and_extra_fields, test_blocks_limit_30_and_one_event, test_event_block_needs_event_id_or_title_start_end, test_event_end_after_start, test_typed_event_naive_time_is_mexico_city, test_button_and_image_urls_must_be_http, test_reply_to_with_newline_is_422, test_mail_blocks_migration_round_trips_on_sqlite, test_mailgun_sends_attachment_and_reply_to
+- **Acceptance:**
+  - `app/services/mail_blocks.py`: Pydantic discriminated union `Block` (`heading`, `paragraph`, `list`, `button`, `event`, `image`, `divider`) with the limits of spec 004, `Blocks` (1–30, ≤ 1 event), `ReplyTo` (one address, no CR/LF), Spanish 422 messages; `extra="forbid"`. Typed event start/end without an offset are America/Mexico_City (UTC-6), with an offset they are converted; stored in UTC (a typed 15:00 is `21:00Z`).
+  - Migration `0010_mail_blocks` (down_revision `0009`) adds `content` JSON, `preheader`, `reply_to`, `ics_token` (unique) to `mail_campaigns`; additive only. Its round-trip test and Verify use a temp SQLite only (never the dotenv `DATABASE_URL`).
+  - `MailMessage` gains `attachments` and `reply_to`; `MailgunTransport` sends `attachment` parts and `h:Reply-To` (campaign value over `MAIL_REPLY_TO`). Existing tests keep passing unchanged.
+  - `web/src/lib/types.ts` mirrors `Block`, `Blocks`, `PreviewOut`; also fix `AudienceOut.email_count` → `outside` (UPS-078 note).
+- **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_blocks.py app/tests/test_mailgun.py app/tests/test_mail_contract.py && DATABASE_URL=sqlite:////tmp/ups085.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/ups085.db uv run alembic downgrade base && npm --prefix web run build'`
+- **Next step:** stubs for the Tests names and `uak red UPS-085`; then the block models, then the migration, then the transport.
+
+## UPS-086 · Email renderer: designed layout, club theme, blocks to HTML and text, preheader, footer with Reply-To
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 300 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Content and rendering, §Compatibility, §Non-functional, `plan.md` §Design, §STRIDE (tampering). Human owner: victor. Skill: frontend-design for the visual direction (brand palettes in IDEA §0.1, logos used as-is).
+- **Depends on:** UPS-085
+- **Uses contract:** None
+- **Related:** UPS-087, UPS-089
+- **Paths:** app/services/mail_render.py, app/tests/test_mail_render.py, app/tests/fixtures/mail_render/
+- **Freeze-Allowed:** no
+- **Tests:** test_layout_is_600px_tables_with_inline_styles, test_theme_uses_audience_club_colors_and_logo, test_theme_falls_back_to_site_brand, test_svg_club_logo_falls_back, test_preheader_is_hidden_text, test_paragraph_html_is_escaped, test_bold_italic_and_links_are_rendered, test_javascript_link_is_dropped, test_button_is_bulletproof_cell, test_image_has_alt_and_absolute_url, test_event_card_shows_mexico_city_time, test_footer_with_and_without_reply_to, test_text_part_matches_blocks, test_html_size_cap
+- **Acceptance:**
+  - `render_blocks(campaign_like, *, theme, recipient_name, unsubscribe_href, event, ics_url) -> (html, text)`: table layout ≤ 600 px, inline styles only, logo on top, accent colors from the theme, hidden preheader, a design that survives the forced color inversion of Gmail dark mode (iOS/Android ignore `color-scheme`): transparent logo, no text baked into images, contrast checked in both light and inverted colors, bulletproof buttons (background on the cell), images with alt and absolute URLs, an event card (weekday, date and time in America/Mexico_City, place, description, link, and the three calendar links passed in), divider, footer with why you got it, Reply-To line and "Darte de baja".
+  - Inline formatting: escape first, then `**b**`, `*i*`, `[t](url)` with `safe_url`; never raw HTML. The plain-text part carries the same content.
+  - The HTML of a 30-block email stays ≤ 100 KB. A few rendered fixtures (`app/tests/fixtures/mail_render/*.html`) are kept as golden files for review and the design critic.
+  - Legacy campaigns keep using `mail_template.render` (unchanged).
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_render.py app/tests/test_mail_template.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-086`; then the layout skeleton, then each block, then the footer.
+
+## UPS-087 · Calendar: event card links, `.ics` attachment and public `.ics` URL, events picked from the campus
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Events and calendar, `plan.md` §Design (calendar), §STRIDE. RFC 5545. Human owner: victor.
+- **Depends on:** UPS-085
+- **Uses contract:** None
+- **Related:** UPS-086, UPS-089, UPS-091
+- **Paths:** app/services/mail_ics.py, app/routers/mail_ics.py, app/tests/test_mail_ics.py
+- **Freeze-Allowed:** no
+- **Tests:** test_ics_is_rfc5545_with_crlf_folding_and_escaping, test_ics_uses_utc_and_stable_uid, test_typed_15h_is_210000Z_in_ics_and_google, test_google_calendar_url, test_outlook_calendar_url, test_resolve_event_block_from_campus_event, test_academy_admin_cannot_reference_other_club_event, test_ics_endpoint_serves_text_calendar, test_unknown_ics_token_is_404
+- **Acceptance:**
+  - `mail_ics.py`: `build_ics(event, uid) -> bytes` (`METHOD:PUBLISH`, `VEVENT` with `UID`, `DTSTAMP`, `DTSTART`/`DTEND` in UTC, `SUMMARY`, `LOCATION`, `DESCRIPTION`, `URL`), `google_url(event)`, `outlook_url(event)`, `resolve_event(db, sender, block)` (campus event by id with club scope from the DB row, or the typed fields).
+  - `GET /api/mail/ics/{token}.ics`: public, `text/calendar; charset=utf-8`, `Content-Disposition: attachment; filename="evento.ics"`; 404 for unknown tokens; read-matrix row PUBLIC (in `test_mail_ics.py` if the matrix file is busy; otherwise the matrix).
+  - No dependency added.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_ics.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-087`; then the ICS writer, then the URLs, then the endpoint.
+
+## UPS-088 · Email images: PNG/JPEG copies under /media/mail, upload endpoint, logos and covers usable in email
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 210 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Images, `plan.md` §STRIDE (DoS). WebP is not shown by Outlook desktop and no email client shows SVG. Human owner: victor.
+- **Depends on:** UPS-085
+- **Uses contract:** None
+- **Related:** UPS-086, UPS-091
+- **Paths:** app/services/media.py, app/services/mail_images.py, app/routers/mail_images.py, app/tests/test_mail_images.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_upload_png_jpg_webp_stores_jpeg_or_png_copy, test_svg_is_refused, test_email_image_too_large_is_413, test_resized_to_1200_wide, test_mail_media_is_public_without_session, test_email_copy_of_site_logo_and_event_cover, test_svg_club_logo_falls_back_to_site_logo_or_wordmark, test_member_and_anon_cannot_upload
+- **Acceptance:**
+  - `media.py`: a `mail` kind that writes `mail/<uuid>.jpg|png` (MEDIA_KEY and CONTENT_TYPES accept them) in both storage modes; existing kinds unchanged.
+  - `POST /api/mail/images` (superadmin, academy_admin; per-user rate limit) → `{url}` absolute under `PUBLIC_BASE_URL`; real-type check, ≤ 5 MB, re-encode ≤ 1200 px wide (photos JPEG, transparency PNG).
+  - `email_copy(url) -> url | None`: cached PNG/JPEG copy of a WebP site/club logo or event cover, for the renderer. An SVG logo cannot be rasterized without a new dependency: it returns None and the renderer falls back to the site logo, else the text wordmark.
+  - Write-matrix row (OWN-like: superadmin and academy_admin; member 403, anon 401).
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_images.py app/tests/test_media.py app/tests/test_media_storage.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-088`; then the media kind, then the endpoint, then `email_copy`.
+
+## UPS-089 · Campaign API: blocks, preview, Reply-To, `.ics` attached at send, test send removed
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 300 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Preview, test send and Reply-To, §Compatibility, `plan.md` §Contracts. Human owner: victor.
+- **Depends on:** UPS-086, UPS-087, UPS-088
+- **Uses contract:** None
+- **Related:** UPS-090, UPS-091
+- **Paths:** app/services/mail_campaigns.py, app/routers/mail_campaigns.py, app/tests/test_mail_campaigns.py, app/tests/test_mail_preview.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, docs/mail-mailgun.md
+- **Freeze-Allowed:** no
+- **Tests:** test_create_campaign_with_blocks_preheader_and_reply_to, test_preview_returns_the_same_html_as_send, test_preview_scoped_like_create, test_send_attaches_evento_ics_and_sets_reply_to, test_event_resolved_at_send_time, test_legacy_body_campaign_still_sends_and_lists, test_test_send_endpoint_is_gone
+- **Acceptance:**
+  - `POST /api/mail/campaigns` takes `preheader?`, `reply_to?`, `blocks` (legacy `body` still accepted); stores `content`, generates `ics_token` when there is an event block.
+  - `POST /api/mail/preview` returns `{html, text}` from `mail_render` with a sample recipient name and a dummy unsubscribe link; same scope checks as create.
+  - Sending renders blocks with the audience theme, attaches `evento.ics`, sets Reply-To (campaign over setting); history lists both kinds.
+  - `POST /api/mail/test` and its matrix row and tests are removed. Removing existing tests needs a human first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-089 --tests --reason 'victor removed the test send (spec 004)'`.
+  - `docs/mail-mailgun.md`: `MAIL_REPLY_TO` (default inbox, set in Render), how images and `.ics` work, a real-send checklist (Gmail web, Gmail iOS dark mode, Apple Mail, Outlook) and a note that on Render free images may fail to load during a cold start.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_campaigns.py app/tests/test_mail_preview.py app/tests/test_permissions_matrix.py`
+- **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-089`; then create + preview, then send, then the removal.
+
+## UPS-090 · Web: block composer with live preview (desktop / phone), test send removed
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 360 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Stories, §Preview, `plan.md` §STRIDE (sandboxed iframe), `web/DESIGN.md`. Human owner: victor. Skills: product-ui, stack-frontend.
+- **Depends on:** UPS-089
+- **Uses contract:** None
+- **Related:** UPS-091
+- **Paths:** web/src/features/mail/Composer.tsx, web/src/features/mail/BlockEditor.tsx, web/src/features/mail/EmailPreview.tsx, web/src/features/mail/blocks.ts, e2e/test_mail.py, e2e/test_mail_club.py
+- **Freeze-Allowed:** no
+- **Tests:** test_composer_builds_title_paragraph_button_and_previews, test_preview_iframe_is_sandboxed, test_preview_switches_desktop_and_phone, test_blocks_reorder_and_delete, test_button_presets_campus_and_club, test_no_test_send_button, test_composer_at_390_wide
+- **Acceptance:**
+  - Subject, preheader and a block list: add (Título, Párrafo, Lista, Botón, Evento, Imagen, Separador), edit inline, move up/down, delete; a short formatting hint for `**negritas**`, `*cursivas*`, `[texto](url)`.
+  - Live preview beside the editor on desktop and below on phones: `iframe srcdoc` with `sandbox=""`, toggles 600 / 375 px, refreshed 400 ms after the last change through `POST /api/mail/preview`.
+  - Button presets "Ir al campus" and "Ver el club". "Enviarme una prueba" is gone. "Revisar y enviar" keeps the count modal.
+  - Same composer in the superadmin tab and the club panel. Spanish (Mexico), AA, reduced motion; `.uak-shots/UPS-090/` and a design-critic SHIP.
+  - UPS-078/079 e2e tests that use the test send or type into the plain body field change (e.g. `test_test_send_reports_sent_to_me` is removed). A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-090 --tests --reason 'victor: block composer replaces the plain body and the test send (spec 004)'`.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail.py e2e/test_mail_club.py'`
+- **Next step:** after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-090`; then the block list, then the preview, then the presets.
+
+## UPS-091 · Web: event block (from the calendar or by hand), image block with upload, Reply-To field
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 300 min
+- **Rubric / Spec:** `docs/specs/004-correo-bonito/spec.md` §Events and calendar, §Images, §Preview, test send and Reply-To. Human owner: victor. Skills: product-ui, stack-frontend.
+- **Depends on:** UPS-090
+- **Uses contract:** None
+- **Related:** None
+- **Paths:** web/src/features/mail/EventBlockEditor.tsx, web/src/features/mail/ImageBlockEditor.tsx, web/src/features/mail/ReplyToField.tsx, web/src/features/mail/BlockEditor.tsx, e2e/test_mail_rich.py
+- **Freeze-Allowed:** no
+- **Tests:** test_event_block_from_campus_calendar_shows_card_and_calendar_links, test_event_block_typed_by_hand, test_image_block_uploads_and_previews, test_reply_to_prefilled_and_editable, test_club_admin_sees_only_global_and_own_club_events
+- **Acceptance:**
+  - Event block: "Del calendario" (search the campus events through `GET /api/events`, the club admin sees global and own-club events) or "Escribir evento" (title, start, end, place, description, link); the preview shows the card with Google Calendar, Outlook and Apple/.ics.
+  - Image block: upload (png/jpg/webp ≤ 5 MB) with progress and errors in Spanish, alt text required, optional link; also "Usar la portada del evento".
+  - Reply-To field prefilled from settings (shown, editable, validated).
+  - The e2e fixture sets `PUBLIC_BASE_URL` to the e2e server so uploaded images load in the preview; check that the app CSP `img-src` allows them inside the `srcdoc` iframe.
+  - 1280 and 390 wide, AA, reduced motion; `.uak-shots/UPS-091/` and a design-critic SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_rich.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-091`; then the event picker, then the image upload, then Reply-To.
