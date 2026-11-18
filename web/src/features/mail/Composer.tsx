@@ -14,6 +14,7 @@ import type { AcademyCardOut, AudiencePreview, Campaign, MailStatus, Page } from
 import { BlockEditor } from "./BlockEditor";
 import { incompleteCount, newDraft, toBlocks, type Draft } from "./blocks";
 import { EmailPreview } from "./EmailPreview";
+import { ReplyToField, replyToError } from "./ReplyToField";
 import { AudiencePicker, EMPTY_AUDIENCE, toAudience, type AcademyChoice, type AudienceDraft, type AudienceKind } from "./AudiencePicker";
 
 const MAX_PREHEADER = 140;
@@ -64,6 +65,7 @@ export function Composer({
   const [draft, setDraft] = useState<AudienceDraft>({ ...EMPTY_AUDIENCE, kind: kinds?.[0] ?? "all", academyId: ownClub ? (academies[0]?.id ?? null) : null });
   const [subject, setSubject] = useState("");
   const [preheader, setPreheader] = useState("");
+  const [replyTo, setReplyTo] = useState("");
   const [drafts, setDrafts] = useState<Draft[]>(() => [newDraft("paragraph")]);
   // undefined = follow the audience's club; null = the board; a number = that club (superadmin only).
   const [picked, setPicked] = useState<number | null | undefined>(undefined);
@@ -79,6 +81,13 @@ export function Composer({
     api<Page<AcademyCardOut>>("/academies", { query: { limit: 50 } })
       .then((page) => setSlugs(Object.fromEntries(page.items.map((a) => [a.id, a.slug]))))
       .catch(() => setSlugs({})); // only the "Ver el club" preset needs it
+  }, []);
+
+  // Reply-To starts as the server's default (MAIL_REPLY_TO); anything typed before it arrives wins.
+  useEffect(() => {
+    api<{ reply_to: string | null }>("/mail/reply-to")
+      .then((out) => setReplyTo((current) => current || (out.reply_to ?? "")))
+      .catch(() => undefined); // no default is fine: the server falls back to its own
   }, []);
 
   const audience = toAudience(draft);
@@ -97,6 +106,7 @@ export function Composer({
     audience,
     blocks,
     ...(preheader.trim() ? { preheader: preheader.trim() } : {}),
+    ...(replyTo.trim() && !replyToError(replyTo) ? { reply_to: replyTo.trim() } : {}),
     ...(!ownClub && senderId !== null ? { sender_academy_id: senderId } : {}),
   };
   const previewPayload = audience && blocks.length > 0 ? payload : null;
@@ -107,6 +117,7 @@ export function Composer({
     if (blocks.length === 0) return setFormError("Agrega al menos un bloque con contenido.");
     if (unfinished > 0) return setFormError("Completa o elimina los bloques vacíos.");
     if (!audience) return setFormError("Elige a quién enviar el correo.");
+    if (replyToError(replyTo)) return setFormError("Corrige el correo de respuesta.");
     setFormError(null);
     setChecking(true);
     try {
@@ -166,7 +177,13 @@ export function Composer({
           )}
           <TextField label="Asunto" value={subject} maxLength={MAX_SUBJECT} onChange={(e) => setSubject(e.target.value.replace(/[\r\n]+/g, " "))} />
           <TextField label="Texto de vista previa (opcional)" value={preheader} maxLength={MAX_PREHEADER} hint="Lo que se ve junto al asunto en la bandeja de entrada." onChange={(e) => setPreheader(e.target.value.replace(/[\r\n]+/g, " "))} />
-          <BlockEditor drafts={drafts} onChange={setDrafts} clubSlug={senderId === null ? null : (slugs[senderId] ?? null)} />
+          <ReplyToField value={replyTo} onChange={setReplyTo} />
+          <BlockEditor
+            drafts={drafts}
+            onChange={setDrafts}
+            clubSlug={senderId === null ? null : (slugs[senderId] ?? null)}
+            eventsAcademy={ownClub ? (slugs[academies[0]?.id ?? 0] ?? undefined) : null}
+          />
         </div>
         <div className="min-w-0 lg:sticky lg:top-20">
           <EmailPreview payload={previewPayload} emptyHint={audience ? "Agrega contenido para ver cómo queda el correo." : "Elige a quién enviar el correo para ver la vista previa."} />

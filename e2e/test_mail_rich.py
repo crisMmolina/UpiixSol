@@ -101,8 +101,8 @@ def test_event_block_from_campus_calendar_shows_card_and_calendar_links(site: Si
     expect(block.get_by_role("button", name=re.compile(CLUB_EVENT))).to_have_attribute("aria-pressed", "true")
     expect(card(page).get_by_text(CLUB_EVENT)).to_be_visible(timeout=10_000)
     for label in ("Google Calendar", "Outlook", "Apple / .ics"):
-        expect(card(page).get_by_role("link", name=re.compile(label))).to_be_visible()
-    expect(card(page).get_by_role("link", name=re.compile("Google Calendar"))).to_have_attribute(
+        expect(card(page).get_by_role("link", name=label)).to_be_visible()
+    expect(card(page).get_by_role("link", name="Google Calendar")).to_have_attribute(
         "href", re.compile(r"^https://calendar\.google\.com/")
     )
     shot(site, "mail-event-calendar")
@@ -122,7 +122,7 @@ def test_event_block_typed_by_hand(site: Site) -> None:
     expect(card(page).get_by_text("Salón 205")).to_be_visible()
     # Mexico City time as typed, whatever the browser's zone.
     expect(card(page).get_by_text(re.compile(r"3:00\s*(p\.?\s*m\.?|PM)|15:00"))).to_be_visible()
-    expect(card(page).get_by_role("link", name=re.compile("Apple / .ics"))).to_be_visible()
+    expect(card(page).get_by_role("link", name="Apple / .ics")).to_be_visible()
     # An end before the start is said in Spanish and keeps the preview from breaking.
     block.get_by_label("Fin").fill("2030-03-05T14:00")
     expect(block.get_by_text("La hora de fin debe ser posterior a la de inicio.")).to_be_visible()
@@ -144,6 +144,7 @@ def test_image_block_uploads_and_previews(site: Site, tmp_path: Path) -> None:
     block.get_by_label("Subir imagen").set_input_files(cartel)
     expect(block.get_by_role("img", name="Imagen subida")).to_be_visible(timeout=10_000)
     # Alt text is required: without it the block is unfinished and the send is refused in Spanish.
+    page.get_by_label("Texto del párrafo").first.fill("Hola")
     page.get_by_role("button", name="Revisar y enviar").click()
     expect(page.get_by_text("Completa o elimina los bloques vacíos.")).to_be_visible()
     block.get_by_label("Texto alternativo de la imagen").fill("Cartel del taller")
