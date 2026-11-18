@@ -1,8 +1,8 @@
 # STATE
 
 Phase: execution
-Updated: 1794971047
-AVAILABLE: UPS-068 UPS-084 UPS-088 UPS-089 UPS-090 UPS-091 
+Updated: 1794971067
+AVAILABLE: UPS-068 UPS-084 UPS-088 UPS-089 UPS-090 UPS-091 UPS-092 
 CLAIMED: UPS-086 UPS-087 
 BLOCKED: UPS-057 
 REVIEW: UPS-060 
@@ -17,11 +17,11 @@ UPS-087 | CLAIMED | victor-2 | until 1794985441
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794952588 | UPS-079 | ownClub prop on picker/composer/history | Why: reuse UPS-078 pieces
 - 1794953773 | UPS-060 | Verify exit 1 reported as the real breaking point, not hidden | Why: criteria: numbers only from real runs; 20 users exceeds p95 1500 ms
 - 1794954588 | UPS-081 | finished_at cutoff; snapshot only when rows exist | Why: second run must not zero the snapshot
 - 1794954598 | UPS-080 | MAIL_ENABLED and MAILGUN_TEST_MODE sync:false so redeploys never override the dashboard or rollback | Why: blueprint value would overwrite manual flips
 - 1794970108 | UPS-085 | batch_alter_table for SQLite FK/unique; MX tz fixed UTC-6 | Why: SQLite cannot ALTER constraints
+- 1794971067 | allow | victor | test change: UPS-092 | Why: victor: monthly Mailgun quota replaces the daily placeholder
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
