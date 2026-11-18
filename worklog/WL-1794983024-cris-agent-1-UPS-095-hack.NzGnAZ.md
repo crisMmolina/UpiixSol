@@ -6,7 +6,7 @@
 - Why: api.ts is outside Paths
 - Failing: none
 - Commands: Verify from TASKS.md; SEED_DEFAULT_PASSWORD=admin123 uv run pytest e2e/test_logo_transparent.py
-- Next: Wait for review of SHA 4ec8df11
+- Next: Integrated in main: fbd8bc359099772c2f4f0c299c6d473b1479d892 (recorded by cris)
 
 ## History
 - 1794983024 | CLAIMED | cris-agent-1 | claim; next: stubs for the `Tests:` names and `uak red UPS-095`; then `remove_white_background` with `ImageDraw.floodfill` on a border-padded mask, the flag in `save_image_bytes`, the form field in the two routers, then the checkbox, preview and button.
@@ -14,3 +14,4 @@
 - 1794984117 | REVIEW | cris-agent-1 | checkpoint; next: Wait for review of SHA 4ec8df11
 - 1794985015 | REVIEW | zoe-1 | review; approve; SHA 4ec8df11a3b87b588b445b9c52d9a4227e850cb9; reviewer zoe-1
 - 1794985359 | REVIEW | victor-3 | review; reject; SHA d5ce22b5cbe1b38bbb6dd9bf09012ffa558b247e; reviewer victor-3
+- 1794985903 | INTEGRATED | cris | integrate; recorded by cris; PR https://github.com/crisMmolina/UpiixSol/pull/161; merged fbd8bc359099772c2f4f0c299c6d473b1479d892; proof ancestry
