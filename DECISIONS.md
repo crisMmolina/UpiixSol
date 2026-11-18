@@ -130,3 +130,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794982868 | UPS-097 | quota check in preview only | Why: campaign create must succeed, send rejects
 - 1794984117 | UPS-095 | notice computed client-side; X-Background-Removed header for API clients | Why: api.ts is outside Paths
 - 1794984225 | allow | victor | test change: UPS-099 | Why: victor: SVG logos now get a PNG email copy
+- 1794984457 | deadline decision/UPS-099-1794983542/1794984442 | BLOCKED_OTHER_TASK | Option: Add resvg-py (MIT) to rasterize SVG logos for email; Why: no email client shows SVG; the site keeps the SVG; no money, accounts, publishing or scope expansion.
