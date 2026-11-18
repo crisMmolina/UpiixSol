@@ -13,7 +13,6 @@ import httpx
 import pytest
 
 from app.config import Settings
-from app.services import mailgun
 from app.services.mailer import MailMessage, MailRecipientVars
 from app.services.mailgun import MailgunTransport
 
@@ -94,21 +93,15 @@ def test_one_call_per_batch_of_at_most_1000():
     assert set(result.accepted.values()) == {MESSAGE_ID}  # stored without <>
 
 
-def test_each_recipient_gets_only_their_address():
-    # Below the fallback threshold: one call per recipient, a single `to` each.
+def test_small_audience_also_batches_in_one_call():
+    # UPS-096: 3 recipients go in one call (no per-recipient fallback); `to` holds plain addresses and the
+    # recipient-variables keys match them, so Mailgun sends one message per address.
     recorder = Recorder()
     small = make_recipients(3)
     make_transport(recorder).send_batch(make_message(), small)
-    assert [form["to"] for form in recorder.forms] == [[r.email] for r in small]
-
-    # Above it: one batch call, each `to` is one plain address and recipient-variables keys match them,
-    # so Mailgun sends one message per address.
-    recorder = Recorder()
-    big = make_recipients(150)
-    make_transport(recorder).send_batch(make_message(), big)
     assert len(recorder.forms) == 1
     form = recorder.forms[0]
-    assert form["to"] == [r.email for r in big]
+    assert form["to"] == [r.email for r in small]
     assert all("," not in to and "<" not in to for to in form["to"])
     assert set(json.loads(form["recipient-variables"][0])) == set(form["to"])
 
@@ -124,28 +117,27 @@ def test_recipient_variables_carry_name_and_unsubscribe_url():
         assert merged == {r.email: {"name": r.name, "unsubscribe_url": r.unsubscribe_url} for r in recipients}
 
 
-def test_list_unsubscribe_headers_are_sent(monkeypatch):
-    # Default (spike §3 unverified): per-recipient calls carry the real URL in the header.
+def test_batch_sends_per_recipient_unsubscribe_header_variable():
+    # Verified 2026-11-18 (spike §3): Mailgun substitutes the recipient variable inside the header.
+    for count in (2, 150):
+        recorder = Recorder()
+        make_transport(recorder).send_batch(make_message(), make_recipients(count))
+        assert len(recorder.forms) == 1
+        form = recorder.forms[0]
+        assert form["h:List-Unsubscribe"] == ["<%recipient.unsubscribe_url%>"]
+        assert form["h:List-Unsubscribe-Post"] == ["List-Unsubscribe=One-Click"]
+
+
+def test_header_points_to_the_api_one_click_url():
+    # The variable resolves to the API URL (RFC 8058 POST suppresses; a GET only redirects to /baja).
     recorder = Recorder()
     recipients = make_recipients(2)
     make_transport(recorder).send_batch(make_message(), recipients)
-    for form, recipient in zip(recorder.forms, recipients, strict=True):
-        assert form["h:List-Unsubscribe"] == [f"<{recipient.unsubscribe_url}>"]
-        assert form["h:List-Unsubscribe-Post"] == ["List-Unsubscribe=One-Click"]
-
-    # Large fallback: no custom header with a literal variable; Mailgun's own unsubscribe applies.
-    recorder = Recorder()
-    make_transport(recorder).send_batch(make_message(), make_recipients(150))
-    assert "h:List-Unsubscribe" not in recorder.forms[0]
-    assert "h:List-Unsubscribe-Post" not in recorder.forms[0]
-
-    # Once verified, a single switch batches everything with the recipient variable in the header.
-    monkeypatch.setattr(mailgun, "UNSUBSCRIBE_HEADER_IN_BATCH", True)
-    recorder = Recorder()
-    make_transport(recorder).send_batch(make_message(), make_recipients(2))
-    assert len(recorder.forms) == 1
-    assert recorder.forms[0]["h:List-Unsubscribe"] == ["<%recipient.unsubscribe_url%>"]
-    assert recorder.forms[0]["h:List-Unsubscribe-Post"] == ["List-Unsubscribe=One-Click"]
+    variables = json.loads(recorder.forms[0]["recipient-variables"][0])
+    for recipient in recipients:
+        url = variables[recipient.email]["unsubscribe_url"]
+        assert url == recipient.unsubscribe_url
+        assert "/api/mail/unsubscribe?t=" in url
 
 
 def test_tracking_off_and_campaign_id_variable():
