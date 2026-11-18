@@ -1,8 +1,8 @@
 # STATE
 
 Phase: execution
-Updated: 1794985968
-AVAILABLE: UPS-068 
+Updated: 1794986209
+AVAILABLE: UPS-068 UPS-100 UPS-101 UPS-102 UPS-103 UPS-104 
 CLAIMED: -
 BLOCKED: UPS-057 
 REVIEW: UPS-060 
@@ -15,11 +15,11 @@ UPS-060 | REVIEW | zoe-1 | until 1795040173
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794982868 | UPS-097 | quota check in preview only | Why: campaign create must succeed, send rejects
 - 1794984117 | UPS-095 | notice computed client-side; X-Background-Removed header for API clients | Why: api.ts is outside Paths
 - 1794984225 | allow | victor | test change: UPS-099 | Why: victor: SVG logos now get a PNG email copy
 - 1794984457 | deadline decision/UPS-099-1794983542/1794984442 | BLOCKED_OTHER_TASK | Option: Add resvg-py (MIT) to rasterize SVG logos for email; Why: no email client shows SVG; t
 - 1794985903 | UPS-095 | merged by cris over the reject of victor-3 | Why: The 1 s bound was measured on a laptop (0.3 s); on the shared GitHub runner the same code takes 1.1 s. Th
+- 1794986209 | allow | victor | test change: UPS-102 | Why: victor: composer redesign in three steps (spec 005)
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
