@@ -39,6 +39,12 @@ import { CampusLayout } from "@/layouts";
 
 import { formatClock, parseClock, startFromUrl } from "./clock";
 import { ClubMailTab } from "@/features/mail";
+import {
+  currentImageAsFile,
+  processablePath,
+  TransparencyOptions,
+  whiteBackgroundNotice,
+} from "@/features/superadmin/SiteBrandTab";
 import { useSortable } from "./sortable";
 
 export const order = 50;
@@ -130,6 +136,8 @@ const COLOR_FIELDS: { key: "color_primary" | "color_secondary" | "color_accent" 
 function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: AcademyOut) => void }) {
   const [draft, setDraft] = useState<AcademyOut>(academy);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [removeWhite, setRemoveWhite] = useState({ logo: true, mascot: true });
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
   const dirty = (["short_description", "welcome_text", ...COLOR_FIELDS.map((f) => f.key)] as const).some(
@@ -161,16 +169,33 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
     }
   }
 
-  async function upload(kind: "logo" | "mascot", file: File | undefined) {
+  /** Sends `file` through the upload route; with the box ticked the server also clears the white background. */
+  async function upload(kind: "logo" | "mascot", file: File | undefined, removeBackground: boolean) {
     if (!file) return;
     const form = new FormData();
     form.append("file", file);
+    if (removeBackground) form.append("transparent_background", "true");
     setMessage(null);
+    setUploading(true);
     try {
       const saved = await api<AcademyOut>(`/academies/${academy.id}/${kind}`, { method: "POST", form });
       onSaved(saved);
       setDraft((d) => ({ ...d, logo_url: saved.logo_url, mascot_url: saved.mascot_url }));
-      setMessage({ tone: "ok", text: kind === "logo" ? "Logo actualizado." : "Mascota actualizada." });
+      const notice = await whiteBackgroundNotice(kind === "logo" ? saved.logo_url : saved.mascot_url, removeBackground);
+      setMessage({ tone: "ok", text: `${kind === "logo" ? "Logo actualizado." : "Mascota actualizada."}${notice}` });
+    } catch (err) {
+      setMessage({ tone: "error", text: errorMessage(err) });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  /** "Quitar fondo blanco al logo actual": download our own /media image and send it through the same route. */
+  async function fixCurrent(kind: "logo" | "mascot") {
+    const current = kind === "logo" ? draft.logo_url : draft.mascot_url;
+    if (!current) return;
+    try {
+      await upload(kind, await currentImageAsFile(current, `${kind}.webp`), true);
     } catch (err) {
       setMessage({ tone: "error", text: errorMessage(err) });
     }
@@ -239,21 +264,36 @@ function IdentityTab({ academy, onSaved }: { academy: AcademyOut; onSaved: (a: A
           {(["logo", "mascot"] as const).map((kind) => {
             const current = safeAssetPath(kind === "logo" ? draft.logo_url : draft.mascot_url);
             return (
-              <label key={kind} className="grid cursor-pointer gap-2 rounded-2xl border border-dashed border-line p-4 text-center hover:bg-line/30">
-                <span className="text-sm font-semibold">{kind === "logo" ? "Logo" : "Mascota"}</span>
-                {current ? (
-                  <img src={current} alt="" className="mx-auto h-20 w-auto object-contain" />
-                ) : (
-                  <ImageSquare size={40} className="mx-auto text-muted" aria-hidden />
-                )}
-                <span className="text-xs text-muted">PNG, JPG, WebP o SVG · máx. 2 MB</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="sr-only"
-                  onChange={(e) => void upload(kind, e.target.files?.[0])}
+              <div key={kind} className="grid content-start gap-3">
+                <label className="grid cursor-pointer gap-2 rounded-2xl border border-dashed border-line p-4 text-center focus-within:outline-3 focus-within:outline-secondary hover:bg-line/30">
+                  <span className="text-sm font-semibold">{kind === "logo" ? "Logo" : "Mascota"}</span>
+                  {current ? (
+                    <img src={current} alt="" className="mx-auto h-20 w-auto object-contain" />
+                  ) : (
+                    <ImageSquare size={40} className="mx-auto text-muted" aria-hidden />
+                  )}
+                  <span className="text-xs text-muted">PNG, JPG, WebP o SVG · máx. 2 MB</span>
+                  <input
+                    type="file"
+                    name={kind}
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = ""; // choosing the same file again still uploads it
+                      void upload(kind, file, removeWhite[kind]);
+                    }}
+                  />
+                </label>
+                <TransparencyOptions
+                  kind={kind}
+                  current={processablePath(current)}
+                  checked={removeWhite[kind]}
+                  onChange={(checked) => setRemoveWhite((state) => ({ ...state, [kind]: checked }))}
+                  onFix={() => void fixCurrent(kind)}
+                  busy={uploading}
                 />
-              </label>
+              </div>
             );
           })}
         </Card>

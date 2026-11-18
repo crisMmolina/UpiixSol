@@ -2,7 +2,7 @@
 // top bar and the login screen. Name and colors are saved with the button; images apply as soon as they upload.
 // Every change goes through applySite (lib/brand.tsx), which re-renders the whole app with the new brand.
 import { CheckCircle, DownloadSimple, ImageSquare, Trash, UploadSimple, Warning } from "@phosphor-icons/react";
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type CSSProperties, type FormEvent } from "react";
 
 import { Button, buttonClasses } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -10,7 +10,7 @@ import { TextField, fieldErrors } from "@/components/Field";
 import { FormMessage } from "@/components/FormMessage";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { applySite, BUILT_IN_SITE, LOGO_HEIGHT, reloadSite, useSite, Wordmark, type Site, type SiteSettings } from "@/lib/brand";
-import { AcademyTheme, contrastRatio, readableTextOn } from "@/lib/theme";
+import { AcademyTheme, contrastRatio, readableTextOn, safeAssetPath } from "@/lib/theme";
 import type { AcademyBranding } from "@/lib/types";
 
 type Draft = Pick<SiteSettings, "name" | "color_primary" | "color_secondary" | "color_accent">;
@@ -71,6 +71,7 @@ export function SiteBrandTab() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<Message | null>(() => handoff?.message ?? null);
   const [busy, setBusy] = useState<"save" | ImageKind | null>(null);
+  const [removeWhite, setRemoveWhite] = useState<Record<ImageKind, boolean>>({ logo: true, mascot: true });
   useEffect(() => {
     handOff(null);
   }, []);
@@ -116,21 +117,40 @@ export function SiteBrandTab() {
     }
   }
 
-  async function upload(kind: ImageKind, event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = ""; // choosing the same file again still uploads it
-    if (!file) return;
+  /** Sends `file` through the upload route; with the box ticked the server also clears the white background. */
+  async function send(kind: ImageKind, file: File, removeBackground: boolean) {
     const form = new FormData();
     form.append("file", file);
+    if (removeBackground) form.append("transparent_background", "true");
     setBusy(kind);
     setMessage(null);
     try {
       const next = await api<SiteSettings>(`/admin/site/${kind}`, { method: "POST", form });
-      done(next, IMAGE[kind].uploaded, "images", true);
+      const notice = await whiteBackgroundNotice(kind === "logo" ? next.logo_url : next.mascot_url, removeBackground);
+      done(next, `${IMAGE[kind].uploaded}${notice}`, "images", true);
     } catch (err) {
       setMessage({ tone: "error", text: errorMessage(err), where: "images" });
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function upload(kind: ImageKind, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // choosing the same file again still uploads it
+    if (file) await send(kind, file, removeWhite[kind]);
+  }
+
+  /** "Quitar fondo blanco al logo actual": download our own /media image and send it through the same route. */
+  async function fixCurrent(kind: ImageKind) {
+    const current = images[kind];
+    if (!current) return;
+    setBusy(kind);
+    try {
+      await send(kind, await currentImageAsFile(current, `${kind}.webp`), true);
+    } catch (err) {
+      setBusy(null);
+      setMessage({ tone: "error", text: errorMessage(err), where: "images" });
     }
   }
 
@@ -320,6 +340,14 @@ export function SiteBrandTab() {
                       Quitar
                     </Button>
                   </div>
+                  <TransparencyOptions
+                    kind={kind}
+                    current={processablePath(current)}
+                    checked={removeWhite[kind]}
+                    onChange={(checked) => setRemoveWhite((state) => ({ ...state, [kind]: checked }))}
+                    onFix={() => void fixCurrent(kind)}
+                    busy={busy !== null}
+                  />
                   <a href={builtIn} download className="inline-flex min-h-11 items-center gap-1 self-start text-xs font-semibold text-link">
                     <DownloadSimple weight="bold" aria-hidden /> Descargar el original de UpiixSol
                   </a>
@@ -362,6 +390,121 @@ export function SiteBrandTab() {
           </Card>
         </AcademyTheme>
       </aside>
+    </div>
+  );
+}
+
+// ── Fondo blanco (UPS-095) ───────────────────────────────────
+// Shared with the club panel (features/academy-admin): the same checkbox, light/dark swatches and "fix the
+// current image" button for the four logo and mascot upload routes.
+
+export const NO_WHITE_BACKGROUND = "No encontramos un fondo blanco para quitar.";
+
+const checker = (base: string, square: string): CSSProperties => ({
+  backgroundColor: base,
+  backgroundImage: `linear-gradient(45deg, ${square} 25%, transparent 25%, transparent 75%, ${square} 75%), linear-gradient(45deg, ${square} 25%, transparent 25%, transparent 75%, ${square} 75%)`,
+  backgroundSize: "12px 12px",
+  backgroundPosition: "0 0, 6px 6px",
+});
+const SWATCHES = [
+  { id: "light", label: "Sobre claro", style: checker("#FFFFFF", "#E6E8EB") },
+  { id: "dark", label: "Sobre oscuro", style: checker("#1B1E22", "#2B3036") },
+] as const;
+
+/** The stored image has a transparent pixel (true when it cannot be checked, so no wrong notice is shown). */
+export function hasTransparentPixels(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const side = 48;
+        const canvas = document.createElement("canvas");
+        canvas.width = side;
+        canvas.height = side;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return resolve(true);
+        context.drawImage(image, 0, 0, side, side);
+        const pixels = context.getImageData(0, 0, side, side).data;
+        for (let i = 3; i < pixels.length; i += 4) if (pixels[i] < 255) return resolve(true);
+        resolve(false);
+      } catch {
+        resolve(true);
+      }
+    };
+    image.onerror = () => resolve(true);
+    image.src = url;
+  });
+}
+
+/** What to add to "Logo actualizado." when the box was ticked: the notice if there was no white to remove. */
+export async function whiteBackgroundNotice(url: string | null, removeWhite: boolean): Promise<string> {
+  if (!removeWhite || !url || url.endsWith(".svg")) return "";
+  return (await hasTransparentPixels(url)) ? "" : ` ${NO_WHITE_BACKGROUND}`;
+}
+
+/** The current image only when it is one of our own uploads that can be processed (same origin, raster). */
+export function processablePath(url: string | null | undefined): string | null {
+  const path = safeAssetPath(url);
+  return path && path.startsWith("/media/") && !path.endsWith(".svg") ? path : null;
+}
+
+/** Downloads our own `/media/…` image so it can go through the same upload route again. */
+export async function currentImageAsFile(url: string, name: string): Promise<File> {
+  const path = processablePath(url);
+  if (!path) throw new ApiError(0, "not_processable", "Solo se puede procesar una imagen subida a este campus.");
+  const response = await fetch(path, { credentials: "same-origin", cache: "reload" });
+  if (!response.ok) throw new ApiError(response.status, "download_failed", "No pudimos descargar la imagen actual. Intenta de nuevo.");
+  const blob = await response.blob();
+  return new File([blob], name, { type: blob.type || "image/webp" });
+}
+
+interface TransparencyOptionsProps {
+  kind: ImageKind;
+  current: string | null;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  onFix: () => void;
+  busy: boolean;
+}
+
+export function TransparencyOptions({ kind, current, checked, onChange, onFix, busy }: TransparencyOptionsProps) {
+  const label = kind === "logo" ? "logo" : "mascota";
+  const fixable = processablePath(current);
+  return (
+    <div className="grid gap-3" data-testid={`transparent-${kind}`}>
+      <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm">
+        <input
+          type="checkbox"
+          name={`transparent_${kind}`}
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 size-4 shrink-0 accent-[var(--color-link)]"
+        />
+        <span>
+          <span className="font-semibold">Quitar el fondo blanco</span>
+          <span className="block text-xs text-muted">
+            Solo el blanco pegado al borde; el blanco dentro del dibujo se queda. Para volver al original, súbelo de nuevo
+            sin marcar esta casilla.
+          </span>
+        </span>
+      </label>
+      {current && (
+        <div className="grid grid-cols-2 gap-2" data-testid={`swatches-${kind}`}>
+          {SWATCHES.map(({ id, label: swatch, style }) => (
+            <figure key={id} className="m-0 grid gap-1">
+              <div className="grid h-16 place-items-center overflow-hidden rounded-lg border border-line px-2" style={style}>
+                <img src={current} alt="" className="max-h-12 max-w-full object-contain" />
+              </div>
+              <figcaption className="text-center text-xs text-muted">{swatch}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      {fixable && (
+        <Button size="sm" variant="secondary" disabled={busy} onClick={onFix} aria-label={`Quitar fondo blanco al ${label} actual`}>
+          Quitar fondo blanco al {label} actual
+        </Button>
+      )}
     </div>
   );
 }
