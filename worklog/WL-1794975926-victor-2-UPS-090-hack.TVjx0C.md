@@ -10,3 +10,4 @@
 
 ## History
 - 1794975926 | CLAIMED | victor-2 | claim; next: after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-090`; then the block list, then the preview, then the presets.
+- 1794975953 | CLAIMED | victor-2 | heartbeat; lease until 1794990353
