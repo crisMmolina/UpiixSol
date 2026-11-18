@@ -128,10 +128,16 @@ def test_preview_switches_desktop_and_phone(site: Site) -> None:
     phone = page.get_by_role("button", name="Teléfono")
     desktop.click()
     expect(desktop).to_have_attribute("aria-pressed", "true")
-    expect(frame).to_have_css("width", "600px")
+    expect(frame).to_have_css("max-width", "100%")  # 600 px, shrunk to fit a narrow column, never scrolls the page
+    wide = frame.evaluate("el => el.getBoundingClientRect().width")
+    assert 280 <= wide <= 600
     phone.click()
     expect(phone).to_have_attribute("aria-pressed", "true")
-    expect(frame).to_have_css("width", "375px")
+    expect(frame).to_have_css("max-width", "100%")
+    if site.name == "desktop":
+        expect(frame).to_have_css("width", "375px")
+    else:
+        page.wait_for_function("document.querySelector('iframe').getBoundingClientRect().width <= 375")
     site.shot("mail-preview-phone")
 
 

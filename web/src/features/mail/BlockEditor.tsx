@@ -74,9 +74,9 @@ export function BlockEditor({
           Formato: <code>**negritas**</code> · <code>*cursivas*</code> · <code>[texto](https://enlace)</code>
         </p>
       </div>
-      <ul aria-label="Bloques del correo" className="grid gap-3">
+      <ul aria-label="Bloques del correo" className="grid divide-y divide-line border-y border-line">
         {drafts.map((draft, index) => (
-          <li key={draft.id} aria-label={`Bloque ${index + 1}: ${KIND_LABEL[draft.kind]}`} className="grid gap-3 rounded-2xl border border-line bg-surface p-3 sm:p-4">
+          <li key={draft.id} aria-label={`Bloque ${index + 1}: ${KIND_LABEL[draft.kind]}`} className="grid gap-3 py-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-muted">{KIND_LABEL[draft.kind]}</span>
               <div className="flex items-center">

@@ -56,19 +56,17 @@ export function EmailPreview({ payload, emptyHint }: { payload: object | null; e
           {error}
         </p>
       )}
-      <div className="overflow-x-auto rounded-2xl border border-line bg-subtle p-3">
-        {html === null && !error && key === null ? (
-          <p className="grid h-40 place-items-center text-center text-sm text-muted">{emptyHint}</p>
-        ) : (
-          <iframe
-            title="Vista previa del correo"
-            sandbox=""
-            srcDoc={html ?? ""}
-            style={{ width: WIDTHS[mode] }}
-            className="mx-auto block h-[34rem] max-w-none rounded-lg border-0 bg-white"
-          />
-        )}
-      </div>
+      {html === null ? (
+        <p className="grid h-[34rem] place-items-center rounded-2xl border border-dashed border-line px-4 text-center text-sm text-muted">{key === null ? emptyHint : "Preparando la vista previa…"}</p>
+      ) : (
+        <iframe
+          title="Vista previa del correo"
+          sandbox=""
+          srcDoc={html}
+          style={{ width: WIDTHS[mode] }}
+          className="mx-auto block h-[34rem] max-w-full rounded-2xl border border-line bg-white"
+        />
+      )}
     </section>
   );
 }
