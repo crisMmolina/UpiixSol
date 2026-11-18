@@ -1,0 +1,9 @@
+# cris
+Agent: cris
+Started: 1794983007
+Role: human
+Sessions: 1
+Events: 1
+Events-Since-Checkpoint: 1
+Last-Session: stable
+Updated: 1794983007
