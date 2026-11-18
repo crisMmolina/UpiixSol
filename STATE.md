@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794975780
+Updated: 1794975885
 AVAILABLE: UPS-068 UPS-090 UPS-091 
 CLAIMED: -
 BLOCKED: UPS-057 
@@ -16,11 +16,11 @@ UPS-089 | REVIEW | victor-1 | until 1795061940
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794971700 | UPS-087 | token lookup, 404 fail-closed | Why: no leak across campaigns
 - 1794973426 | allow | victor | test change: UPS-089 | Why: victor removed the test send (spec 004)
 - 1794973445 | allow | victor | test change: UPS-090 | Why: victor: block composer replaces the plain body and the test send (spec 004)
 - 1794973788 | UPS-088 | copy name = sha256(source key)[:32], no table; endpoint allowed for SENDERS | Why: cache without schema change; spec says academy_admin
 - 1794975540 | UPS-089 | kept test_mail_template.py edit outside Paths (test send removed) | Why: its tests called /api/mail/test
+- 1794975885 | deadline decision/UPS-084-1794974759/1794975659 | REVERSIBLE_AND_LOG | Option: CLAUDE.md: safe round-trip line; Why: incident guard; no money, accounts, publishing o
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
