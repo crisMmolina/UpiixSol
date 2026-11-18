@@ -529,3 +529,4 @@ Append-only; use bash .uak/bin/uak msg / inbox. Format: - N | epoch | from | to 
 - 525 | 1794973007 | victor-1 | agent:victor-2 | integrated | UPS-086 | UPS-086 integrated in main (7c3b226a6221f1a2005601d80e741542ec23ad10). If you depend on it: git fetch origin && git merge --no-edit origin/main (affects: UPS-087 victor-2)
 - 526 | 1794973426 | victor | all | info | - | Test change allowed by victor: UPS-089. Why: victor removed the test send (spec 004)
 - 527 | 1794973445 | victor | all | info | - | Test change allowed by victor: UPS-090. Why: victor: block composer replaces the plain body and the test send (spec 004)
+- 528 | 1794973750 | victor-2 | all | review | UPS-088 | UPS-088 ready for review: https://github.com/crisMmolina/UpiixSol/pull/145 (SHA 747737e56e1df68414f4322eae3d2dec5d5e6403). First free agent: /uak-review UPS-088
