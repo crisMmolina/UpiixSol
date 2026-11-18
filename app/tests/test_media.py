@@ -216,3 +216,4 @@ def test_svg_keeps_its_type_without_an_os_mime_table(client, os_without_webp) ->
     url = save_image_bytes(svg, "logo")
     register_media_types()
     assert client.get(url).headers["content-type"].startswith("image/svg+xml")
+

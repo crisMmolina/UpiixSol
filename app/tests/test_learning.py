@@ -178,3 +178,4 @@ def test_progress_never_goes_down(as_member: TestClient, db: Session) -> None:
         as_member.delete(f"/api/lessons/{lesson.id}/complete")  # no way back: 405
         seen.append(as_member.get(f"/api/routes/{route_id}").json()["progress"]["percent"])
     assert seen == sorted(seen) and seen[-1] == 100
+
