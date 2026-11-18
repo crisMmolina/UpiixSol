@@ -1920,3 +1920,108 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - The dependency is added with uv (pyproject + uv.lock; `uv sync --locked` passes; the Docker build and CI on Linux pass); `docs/security-deps.md` records package, version, license, source and why. Before starting, a human records the decision: `UAK_HUMAN=victor bash .uak/bin/uak decision UPS-099 --option "Add resvg-py (MIT) to rasterize SVG logos for email" --why "no email client shows SVG; the site keeps the SVG" --reversible yes --authorized yes --class scope`.
 - **Verify:** `bash .uak/bin/q bash -c 'uv sync --locked && uv run pytest -q --tb=short -x app/tests/test_mail_images.py app/tests/test_mail_render.py'`
 - **Next step:** after the human decision, stubs for the Tests names and `uak red UPS-099`; then add the dependency, then the SVG branch of `email_copy`.
+
+## UPS-100 · Contract: mail templates table (migration 0011), built-in templates, preview returns the canvas theme
+
+- **Type:** contract
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Templates, `plan.md` §Data and migrations, §Contracts. Human owner: victor.
+- **Depends on:** UPS-099
+- **Uses contract:** None
+- **Related:** UPS-101, UPS-102, UPS-103, UPS-104
+- **Paths:** app/models/mail_template.py, app/models/__init__.py, app/migrations/versions/0011_mail_templates.py, app/services/mail_templates_builtin.py, app/services/mail_render.py, app/services/mail_blocks.py, app/tests/test_mail_blocks.py, app/tests/test_mail_templates_contract.py, web/src/lib/types.ts
+- **Freeze-Allowed:** no
+- **Tests:** test_mail_templates_migration_round_trips_on_sqlite, test_template_name_unique_per_scope_case_insensitive, test_builtin_templates_validate_as_blocks, test_builtin_templates_have_no_real_names_dates_or_addresses, test_builtins_are_anuncio_invitacion_recordatorio_boletin, test_event_placeholder_block_validates_and_renders_a_sample_card, test_preview_theme_matches_render_theme
+- **Acceptance:**
+  - `MailTemplate` model and migration `0011_mail_templates` (down_revision `0010`), additive only; round-trip only with `DATABASE_URL=sqlite:////tmp/…` (never the dotenv DB) and CI's localhost Postgres.
+  - `mail_templates_builtin.py`: four built-ins (Anuncio, Invitación a evento, Recordatorio, Nueva clase / boletín), each a subject, preview text and blocks validated by `Blocks` at import; Spanish placeholders ("Escribe aquí el título"), the invitation and reminder carry an event **placeholder**; ids `builtin:<slug>`.
+  - Event placeholder (decided here, plan §Design): the event block gains `placeholder: true` (no `event_id`, no title/dates required). `Blocks` accepts it (templates and preview validate), the renderer draws a sample card ("Título del evento · día y hora · lugar") so thumbnails and preview never 422; refusing it on create/send is UPS-101's job. Existing `test_mail_blocks.py` tests keep passing unchanged (new tests only). Make them good-looking emails: use the renderer's strengths (title, short paragraph, event card, one clear button).
+  - `mail_render` exposes `canvas_theme(...)` (sender block text, logo email URL, colors, fonts, spacing) used by the preview response, from the same values the HTML render uses.
+  - `web/src/lib/types.ts` mirrors `MailTemplate` and the preview `theme`.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_templates_contract.py app/tests/test_mail_render.py && DATABASE_URL=sqlite:////tmp/ups100.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/ups100.db uv run alembic downgrade base && npm --prefix web run build'`
+- **Next step:** stubs for the Tests names and `uak red UPS-100`; then the model and migration, then the built-ins, then `canvas_theme`.
+
+## UPS-101 · Templates API: list, save, rename and delete with UpiixSol / club scope
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Templates, `plan.md` §Contracts, §STRIDE. Human owner: victor.
+- **Depends on:** UPS-100
+- **Uses contract:** None
+- **Related:** UPS-104
+- **Paths:** app/services/mail_templates.py, app/routers/mail_templates.py, app/routers/mail_campaigns.py, app/services/mail_campaigns.py, app/tests/test_mail_templates.py, app/tests/test_mail_preview.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md
+- **Freeze-Allowed:** no
+- **Tests:** test_list_has_builtins_site_and_own_club_templates, test_superadmin_lists_all_templates, test_superadmin_saves_site_template, test_academy_admin_saves_own_club_template_scope_from_db, test_academy_admin_cannot_edit_site_or_other_club_template, test_builtins_are_read_only, test_template_blocks_validated_like_campaigns, test_saved_template_has_no_audience_or_reply_to, test_duplicate_name_in_scope_is_409, test_member_and_anon_get_403_and_401, test_preview_response_includes_theme, test_create_and_send_refuse_an_event_placeholder, test_render_only_preview_needs_no_audience
+- **Acceptance:**
+  - `GET/POST /api/mail/templates`, `PATCH/DELETE /api/mail/templates/{id}` as plan §Contracts; scope from `users.academy_id`; Spanish 422/403/409; built-ins read-only.
+  - `POST /api/mail/preview` also returns the canvas `theme` (from UPS-100), same scope checks as today. It accepts a **render-only** call without `audience` (for template thumbnails and the canvas): renders with the caller's own sender (club admin → own club, superadmin → UpiixSol or the given active `sender_academy_id`) and a sample name; no recipient count. No existing preview test compares the whole response, so no test changes are expected.
+  - `POST /api/mail/campaigns` and send refuse an event `placeholder` block with 422 "Completa el evento antes de enviar".
+  - Matrix rows for every write endpoint; `docs/permissions-matrix.md` regenerated.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_templates.py app/tests/test_mail_preview.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-101`; then list, then save, then rename/delete, then the preview theme.
+
+## UPS-102 · Web: composer shell in three steps (Plantilla → Contenido → Destinatarios y envío), one reducer, local draft
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 300 min
+- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Flow, §Non-functional, `plan.md` §Design. victor: "No me gusta nada como son, no se ve bien la UX/UI". Skills: product-ui, frontend-design, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-099
+- **Uses contract:** UPS-100
+- **Related:** UPS-103, UPS-104
+- **Paths:** web/src/features/mail/Composer.tsx, web/src/features/mail/index.tsx, web/src/features/mail/composerState.ts, web/src/features/mail/ComposerSteps.tsx, web/src/features/mail/TemplateStep.tsx, web/src/features/mail/ContentStep.tsx, web/src/features/mail/SendStep.tsx, web/src/features/mail/BlockEditor.tsx, e2e/test_mail_composer.py, e2e/test_mail.py, e2e/test_mail_club.py, e2e/test_mail_rich.py, e2e/test_mail_paste.py
+- **Freeze-Allowed:** no
+- **Tests:** test_three_steps_with_back_and_next_keep_state, test_step_in_url_keeps_the_admin_tab, test_local_draft_restore_and_discard, test_draft_cleared_on_send_and_logout, test_send_step_has_audience_sender_reply_to_and_quota, test_composer_steps_at_390_wide
+- **Acceptance:**
+  - One composer reducer (`composerState.ts`) for subject, preheader, blocks, sender, reply_to, audience; the three steps as separate components; a clear stepper header; "Atrás"/"Siguiente"; the step in the URL (`?paso=plantilla|contenido|envio`), **merged** into the existing search params (the superadmin panel uses `?tab=`; setting `paso` must never drop `tab`). The superadmin tab and the club panel use the same composer.
+  - Step 1 (`TemplateStep.tsx`) shows "En blanco" for now (UPS-104 fills the gallery); step 2 (`ContentStep.tsx`) wraps today's `BlockEditor` for now (UPS-103 replaces it with the canvas); step 3 (`SendStep.tsx`) holds audience, "Enviado por", Reply-To, quota and "Revisar y enviar".
+  - Local draft keyed by user id in localStorage (try/catch), restore prompt, cleared on send and discard; a draft whose user id differs from the signed-in user is deleted on mount (covers logout and shared computers without touching `web/src/lib/auth.tsx`).
+  - **Design gate:** besides the working shell, include a **static mock of the step-2 canvas** (how editing on the email will look: selected block, toolbar, "+" inserter, properties panel and bottom sheet) and post screenshots of the stepper, the three steps and that mock (1280 and 390) in the PR description and `.uak-shots/UPS-102/`; design-critic SHIP. **victor's OK on these screenshots is what starts UPS-103.**
+  - Existing mail e2e tests change where the flow changed (they reach the content and send fields through the steps). A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-102 --tests --reason 'victor: composer redesign in three steps (spec 005)'`.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_composer.py e2e/test_mail.py e2e/test_mail_club.py e2e/test_mail_rich.py e2e/test_mail_paste.py'`
+- **Next step:** after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-102`; then the reducer, then the stepper, then the draft.
+
+## UPS-103 · Web: email canvas: edit on the email, "+" inserter, drag to reorder, properties panel
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 420 min
+- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Canvas, §Non-functional, `plan.md` §Design (why a React canvas). Skills: product-ui, frontend-design, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-102, UPS-101
+- **Uses contract:** None
+- **Related:** UPS-104
+- **Paths:** web/src/features/mail/ContentStep.tsx, web/src/features/mail/composerState.ts, web/src/features/mail/BlockEditor.tsx, e2e/test_mail.py, e2e/test_mail_club.py, e2e/test_mail_rich.py, e2e/test_mail_paste.py, web/src/features/mail/EmailCanvas.tsx, web/src/features/mail/CanvasBlock.tsx, web/src/features/mail/BlockInserter.tsx, web/src/features/mail/BlockProperties.tsx, web/src/features/mail/InlineText.tsx, web/src/features/mail/EventBlockEditor.tsx, web/src/features/mail/ImageBlockEditor.tsx, web/src/features/mail/blocks.ts, e2e/test_mail_canvas.py
+- **Freeze-Allowed:** no
+- **Tests:** test_canvas_shows_logo_sender_and_theme_like_the_email, test_click_block_edits_in_place, test_inline_toolbar_bold_italic_link, test_plus_inserter_adds_selected_focused_block, test_drag_and_keyboard_reorder, test_duplicate_and_delete_with_undo, test_button_event_image_open_properties_panel, test_bottom_sheet_at_390_wide, test_ver_como_llega_shows_server_render, test_limits_and_errors_next_to_the_block
+- **Acceptance:**
+  - `EmailCanvas` renders the blocks like the email using the preview `theme` (logo, "Enviado por", colors, fonts, spacing, 600 px max) so the layout matches; clicking selects; headings, paragraphs and list items are edited in place (`InlineText`: auto-growing, toolbar for `**`, `*`, `[texto](url)`; unfocused shows formatted text).
+  - "+" between blocks and at the end opens `BlockInserter` (icon, name, one-line description for the seven kinds); the new block is selected and focused.
+  - Drag handle reorders (reuse `web/src/features/academy-admin/sortable.ts` or native pointer events; no new dependency); Alt+↑/↓ moves the selected block; duplicate; delete with a 5 s "Deshacer".
+  - `BlockProperties` edits button, event and image (reusing `EventBlockEditor`/`ImageBlockEditor`): side panel on desktop, bottom sheet at 390 px.
+  - "Ver como llega" opens the exact server preview (`EmailPreview`, 600/375) as today. Spec 004 limits and validations unchanged, errors in Spanish next to the block.
+  - Keyboard operable, AA, reduced motion; `.uak-shots/UPS-103/` (1280 and 390, with a real template loaded) and a design-critic SHIP; victor sees the screenshots in the PR. Starts only after victor approved the UPS-102 mock.
+  - The existing mail e2e tests drive today's block form and change where the UI changed. A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-103 --tests --reason 'victor: email canvas replaces the block form (spec 005)'`.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_canvas.py e2e/test_mail_composer.py e2e/test_mail.py e2e/test_mail_club.py e2e/test_mail_rich.py e2e/test_mail_paste.py'`
+- **Next step:** after victor's OK on the UPS-102 mock and the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-103`; then the canvas render, then inline text, then the inserter, then drag and properties.
+
+## UPS-104 · Web: template gallery (built-in, saved, blank) and "Guardar como plantilla"
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 240 min
+- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Templates. Skills: product-ui, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-103
+- **Uses contract:** None
+- **Related:** None
+- **Paths:** web/src/features/mail/TemplateStep.tsx, web/src/features/mail/ContentStep.tsx, web/src/features/mail/composerState.ts, web/src/features/mail/TemplateGallery.tsx, web/src/features/mail/TemplateThumbnail.tsx, web/src/features/mail/SaveTemplateDialog.tsx, e2e/test_mail_templates.py
+- **Freeze-Allowed:** no
+- **Tests:** test_gallery_shows_builtins_saved_and_blank_with_thumbnails, test_pick_template_loads_subject_preheader_and_blocks, test_event_placeholder_asks_to_complete_the_event, test_save_as_template_and_find_it_in_the_gallery, test_rename_and_delete_own_template, test_club_admin_sees_site_and_own_club_templates_only, test_gallery_at_390_wide
+- **Acceptance:**
+  - Step 1 gallery: sections "Plantillas de UpiixSol" (built-ins + UpiixSol saved), "Plantillas de mi club" (club admin) and "En blanco"; each card with a live thumbnail (render-only `POST /api/mail/preview` without audience, in a scaled sandboxed iframe, cached), name and description; one click loads it into the canvas (asks before replacing unsaved work).
+  - Event placeholders show "Completa el evento" in the canvas until filled.
+  - "Guardar como plantilla" in step 2: name (≤ 60), description (≤ 140), shows where it is saved (UpiixSol or my club); rename and delete own templates from the gallery (confirm before delete).
+  - Spanish (Mexico), AA, keyboard, 1280 and 390; `.uak-shots/UPS-104/` and a design-critic SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-104`; then the gallery, then load, then save/rename/delete.
