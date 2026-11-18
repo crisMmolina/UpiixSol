@@ -98,7 +98,7 @@ def test_club_admin_picker_lists_only_their_enrollees(site: Site) -> None:
     page.get_by_label("Correo externo").fill("invitado@example.com")
     page.get_by_role("button", name="Agregar correo").click()
     expect(page.get_by_text("Personas 2/50")).to_be_visible()
-    expect(page.get_by_text("Correos externos 1/20")).to_be_visible()
+    expect(page.get_by_text("Correos externos 1")).to_be_visible()
     view(site, "club-mail-individual")
     site.shot("club-mail-individual")
 

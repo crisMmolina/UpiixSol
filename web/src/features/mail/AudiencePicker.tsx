@@ -3,12 +3,13 @@ import { MagnifyingGlass, Plus, X } from "@phosphor-icons/react";
 import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/Button";
-import { SelectField, TextField } from "@/components/Field";
+import { SelectField, TextArea, TextField } from "@/components/Field";
 import { api, errorMessage } from "@/lib/api";
-import type { Audience, Page, Role } from "@/lib/types";
+import type { Audience, MailStatus, Page, Role } from "@/lib/types";
 
 export const MAX_ENTRIES = 50;
-export const MAX_OUTSIDE = 20;
+/** Outside addresses have no per-campaign cap; only the monthly quota limits them (UPS-097). */
+const COLLAPSE_AFTER = 8;
 
 export type AudienceKind = Audience["kind"];
 
@@ -66,14 +67,49 @@ export function toAudience(draft: AudienceDraft): Audience | null {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export interface PasteResult {
+  added: string[];
+  repeated: number;
+  invalid: string[];
+}
+
+/** Addresses in a pasted block: commas, semicolons, spaces, tabs, new lines, `Nombre <correo>` and `mailto:`. */
+export function parsePaste(text: string, existing: readonly string[]): PasteResult {
+  const spaced = text.replace(/(?:"[^"]*"|[^<>,;\n]*)<([^<>]*)>/g, (_m, address: string) => `\n${address}\n`);
+  const seen = new Set(existing);
+  const result: PasteResult = { added: [], repeated: 0, invalid: [] };
+  for (const raw of spaced.split(/[\s,;]+/)) {
+    const token = raw.replace(/^mailto:/i, "").replace(/^["'([]+|["')\].]+$/g, "");
+    if (!token) continue;
+    const address = token.toLowerCase();
+    if (!EMAIL.test(address)) result.invalid.push(raw);
+    else if (seen.has(address)) result.repeated += 1;
+    else {
+      seen.add(address);
+      result.added.push(address);
+    }
+  }
+  return result;
+}
+
 function PersonSearch({ draft, onChange }: { draft: AudienceDraft; onChange: (next: AudienceDraft) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Person[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
-  const total = draft.people.length + draft.emails.length;
-  const full = total >= MAX_ENTRIES;
+  const [pasted, setPasted] = useState("");
+  const [report, setReport] = useState<PasteResult | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const full = draft.people.length >= MAX_ENTRIES;
+  const collapsed = draft.emails.length > COLLAPSE_AFTER && !showAll;
+
+  useEffect(() => {
+    api<MailStatus>("/mail/status")
+      .then((status) => setRemaining(status.remaining))
+      .catch(() => setRemaining(null));
+  }, []);
 
   useEffect(() => {
     const q = query.trim();
@@ -106,11 +142,16 @@ function PersonSearch({ draft, onChange }: { draft: AudienceDraft; onChange: (ne
     const value = email.trim().toLowerCase();
     if (!EMAIL.test(value)) return setEmailError("Escribe un correo válido.");
     if (draft.emails.includes(value)) return setEmailError("Ese correo ya está en la lista.");
-    if (draft.emails.length >= MAX_OUTSIDE) return setEmailError(`Máximo ${MAX_OUTSIDE} correos externos.`);
-    if (full) return setEmailError(`Máximo ${MAX_ENTRIES} destinatarios en total.`);
     onChange({ ...draft, emails: [...draft.emails, value] });
     setEmail("");
     setEmailError(undefined);
+  }
+
+  function addPasted() {
+    const result = parsePaste(pasted, draft.emails);
+    if (result.added.length > 0) onChange({ ...draft, emails: [...draft.emails, ...result.added] });
+    setReport(result);
+    setPasted(result.invalid.join("\n"));
   }
 
   return (
@@ -178,15 +219,61 @@ function PersonSearch({ draft, onChange }: { draft: AudienceDraft; onChange: (ne
         </Button>
       </form>
 
-      <p className="text-sm text-muted">
-        <span>{`Personas ${total}/${MAX_ENTRIES}`}</span> · <span>{`Correos externos ${draft.emails.length}/${MAX_OUTSIDE}`}</span>
-      </p>
+      <div className="grid gap-2">
+        <TextArea
+          label="Pegar varios correos"
+          value={pasted}
+          autoComplete="off"
+          spellCheck={false}
+          rows={4}
+          onChange={(e) => setPasted(e.target.value)}
+          hint="Pega una lista de Gmail, Outlook o una hoja de cálculo: separados por comas, espacios o renglones. También sirve «Nombre <correo@x.com>»."
+        />
+        <div>
+          <Button type="button" variant="secondary" icon={<Plus weight="bold" />} disabled={!pasted.trim()} onClick={addPasted}>
+            Agregar todos
+          </Button>
+        </div>
+        {report && (
+          <p role="status" className="text-sm font-semibold">
+            {`Se agregaron ${report.added.length} · ${report.repeated} repetidos · ${report.invalid.length} inválidos`}
+          </p>
+        )}
+        {report && report.invalid.length > 0 && (
+          <p className="break-words text-sm text-danger">{`Revisa estos y corrígelos en el cuadro: ${report.invalid.join(", ")}`}</p>
+        )}
+      </div>
 
-      {total > 0 && (
-        <ul className="flex flex-wrap gap-2" aria-label="Destinatarios elegidos">
+      <p className="text-sm text-muted">
+        <span>{`Personas ${draft.people.length}/${MAX_ENTRIES}`}</span> · <span>{`Correos externos ${draft.emails.length}`}</span>
+      </p>
+      {remaining !== null && draft.people.length + draft.emails.length > remaining && (
+        <p role="alert" className="text-sm font-semibold text-danger">
+          {`Supera tu cupo de este mes (${remaining.toLocaleString("en-US")} envíos). Quita algunos correos.`}
+        </p>
+      )}
+
+      {draft.people.length > 0 && (
+        <ul className="flex flex-wrap gap-2" aria-label="Personas elegidas">
           {draft.people.map((p) => (
             <Chip key={`u${p.id}`} label={p.full_name} remove={`Quitar a ${p.full_name}`} onRemove={() => onChange({ ...draft, people: draft.people.filter((x) => x.id !== p.id) })} />
           ))}
+        </ul>
+      )}
+
+      {draft.emails.length > COLLAPSE_AFTER && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold">{`${draft.emails.length} correos externos`}</span>
+          <Button type="button" variant="secondary" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
+            {showAll ? "Ocultar" : "Ver todos"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => { onChange({ ...draft, emails: [] }); setShowAll(false); }}>
+            Quitar todos
+          </Button>
+        </div>
+      )}
+      {draft.emails.length > 0 && !collapsed && (
+        <ul className="flex max-h-72 flex-wrap gap-2 overflow-y-auto" aria-label="Correos externos elegidos">
           {draft.emails.map((address) => (
             <Chip key={address} label={address} remove={`Quitar ${address}`} onRemove={() => onChange({ ...draft, emails: draft.emails.filter((x) => x !== address) })} />
           ))}
