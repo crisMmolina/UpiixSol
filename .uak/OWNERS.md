@@ -40,6 +40,8 @@ An owner is not a prerequisite for everyone: consumers work on published contrac
 | app/migrations/versions/0009_mail.py | UPS-072 |
 | app/models/mail.py | UPS-072 |
 | app/services/mailer.py | UPS-072 |
+| app/migrations/versions/0010_mail_blocks.py | UPS-085 |
+| app/services/mail_blocks.py | UPS-085 |
 | app/security.py | UPS-020 |
 | app/pagination.py | UPS-002 |
 | app/sanitize.py | UPS-002 |
