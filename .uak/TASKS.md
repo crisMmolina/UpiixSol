@@ -1880,3 +1880,23 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Existing tests that assert the 20/50 caps change only there (`test_individual_over_50_entries_or_20_emails_is_422`); a human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-097 --tests --reason 'victor: no per-campaign cap on outside addresses, monthly quota only'`. `.uak-shots/UPS-097/` and a design-critic SHIP.
 - **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_audience.py && npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_paste.py'`
 - **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-097`; then the API cap, then the paste parser, then the UI.
+
+## UPS-098 · Email logos: SVG site/club logos fall back to PNG, and WebP logos/covers get the email copy
+
+- **Type:** bug
+- **Priority:** P1
+- **Estimate:** 90 min
+- **Rubric / Spec:** victor 2026-11-18: the composer preview shows "UpiixSol" as text instead of the logo. Cause: the production site logo (`/admin` → Marca del sitio) is an SVG (`GET /api/site` → `logo_url: /media/logo/….svg`), and `mail_render._logo` correctly refuses SVG (email clients do not show it) and falls back to the text wordmark. Also, `app/services/mail_images.email_copy`/`email_logo` (UPS-088: PNG/JPEG copies of WebP logos and covers for Outlook desktop) are never called: `mail_campaigns.py:248-249` passes `club.logo_url` and `site.logo_url` straight to the renderer. Spec 004 §Images.
+- **Depends on:** UPS-091
+- **Uses contract:** None
+- **Related:** UPS-086, UPS-088, UPS-089
+- **Paths:** app/services/mail_campaigns.py, app/services/mail_render.py, app/tests/test_mail_logos.py, app/tests/fixtures/mail_render/
+- **Freeze-Allowed:** no
+- **Tests:** test_svg_site_logo_falls_back_to_bundled_wordmark_png, test_webp_site_logo_uses_email_copy, test_svg_club_logo_falls_back_to_club_name, test_webp_event_cover_uses_email_copy, test_preview_and_send_use_the_same_logo
+- **Acceptance:**
+  - The site logo in emails: `email_logo(site.logo_url)`; when that gives None (SVG, missing), use the bundled brand PNG `/brand/upiixsol/wordmark.png` (`assets/brand/` used as-is, served from `web/public/brand/`), and only if that is missing the text wordmark.
+  - Club logos: `email_logo(club.logo_url)`, else the club name as a wordmark (as today). Event covers: `email_copy(cover_url)`, else no cover.
+  - Preview and send build the theme and sender through the same function (the preview must show exactly what is sent).
+  - Golden fixtures in `app/tests/fixtures/mail_render/` refreshed if their header changes.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_logos.py app/tests/test_mail_render.py app/tests/test_mail_campaigns.py app/tests/test_mail_preview.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-098`; then wire `email_logo`/`email_copy` where theme and sender are built.
