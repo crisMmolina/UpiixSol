@@ -6,7 +6,7 @@
 - Why: SQLite cannot ALTER constraints
 - Failing: none
 - Commands: Verify from TASKS.md; bash .uak/bin/smoke
-- Next: Humano: Shared resource/CI needs a human: app/migrations/versions/0010_mail_blocks.py
+- Next: Integrated in main: 14598ee685631b15a2c24929b9e359e318c41811 (recorded by victor-1)
 
 ## History
 - 1794969567 | CLAIMED | victor-1 | claim; next: stubs for the Tests names and `uak red UPS-085`; then the block models, then the migration, then the transport.
@@ -15,3 +15,4 @@
 - 1794970108 | REVIEW | victor-1 | checkpoint; next: Wait for review of PR 139
 - 1794970544 | REVIEW | victor-2 | review; approve; SHA e3148c007eb895f8bd827b4d15f6f8b4178652ad; reviewer victor-2
 - 1794970919 | REVIEW | victor-1 | merge rechazado; Shared resource/CI needs a human: app/migrations/versions/0010_mail_blocks.py
+- 1794970981 | INTEGRATED | victor-1 | integrate; recorded by victor-1; PR https://github.com/crisMmolina/UpiixSol/pull/139; merged 14598ee685631b15a2c24929b9e359e318c41811; proof ancestry
