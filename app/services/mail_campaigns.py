@@ -16,6 +16,7 @@ batch writes a fresh token's hash right before the call that carries the token i
 
 import logging
 import unicodedata
+from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Annotated, Any
 
@@ -44,7 +45,8 @@ from app.services.mail_audience import (
     resolve_audience,
 )
 from app.services.mail_blocks import Blocks, EventBlock, ReplyTo
-from app.services.mail_render import CampaignLike, EventCard, Sender, render_blocks, theme_for
+from app.services.mail_images import email_copy, email_logo
+from app.services.mail_render import CampaignLike, EventCard, Sender, Theme, render_blocks, theme_for
 from app.services.mailer import (
     MAX_BATCH,
     BatchResult,
@@ -208,6 +210,16 @@ def _ics_url(token: str) -> str:
     return f"{get_settings().public_base_url.rstrip('/')}/api/mail/ics/{token}.ics"
 
 
+def email_identity(db: Session, club: Academy | None) -> tuple[Sender, Theme]:
+    """Sender and theme for every render (preview, draft check, send): logos get an email-safe PNG/JPEG
+    copy (UPS-088); an SVG or missing logo becomes the text wordmark, never the bundled one (UPS-098)."""
+    colors = (club.color_primary, club.color_secondary, club.color_accent) if club else None
+    site = get_site(db)
+    theme = replace(theme_for(site, colors), site_logo_url=email_logo(site.logo_url))
+    sender = Sender(club.name, email_logo(club.logo_url)) if club else Sender()
+    return sender, theme
+
+
 def _render_email(
     db: Session,
     user: User | None,
@@ -238,15 +250,15 @@ def _render_email(
             place=calendar.place,
             description=calendar.description,
             link=calendar.link,
-            cover_url=row.cover_url if row else None,
+            cover_url=email_copy(row.cover_url) if row else None,
             google_url=mail_ics.google_url(calendar),
             outlook_url=mail_ics.outlook_url(calendar),
         )
-    colors = (club.color_primary, club.color_secondary, club.color_accent) if club else None
+    sender, theme = email_identity(db, club)
     html, text = render_blocks(
         CampaignLike(subject, blocks, preheader, reply_to, footer_reason),
-        sender=Sender(club.name, club.logo_url) if club else Sender(),
-        theme=theme_for(get_site(db), colors),
+        sender=sender,
+        theme=theme,
         recipient_name=VARS["name"],
         unsubscribe_href=VARS["unsubscribe"],
         event=card,
