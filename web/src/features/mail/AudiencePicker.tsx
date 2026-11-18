@@ -236,7 +236,7 @@ function PersonSearch({ draft, onChange }: { draft: AudienceDraft; onChange: (ne
         </div>
         {report && (
           <p role="status" className="text-sm font-semibold">
-            {`Se agregaron ${report.added.length} · ${report.repeated} repetidos · ${report.invalid.length} inválidos`}
+            {`${report.added.length === 1 ? "Se agregó 1" : `Se agregaron ${report.added.length}`} · ${report.repeated === 1 ? "1 repetido" : `${report.repeated} repetidos`} · ${report.invalid.length === 1 ? "1 inválido" : `${report.invalid.length} inválidos`}`}
           </p>
         )}
         {report && report.invalid.length > 0 && (
