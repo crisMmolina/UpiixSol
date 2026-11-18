@@ -1,4 +1,4 @@
-"""Mail campaigns (UPS-075): test send, draft, confirm/resume (sent in the background) and history.
+"""Mail campaigns (UPS-075, UPS-089): preview, draft, confirm/resume (sent in the background) and history.
 
 Senders are superadmins and academy_admins (members 403, anonymous 401). The audience scope, the
 campaign's sender and the club of the history are checked in the service from DB rows.
@@ -15,7 +15,7 @@ from app.pagination import CursorParam, LimitParam
 from app.schemas.common import Page
 from app.security import require_role
 from app.services import mail_campaigns as service
-from app.services.mail_campaigns import CampaignIn, CampaignOut, MailIn, TestSentOut
+from app.services.mail_campaigns import CampaignIn, CampaignOut, PreviewOut
 from app.services.mailer import MailTransport, get_mail_transport
 
 router = APIRouter(prefix="/api/mail", tags=["mail"])
@@ -23,9 +23,9 @@ Sender = Annotated[User, Depends(require_role(Role.superadmin, Role.academy_admi
 Transport = Annotated[MailTransport, Depends(get_mail_transport)]
 
 
-@router.post("/test", status_code=202, response_model=TestSentOut)
-def send_test(mail: MailIn, user: Sender, transport: Transport, db: Session = Depends(get_db)) -> TestSentOut:
-    return service.send_test(db, user, mail, transport)
+@router.post("/preview", response_model=PreviewOut)
+def preview(data: CampaignIn, user: Sender, db: Session = Depends(get_db)) -> PreviewOut:
+    return service.preview(db, user, data)
 
 
 @router.post("/campaigns", status_code=201, response_model=CampaignOut)

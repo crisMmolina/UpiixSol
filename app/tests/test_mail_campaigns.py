@@ -1,4 +1,4 @@
-"""Mail campaigns (UPS-075, spec 003 §Composing and sending, §History): test send, draft → confirm →
+"""Mail campaigns (UPS-075, spec 003 §Composing and sending, §History): draft → confirm →
 background batches, quota, hourly limit, kill switch, history.
 
 A Fake transport replaces Mailgun through `app.dependency_overrides[get_mail_transport]`; the background
@@ -8,16 +8,16 @@ since the seeded accounts are on the blocked `upiixsol.dev` domain.
 
 import logging
 from collections.abc import Iterator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
 from app.main import app
-from app.models import Academy, Role, User
+from app.models import Academy, Event, Role, User
 from app.models.analytics import ActivityEvent
 from app.models.common import utcnow
 from app.models.mail import MailCampaign, MailRecipient
@@ -85,18 +85,6 @@ def _get(client: TestClient, campaign_id: int) -> dict:
     response = client.get(f"{CAMPAIGNS}/{campaign_id}")
     assert response.status_code == 200, response.text
     return response.json()
-
-
-def test_test_send_goes_only_to_the_sender(
-    as_superadmin: TestClient, db: Session, seeded: dict, fake: FakeTransport
-) -> None:
-    response = as_superadmin.post("/api/mail/test", json={"subject": "Prueba", "body": "Hola"})
-    assert response.status_code == 202, response.text
-    me = as_superadmin.get("/api/auth/me").json()
-    assert fake.sent_to == [me["email"]]
-    assert fake.calls[0][0].subject == "Prueba"
-    assert db.scalar(select(func.count()).select_from(MailCampaign)) == 0
-    assert db.scalar(select(func.count()).select_from(MailRecipient)) == 0
 
 
 def test_create_campaign_freezes_recipients_as_draft(
@@ -212,7 +200,6 @@ def test_mail_disabled_answers_503(
     campaign = _create(as_superadmin, _emails(2))
     monkeypatch.setattr(get_settings(), "mail_enabled", False)
     for path, payload in (
-        ("/api/mail/test", {"subject": "Prueba", "body": "Hola"}),
         (f"{CAMPAIGNS}/{campaign['id']}/send", None),
         (f"{CAMPAIGNS}/{campaign['id']}/resume", None),
     ):
@@ -321,13 +308,7 @@ def test_retryable_failures_are_retried_once_and_errors_never_escape(
     mail_campaigns.send_pending(10_000, broken)
 
 
-def test_failed_test_send_is_502_and_unknown_campaign_is_404(
-    as_superadmin: TestClient, db: Session, fake: FakeTransport
-) -> None:
-    fake.fail_calls = {0}
-    response = as_superadmin.post("/api/mail/test", json={"subject": "Prueba", "body": "Hola"})
-    assert response.status_code == 502
-    assert "@" not in response.text
+def test_unknown_campaign_is_404(as_superadmin: TestClient, db: Session, fake: FakeTransport) -> None:
     assert as_superadmin.get(f"{CAMPAIGNS}/999").status_code == 404
     assert as_superadmin.post(f"{CAMPAIGNS}/999/send").status_code == 404
 
@@ -355,3 +336,152 @@ def test_admin_without_club_sees_no_history(db: Session, seeded: dict) -> None:
     db.add(MailCampaign(audience_kind="all", audience_params={}, subject="x", body="y"))
     lonely = make_user(db, email="sin.club@ipn.mx", role=Role.academy_admin)
     assert mail_campaigns.list_campaigns(db, lonely, None, 20).items == []
+
+
+# ── Spec 004 (UPS-089): blocks, sender, Reply-To, .ics ──────
+
+PARAGRAPH = {"kind": "paragraph", "text": "Hola a **todos**"}
+EVENT = {
+    "kind": "event",
+    "title": "Taller de IA",
+    "start": "2026-12-01T20:00:00Z",
+    "end": "2026-12-01T22:00:00Z",
+    "place": "Aula 3",
+}
+
+
+def _create_blocks(client: TestClient, blocks: list[dict], **extra: object) -> "object":
+    payload = {
+        "subject": "Aviso",
+        "blocks": blocks,
+        "audience": {"kind": "individual", "emails": _emails(2)},
+    } | extra
+    return client.post(CAMPAIGNS, json=payload)
+
+
+def test_create_campaign_with_blocks_preheader_and_reply_to(
+    as_superadmin: TestClient, db: Session, fake: FakeTransport
+) -> None:
+    response = _create_blocks(as_superadmin, [PARAGRAPH], preheader="Mira esto", reply_to="Club@Ipn.mx")
+    assert response.status_code == 201, response.text
+    row = db.get(MailCampaign, response.json()["id"])
+    assert row.content == [{"kind": "paragraph", "text": "Hola a **todos**"}]
+    assert (row.preheader, row.reply_to, row.ics_token) == ("Mira esto", "club@ipn.mx", None)
+    bad = _create_blocks(as_superadmin, [PARAGRAPH], reply_to="a@b.mx\r\nBcc: x@y.mx")
+    assert bad.status_code == 422
+    assert _create_blocks(as_superadmin, []).status_code == 422
+    both = _create_blocks(as_superadmin, [PARAGRAPH], body="Hola")
+    assert both.status_code == 422  # one format per campaign
+    with_event = _create_blocks(as_superadmin, [PARAGRAPH, EVENT])
+    assert len(db.get(MailCampaign, with_event.json()["id"]).ics_token) == 43
+
+
+def test_superadmin_picks_sender_club_or_board(
+    as_superadmin: TestClient, db: Session, seeded: dict, fake: FakeTransport
+) -> None:
+    ia = seeded["academy_id"]
+    robotica = Academy(slug="robotica", name="Robótica")
+    closed = Academy(slug="cerrado", name="Cerrado", is_active=False)
+    db.add_all([robotica, closed])
+    db.flush()
+    make_user(db, email="ana@ipn.mx", academy_id=ia, role=Role.academy_admin)
+
+    def sender_of(response) -> int | None:  # noqa: ANN001
+        assert response.status_code == 201, response.text
+        return db.get(MailCampaign, response.json()["id"]).sender_academy_id
+
+    club = _create_blocks(as_superadmin, [PARAGRAPH], audience={"kind": "academy", "academy_id": ia})
+    assert sender_of(club) == ia  # defaults to the audience's club
+    assert sender_of(_create_blocks(as_superadmin, [PARAGRAPH])) is None  # UpiixSol
+    picked = _create_blocks(
+        as_superadmin,
+        [PARAGRAPH],
+        audience={"kind": "academy", "academy_id": ia},
+        sender_academy_id=robotica.id,
+    )
+    assert sender_of(picked) == robotica.id
+    assert _create_blocks(as_superadmin, [PARAGRAPH], sender_academy_id=closed.id).status_code == 422
+    assert _create_blocks(as_superadmin, [PARAGRAPH], sender_academy_id=9999).status_code == 422
+    out = as_superadmin.get(f"{CAMPAIGNS}/{club.json()['id']}").json()
+    assert out["sender_academy_id"] == ia and out["sender_name"] == "UpiixIA"
+    board = as_superadmin.get(f"{CAMPAIGNS}/{_create_blocks(as_superadmin, [PARAGRAPH]).json()['id']}").json()
+    assert board["sender_academy_id"] is None and board["sender_name"] == "UpiixSol"
+
+
+def test_academy_admin_sender_is_always_own_club(
+    as_admin_ia: TestClient, db: Session, seeded: dict, fake: FakeTransport
+) -> None:
+    other = Academy(slug="robotica", name="Robótica")
+    db.add(other)
+    db.flush()
+    response = _create_blocks(as_admin_ia, [PARAGRAPH], sender_academy_id=other.id)
+    assert response.status_code == 201, response.text
+    assert db.get(MailCampaign, response.json()["id"]).sender_academy_id == seeded["academy_id"]
+
+
+def test_send_uses_sender_in_from_name_and_header(
+    as_superadmin: TestClient, db: Session, seeded: dict, fake: FakeTransport
+) -> None:
+    campaign = _create_blocks(as_superadmin, [PARAGRAPH], sender_academy_id=seeded["academy_id"]).json()
+    _send(as_superadmin, campaign["id"])
+    message = fake.calls[0][0]
+    assert message.from_name == "UpiixIA · UpiixSol"
+    assert "UpiixIA" in message.html
+    board = _create_blocks(as_superadmin, [PARAGRAPH]).json()
+    _send(as_superadmin, board["id"])
+    assert fake.calls[-1][0].from_name is None  # the board: the plain From
+
+
+def test_send_attaches_evento_ics_and_sets_reply_to(
+    as_superadmin: TestClient, db: Session, fake: FakeTransport
+) -> None:
+    campaign = _create_blocks(as_superadmin, [PARAGRAPH, EVENT], reply_to="club@ipn.mx").json()
+    _send(as_superadmin, campaign["id"])
+    message = fake.calls[0][0]
+    ((name, kind, data),) = message.attachments
+    assert (name, kind) == ("evento.ics", "text/calendar; charset=utf-8; method=PUBLISH")
+    assert b"SUMMARY:Taller de IA" in data
+    assert message.reply_to == "club@ipn.mx"
+    token = db.get(MailCampaign, campaign["id"]).ics_token
+    assert f"/api/mail/ics/{token}.ics" in message.html
+    plain = _create_blocks(as_superadmin, [PARAGRAPH]).json()
+    _send(as_superadmin, plain["id"])
+    assert fake.calls[-1][0].attachments == []
+    assert fake.calls[-1][0].reply_to is None
+
+
+def test_event_resolved_at_send_time(as_superadmin: TestClient, db: Session, fake: FakeTransport) -> None:
+    event = Event(
+        title="Título viejo",
+        starts_at=datetime(2026, 12, 2, 20, tzinfo=UTC),
+        ends_at=datetime(2026, 12, 2, 22, tzinfo=UTC),
+    )
+    db.add(event)
+    db.flush()
+    block = {"kind": "event", "event_id": event.id}
+    campaign = _create_blocks(as_superadmin, [block]).json()
+    event.title = "Título nuevo"
+    db.commit()
+    _send(as_superadmin, campaign["id"])
+    message = fake.calls[0][0]
+    assert "Título nuevo" in message.html and "Título viejo" not in message.html
+    assert b"SUMMARY:T\xc3\xadtulo nuevo" in message.attachments[0][2]
+
+
+def test_legacy_body_campaign_still_sends_and_lists(
+    as_superadmin: TestClient, db: Session, fake: FakeTransport
+) -> None:
+    legacy = _create(as_superadmin, _emails(2))
+    blocks = _create_blocks(as_superadmin, [PARAGRAPH]).json()
+    _send(as_superadmin, legacy["id"])
+    _send(as_superadmin, blocks["id"])
+    assert "Hola a todos" in fake.calls[0][0].html
+    assert fake.calls[0][0].attachments == [] and fake.calls[0][0].from_name is None
+    listed = as_superadmin.get(CAMPAIGNS).json()["items"]
+    assert {item["id"] for item in listed} == {legacy["id"], blocks["id"]}
+
+
+def test_test_send_endpoint_is_gone(as_superadmin: TestClient, fake: FakeTransport) -> None:
+    response = as_superadmin.post("/api/mail/test", json={"subject": "Prueba", "body": "Hola"})
+    assert response.status_code in (404, 405)
+    assert fake.calls == []

@@ -269,13 +269,6 @@ MATRIX: list[Rule] = [
     # ── Email campaigns (UPS-075): payload and sender 403s in test_mail_campaigns.py ──
     Rule(
         "POST",
-        "/api/mail/test",
-        SENDERS,
-        _json(lambda _w: {"subject": "Prueba", "body": "Hola"}),
-        note="only to the caller's own address",
-    ),
-    Rule(
-        "POST",
         "/api/mail/campaigns",
         OWN,
         _json(
@@ -286,6 +279,19 @@ MATRIX: list[Rule] = [
             }
         ),
         note="draft; same audience scope as the preview",
+    ),
+    Rule(
+        "POST",
+        "/api/mail/preview",
+        OWN,
+        _json(
+            lambda w: {
+                "subject": "Aviso",
+                "blocks": [{"kind": "paragraph", "text": "Hola"}],
+                "audience": {"kind": "academy", "academy_id": w.academy_id},
+            }
+        ),
+        note="UPS-089: {html, text} of the email; same audience scope as create",
     ),
     Rule(
         "POST",

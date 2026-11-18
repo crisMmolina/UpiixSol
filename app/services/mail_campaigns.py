@@ -1,6 +1,6 @@
 """Mail campaigns (UPS-075, spec 003 §Composing and sending, §History; plan §Design, §Contracts).
 
-    send_test(db, sender, mail, transport)                # only to the sender; no campaign, no quota
+    preview(db, sender, data) -> PreviewOut               # {html, text}: the very render that send uses
     create_campaign(db, sender, data)                     # draft + frozen recipients (pending)
     confirm(db, sender, campaign_id) -> (campaign, start) # draft → sending once (conditional UPDATE)
     resume(db, sender, campaign_id) -> (campaign, start)  # a stuck `sending`: only its pending rows
@@ -19,29 +19,32 @@ import unicodedata
 from datetime import datetime, timedelta
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import SessionLocal
 from app.errors import AppError
-from app.models import Academy, Role, User
+from app.models import Academy, Event, Role, User
 from app.models.analytics import ActivityEvent
 from app.models.common import utcnow
 from app.models.mail import MailCampaign, MailRecipient
 from app.pagination import paginate
 from app.schemas.common import InModel, Page
 from app.schemas.users import PublicUser
-from app.services import mail_template
+from app.services import mail_ics, mail_template
 from app.services.mail_audience import (
     AcademyAudience,
     Audience,
     IndividualAudience,
     RoleAudience,
+    check_scope,
     mail_status,
     resolve_audience,
 )
+from app.services.mail_blocks import Blocks, EventBlock, ReplyTo
+from app.services.mail_render import CampaignLike, EventCard, Sender, render_blocks, theme_for
 from app.services.mailer import (
     MAX_BATCH,
     BatchResult,
@@ -65,25 +68,35 @@ session_factory = SessionLocal
 # ── Contracts ───────────────────────────────────────────────
 
 
-class MailIn(InModel):
-    subject: Annotated[str, Field(min_length=1, max_length=150)]
-    body: Annotated[str, Field(min_length=1, max_length=20_000)]
+class CampaignIn(InModel):
+    """Blocks (spec 004) or a legacy `body`, never both. Only a superadmin's sender counts."""
 
-    @field_validator("subject")
+    subject: Annotated[str, Field(min_length=1, max_length=150)]
+    audience: Audience
+    body: Annotated[str | None, Field(min_length=1, max_length=20_000)] = None
+    blocks: Blocks | None = None
+    preheader: Annotated[str | None, Field(min_length=1, max_length=140)] = None
+    reply_to: ReplyTo | None = None
+    sender_academy_id: int | None = None
+
+    @field_validator("subject", "preheader")
     @classmethod
     def _one_line(cls, value: str) -> str:
         # CR/LF (and other line or control characters) could inject headers: one line only.
         if any(unicodedata.category(char) in ("Cc", "Zl", "Zp") for char in value):
-            raise ValueError("El asunto debe ser una sola línea.")
+            raise ValueError("Debe ser una sola línea.")
         return value
 
+    @model_validator(mode="after")
+    def _one_format(self) -> "CampaignIn":
+        if (self.body is None) == (self.blocks is None):
+            raise ValueError("Envía bloques o un cuerpo, no ambos.")
+        return self
 
-class CampaignIn(MailIn):
-    audience: Audience
 
-
-class TestSentOut(BaseModel):
-    sent: bool
+class PreviewOut(BaseModel):
+    html: str
+    text: str
 
 
 class CampaignOut(BaseModel):
@@ -91,6 +104,11 @@ class CampaignOut(BaseModel):
     subject: str
     audience: dict[str, Any]
     sender: PublicUser | None
+    sender_academy_id: int | None = None
+    sender_name: str  # the club's name, or UpiixSol when it goes out as the board
+    preheader: str | None = None
+    reply_to: str | None = None
+    format: str  # "blocks" or "legacy"
     status: str
     recipient_count: int
     counts_by_status: dict[str, int]
@@ -177,19 +195,120 @@ def _unsubscribe_url(token: str) -> str:
     return f"{get_settings().public_base_url.rstrip('/')}/api/mail/unsubscribe?t={token}"
 
 
-def send_test(db: Session, sender: User, mail: MailIn, transport: MailTransport) -> TestSentOut:
-    """The rendered email, only to the sender's own address; not a campaign and not counted."""
-    ensure_enabled()
-    site = get_site(db)
-    reason = "Recibes esta prueba porque la pediste tú."
-    html, text = mail_template.render(mail.subject, mail.body, reason, site=site)
-    token, _hash = new_unsubscribe_token()  # never stored: an unknown token unsubscribes nobody
-    recipient = MailRecipientVars(0, sender.email, sender.full_name, _unsubscribe_url(token))
-    result = transport.send_batch(MailMessage(mail.subject, html, text), [recipient])
-    logger.info("mail.campaign test sender_id=%s accepted=%d", sender.id, len(result.accepted))
-    if not result.accepted:
-        raise AppError(502, "No se pudo enviar la prueba. Intenta de nuevo más tarde.", code="mail_failed")
-    return TestSentOut(sent=True)
+SAMPLE_NAME = "Ana Ejemplo"
+VARS = {"name": "%recipient.name%", "unsubscribe": "%recipient.unsubscribe_url%"}
+ICS_MIME = "text/calendar; charset=utf-8; method=PUBLISH"
+
+
+def _from_name(club: Academy | None) -> str | None:
+    return f"{club.name} · UpiixSol" if club else None
+
+
+def _ics_url(token: str) -> str:
+    return f"{get_settings().public_base_url.rstrip('/')}/api/mail/ics/{token}.ics"
+
+
+def _render_email(
+    db: Session,
+    user: User | None,
+    *,
+    subject: str,
+    content: list[dict[str, Any]],
+    preheader: str | None,
+    reply_to: str | None,
+    club: Academy | None,
+    footer_reason: str,
+    ics_token: str | None,
+) -> tuple[str, str, mail_ics.CalendarEvent | None]:
+    """The one renderer of blocks: preview, the draft check and every send. Per-person parts stay as
+    Mailgun variables. The event is resolved now (from the DB for a campus event), so a send shows its
+    latest title and time."""
+    blocks = Blocks.model_validate(content).root
+    block = next((b for b in blocks if isinstance(b, EventBlock)), None)
+    calendar, card = None, None
+    if block is not None:
+        if user is None:
+            raise AppError(422, "La campaña no tiene remitente para resolver el evento.")
+        calendar = mail_ics.resolve_event(db, user, block)  # 404 / 403 from the DB row
+        row = db.get(Event, block.event_id) if block.event_id else None
+        card = EventCard(
+            title=calendar.title,
+            start=calendar.start,
+            end=calendar.end,
+            place=calendar.place,
+            description=calendar.description,
+            link=calendar.link,
+            cover_url=row.cover_url if row else None,
+            google_url=mail_ics.google_url(calendar),
+            outlook_url=mail_ics.outlook_url(calendar),
+        )
+    colors = (club.color_primary, club.color_secondary, club.color_accent) if club else None
+    html, text = render_blocks(
+        CampaignLike(subject, blocks, preheader, reply_to, footer_reason),
+        sender=Sender(club.name, club.logo_url) if club else Sender(),
+        theme=theme_for(get_site(db), colors),
+        recipient_name=VARS["name"],
+        unsubscribe_href=VARS["unsubscribe"],
+        event=card,
+        ics_url=_ics_url(ics_token or "vista-previa") if calendar else None,
+    )
+    return html, text, calendar
+
+
+def _sender_club(db: Session, user: User, data: CampaignIn) -> Academy | None:
+    """academy_admin: their own club from the DB row. Superadmin: the one picked, else the audience's club,
+    else the board (None); only an active club."""
+    if user.role != Role.superadmin:
+        return db.get(Academy, user.academy_id) if user.academy_id else None
+    club_id = data.sender_academy_id
+    if club_id is None and isinstance(data.audience, AcademyAudience):
+        club_id = data.audience.academy_id
+    if club_id is None:
+        return None
+    club = db.get(Academy, club_id)
+    if club is None or not club.is_active:
+        raise AppError(422, "Elige un club activo como remitente.", code="invalid_sender")
+    return club
+
+
+def preview(db: Session, user: User, data: CampaignIn) -> PreviewOut:
+    """Same scope checks and validation as create; renders with a sample name and a dummy unsubscribe link."""
+    check_scope(db, user, data.audience)
+    club = _sender_club(db, user, data)
+    reason = _audience_reason(db, data.audience, get_site(db).name, user)
+    if data.blocks is None:
+        html, text = mail_template.render(data.subject, data.body or "", reason, site=get_site(db))
+    else:
+        html, text, _ = _render_email(
+            db,
+            user,
+            subject=data.subject,
+            content=_dump(data.blocks),
+            preheader=data.preheader,
+            reply_to=data.reply_to,
+            club=club,
+            footer_reason=reason,
+            ics_token=None,
+        )
+    dummy = _unsubscribe_url("vista-previa")
+    return PreviewOut(
+        html=html.replace(VARS["name"], SAMPLE_NAME).replace(VARS["unsubscribe"], dummy),
+        text=text.replace(VARS["name"], SAMPLE_NAME).replace(VARS["unsubscribe"], dummy),
+    )
+
+
+def _dump(blocks: Blocks) -> list[dict[str, Any]]:
+    return [block.model_dump(mode="json") for block in blocks.root]
+
+
+def _audience_reason(db: Session, audience: Audience, site_name: str, user: User) -> str:
+    club = db.get(Academy, audience.academy_id) if isinstance(audience, AcademyAudience) else None
+    return mail_template.footer_reason(
+        audience.kind,
+        site_name=site_name,
+        club_name=club.name if club else None,
+        sender_nickname=user.nickname,
+    )
 
 
 def _audience_params(audience: Audience) -> dict[str, Any]:
@@ -211,13 +330,35 @@ def create_campaign(db: Session, sender: User, data: CampaignIn) -> CampaignOut:
         club = data.audience.academy_id if isinstance(data.audience, AcademyAudience) else None
     else:
         club = sender.academy_id  # from the DB row, never the request body
+    from_club = _sender_club(db, sender, data)
+    content = _dump(data.blocks) if data.blocks is not None else None
+    token = None
+    if content is not None:
+        # A dry render: a missing or out-of-scope event, or an email over the size cap, fails now.
+        _html, _text, calendar = _render_email(
+            db,
+            sender,
+            subject=data.subject,
+            content=content,
+            preheader=data.preheader,
+            reply_to=data.reply_to,
+            club=from_club,
+            footer_reason="",
+            ics_token=None,
+        )
+        token = mail_ics.new_ics_token() if calendar else None
     campaign = MailCampaign(
         sender_id=sender.id,
         academy_id=club,
         audience_kind=data.audience.kind,
         audience_params=_audience_params(data.audience),
         subject=data.subject,
-        body=data.body,
+        body=data.body or "",  # blocks live in `content`; the legacy column stays NOT NULL
+        content=content,
+        sender_academy_id=from_club.id if from_club else None,
+        preheader=data.preheader,
+        reply_to=data.reply_to,
+        ics_token=token,
         status="draft",
         recipient_count=len(recipients),
     )
@@ -337,10 +478,37 @@ def _send(db: Session, campaign_id: int, transport: MailTransport) -> None:
     if campaign is None or campaign.status != "sending":
         return
     site = get_site(db)
-    html, text = mail_template.render(
-        campaign.subject, campaign.body, _reason(db, campaign, site.name), site=site
-    )
-    message = MailMessage(campaign.subject, html, text, campaign_id=campaign.id)
+    reason = _reason(db, campaign, site.name)
+    club = db.get(Academy, campaign.sender_academy_id) if campaign.sender_academy_id else None
+    if campaign.content is None:  # legacy campaign: the plain body in the old template
+        html, text = mail_template.render(campaign.subject, campaign.body, reason, site=site)
+        message = MailMessage(campaign.subject, html, text, campaign_id=campaign.id)
+    else:
+        sender = db.get(User, campaign.sender_id) if campaign.sender_id else None
+        html, text, calendar = _render_email(
+            db,
+            sender,
+            subject=campaign.subject,
+            content=campaign.content,
+            preheader=campaign.preheader,
+            reply_to=campaign.reply_to,
+            club=club,
+            footer_reason=reason,
+            ics_token=campaign.ics_token,
+        )
+        attachments = []
+        if calendar and campaign.ics_token:
+            data = mail_ics.build_ics(calendar, mail_ics.ics_uid(campaign.ics_token))
+            attachments.append(("evento.ics", ICS_MIME, data))
+        message = MailMessage(
+            campaign.subject,
+            html,
+            text,
+            campaign_id=campaign.id,
+            attachments=attachments,
+            reply_to=campaign.reply_to,
+            from_name=_from_name(club),
+        )
     number = 0
     while rows := db.scalars(
         select(MailRecipient)
@@ -418,11 +586,17 @@ def _finish(db: Session, campaign: MailCampaign) -> None:
 def campaign_out(db: Session, campaign: MailCampaign) -> CampaignOut:
     sender = db.get(User, campaign.sender_id) if campaign.sender_id else None
     counts = _counts(db, campaign.id) or dict(campaign.counts_snapshot or {})
+    club = db.get(Academy, campaign.sender_academy_id) if campaign.sender_academy_id else None
     return CampaignOut(
         id=campaign.id,
         subject=campaign.subject,
         audience={"kind": campaign.audience_kind, **campaign.audience_params},
         sender=PublicUser.model_validate(sender) if sender else None,
+        sender_academy_id=campaign.sender_academy_id,
+        sender_name=club.name if club else get_site(db).name,
+        preheader=campaign.preheader,
+        reply_to=campaign.reply_to,
+        format="legacy" if campaign.content is None else "blocks",
         status=campaign.status,
         recipient_count=campaign.recipient_count,
         counts_by_status=counts,
