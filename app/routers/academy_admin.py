@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import LearningRoute, Lesson, Module, User
 from app.pagination import CursorParam, LimitParam
-from app.ratelimit import limiter
+from app.ratelimit import POST_LIMIT, limiter
 from app.schemas.academies import AcademyOut, BrandingUpdateIn
 from app.schemas.common import Page, ReorderIn
 from app.schemas.learning import LessonIn, LessonUpdateIn, ModuleIn, RouteIn, RouteUpdateIn
@@ -31,6 +31,10 @@ def update_branding(
     return result
 
 
+def _per_user(request: Request) -> str:
+    return f"user:{getattr(request.state, 'user_id', None)}"
+
+
 async def _upload(
     academy_id: int,
     kind: str,
@@ -47,7 +51,9 @@ async def _upload(
 
 
 @router.post("/academies/{academy_id}/logo", response_model=AcademyOut)
+@limiter.limit(POST_LIMIT, key_func=_per_user)  # each upload decodes and re-encodes an image
 async def upload_logo(
+    request: Request,
     academy_id: int,
     response: Response,
     file: UploadFile = File(...),
@@ -59,7 +65,9 @@ async def upload_logo(
 
 
 @router.post("/academies/{academy_id}/mascot", response_model=AcademyOut)
+@limiter.limit(POST_LIMIT, key_func=_per_user)  # each upload decodes and re-encodes an image
 async def upload_mascot(
+    request: Request,
     academy_id: int,
     response: Response,
     file: UploadFile = File(...),
@@ -218,10 +226,6 @@ def list_enrollments(
     db: Session = Depends(get_db),
 ) -> Page[service.EnrolleeOut]:
     return service.enrollees(db, service.academy_for(db, academy_id, user), cursor, limit)
-
-
-def _per_user(request: Request) -> str:
-    return f"user:{getattr(request.state, 'user_id', None)}"
 
 
 @router.post("/academies/{academy_id}/enrollments", response_model=service.EnrolleeOut, status_code=201)

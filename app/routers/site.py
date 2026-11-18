@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Role, User
+from app.ratelimit import POST_LIMIT, limiter
 from app.security import require_role
 from app.services import site as service
 from app.services.site import SiteIn, SiteOut
@@ -17,6 +18,10 @@ Superadmin = Annotated[User, Depends(require_role(Role.superadmin))]
 # Short, so a change reaches everyone within a minute; the editor's own browser re-fetches with
 # `cache: "reload"` right after saving.
 PUBLIC_CACHE = "public, max-age=60"
+
+
+def _per_user(request: Request) -> str:
+    return f"user:{getattr(request.state, 'user_id', None)}"
 
 
 @router.get("/site", response_model=SiteOut)
@@ -33,7 +38,9 @@ def put_site(data: SiteIn, _user: Superadmin, db: Session = Depends(get_db)) -> 
 
 
 @router.post("/admin/site/logo", response_model=SiteOut)
+@limiter.limit(POST_LIMIT, key_func=_per_user)  # each upload decodes and re-encodes an image
 async def upload_logo(
+    request: Request,
     _user: Superadmin,
     response: Response,
     file: UploadFile = File(...),
@@ -46,7 +53,9 @@ async def upload_logo(
 
 
 @router.post("/admin/site/mascot", response_model=SiteOut)
+@limiter.limit(POST_LIMIT, key_func=_per_user)  # each upload decodes and re-encodes an image
 async def upload_mascot(
+    request: Request,
     _user: Superadmin,
     response: Response,
     file: UploadFile = File(...),

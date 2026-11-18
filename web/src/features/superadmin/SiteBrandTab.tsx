@@ -444,14 +444,15 @@ export function hasTransparentPixels(url: string): Promise<boolean | null> {
  * already had transparency (stored as is) or the stored result still has none (no white border).
  */
 export async function whiteBackgroundNotice(sent: File, stored: string | null, removeWhite: boolean): Promise<string> {
-  if (!removeWhite || !stored || stored.endsWith(".svg") || sent.type === "image/svg+xml") return "";
+  const own = processablePath(stored);
+  if (!removeWhite || !own || sent.type === "image/svg+xml") return "";
   const local = URL.createObjectURL(sent);
   try {
     if ((await hasTransparentPixels(local)) === true) return ` ${NO_WHITE_BACKGROUND}`;
   } finally {
     URL.revokeObjectURL(local);
   }
-  return (await hasTransparentPixels(stored)) === false ? ` ${NO_WHITE_BACKGROUND}` : "";
+  return (await hasTransparentPixels(own)) === false ? ` ${NO_WHITE_BACKGROUND}` : "";
 }
 
 /** The current image only when it is one of our own uploads that can be processed (same origin, raster). */

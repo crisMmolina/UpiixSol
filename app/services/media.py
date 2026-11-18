@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import delete
@@ -393,6 +394,9 @@ async def store_upload(file: UploadFile, kind: Kind, *, transparent_background: 
     data = await file.read(rule.max_bytes + 1)  # never read more than the limit
     if len(data) > rule.max_bytes:
         raise _too_large(rule)
+    if transparent_background and kind in ("logo", "mascot"):
+        # The flood fill is pure Python (~0.3 s at 1024 px): keep it off the event loop.
+        return await run_in_threadpool(store_image, data, kind, transparent_background=True)
     return store_image(data, kind, transparent_background=transparent_background)
 
 
