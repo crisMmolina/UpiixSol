@@ -38,7 +38,8 @@ FILLED = {
     "MAILGUN_TEST_MODE": "true",
     "MAIL_FROM": "Dev <dev@example.com>",
     "MAIL_REPLY_TO": "reply@example.com",
-    "MAIL_DAILY_LIMIT": "7",
+    "MAIL_MONTHLY_LIMIT": "7",
+    "MAIL_PERIOD_START_DAY": "9",
     "MAIL_BLOCKED_DOMAINS": "example.com",
     "PUBLIC_BASE_URL": "https://dev.example.com",
 }
@@ -51,11 +52,11 @@ def _example_keys() -> list[str]:
 
 def test_settings_ignore_dotenv_under_pytest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / DOTENV).write_text(
-        "SEED_DEFAULT_PASSWORD=Developer-Seed-Pass-42\nMAIL_DAILY_LIMIT=7\nMEDIA_STORAGE=database\n",
+        "SEED_DEFAULT_PASSWORD=Developer-Seed-Pass-42\nMAIL_MONTHLY_LIMIT=7\nMEDIA_STORAGE=database\n",
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
-    for key in ("SEED_DEFAULT_PASSWORD", "MAIL_DAILY_LIMIT", "MEDIA_STORAGE"):
+    for key in ("SEED_DEFAULT_PASSWORD", "MAIL_MONTHLY_LIMIT", "MEDIA_STORAGE"):
         monkeypatch.delenv(key, raising=False)
 
     assert Settings().seed_default_password == DOCUMENTED_SEED_PASSWORD
@@ -73,8 +74,8 @@ def test_settings_ignore_dotenv_under_pytest(tmp_path: Path, monkeypatch: pytest
     assert "remote.invalid" not in Settings().database_url
 
     # Explicit environment variables (and monkeypatch) still win, as before.
-    monkeypatch.setenv("MAIL_DAILY_LIMIT", "3")
-    assert Settings().mail_daily_limit == 3
+    monkeypatch.setenv("MAIL_MONTHLY_LIMIT", "3")
+    assert Settings().mail_monthly_limit == 3
 
 
 def test_suite_settings_match_defaults_with_a_full_dotenv_present(

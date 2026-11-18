@@ -182,15 +182,16 @@ def test_resume_sends_only_pending(as_superadmin: TestClient, db: Session, fake:
     assert _get(as_superadmin, campaign_id)["status"] == "sent"
 
 
-def test_quota_exceeded_is_422_before_sending(
+def test_monthly_quota_exceeded_is_422_before_sending(
     as_superadmin: TestClient, db: Session, fake: FakeTransport, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(get_settings(), "mail_daily_limit", 2)
+    monkeypatch.setattr(get_settings(), "mail_monthly_limit", 2)
     campaign = _create(as_superadmin, _emails(3))
     response = as_superadmin.post(f"{CAMPAIGNS}/{campaign['id']}/send")
     assert response.status_code == 422, response.text
     assert response.json()["error"]["details"] == {"remaining": 2}
-    assert "2" in response.json()["error"]["message"]
+    message = response.json()["error"]["message"]
+    assert "2" in message and "se renueva el" in message
     assert fake.calls == []
     assert _get(as_superadmin, campaign["id"])["status"] == "draft"
 

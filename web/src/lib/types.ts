@@ -451,9 +451,11 @@ export interface Campaign {
 /** GET /api/mail/status */
 export interface MailStatus {
   enabled: boolean;
-  daily_limit: number;
-  sent_today: number;
+  monthly_limit: number;
+  sent_this_period: number;
   remaining: number;
+  period_start: DateTime;
+  period_end: DateTime;
 }
 
 /** GET/PUT /api/mail/preferences */

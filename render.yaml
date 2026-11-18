@@ -48,5 +48,9 @@ services:
         sync: false
       - key: MAIL_FROM
         value: UpiixSol <avisos@mg.upiixsol.com>
+      - key: MAIL_MONTHLY_LIMIT # Mailgun Free: 3000 a month
+        value: "3000"
+      - key: MAIL_PERIOD_START_DAY # day the billing period starts (Mailgun > Billing), 1-28 UTC
+        value: "1"
       - key: PUBLIC_BASE_URL
         value: https://www.upiixsol.com

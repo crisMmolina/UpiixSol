@@ -24,7 +24,7 @@ Composing and sending
 - When a sender asks for a test send, the system shall send the rendered email only to the sender's own address and shall not count it as a campaign.
 - When a sender creates a campaign, the system shall store it as `draft` with its frozen recipient list and count; when the sender confirms that draft by id, the system shall move it to `sending` exactly once (a repeated confirm returns the same campaign and sends nothing new), and only then call Mailgun then send in batches of at most 1 000 recipients per Mailgun call, so that each recipient sees only their own address (never the full list in To, Cc or Bcc).
 - If Mailgun rejects a batch or does not answer within 10 s, the system shall mark those recipients `failed`, mark the campaign `partial` or `failed`, and show the error in Spanish without the API key or any address in the message.
-- If a send would exceed the remaining daily quota (`MAIL_DAILY_LIMIT` minus what was sent today, counted in the DB), the system shall respond 422 with the remaining number before sending anything.
+- If a send would exceed the remaining quota of the Mailgun billing period (`MAIL_MONTHLY_LIMIT` minus what was sent since the period started on `MAIL_PERIOD_START_DAY`, counted in the DB), the system shall respond 422 with the remaining number before sending anything.
 - If a user starts more than 5 campaigns in one hour, the system shall respond 429.
 - While `MAIL_ENABLED` is false, the system shall answer 503 "El correo está desactivado" on send endpoints and send nothing; in dev and test the default backend writes the email to the log (subject and count only, no addresses) instead of calling Mailgun.
 
@@ -58,4 +58,4 @@ History and delivery status
 - [x] Club admins may also pick the co-admins of their own club in `individual` · victor 2026-11-17
 - [x] For a club admin, the preview count of typed outside addresses may be slightly higher than the final list (suppressed outside addresses are not revealed, so the preview is no oracle) · accepted by victor 2026-11-17
 - [ ] Reply-To address (draft: none, so replies go to `avisos@mg.upiixsol.com` and are dropped; or a real inbox of the board) · victor
-- [ ] Mailgun plan and region (US `api.mailgun.net` or EU `api.eu.mailgun.net`); its daily limit sets `MAIL_DAILY_LIMIT`. Any paid plan is a spend a human authorizes · victor
+- [ ] Mailgun plan and region (US `api.mailgun.net` or EU `api.eu.mailgun.net`); its monthly limit sets `MAIL_MONTHLY_LIMIT` and its billing day `MAIL_PERIOD_START_DAY`. Any paid plan is a spend a human authorizes · victor
