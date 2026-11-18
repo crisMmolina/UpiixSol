@@ -194,6 +194,14 @@ class ImageBlock(_Block):
     kind: Literal["image"]
     url: str
     alt: str
+    link: str | None = None  # optional click-through (UPS-091)
+
+    @field_validator("link", mode="before")
+    @classmethod
+    def _check_link(cls, value: Any) -> str | None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return _url(value, "El enlace de la imagen")
 
     @field_validator("url", mode="before")
     @classmethod

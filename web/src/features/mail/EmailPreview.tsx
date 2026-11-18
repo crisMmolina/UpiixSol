@@ -1,6 +1,8 @@
 // Live preview (spec 004 §Preview): the exact HTML the server renders, in a sandboxed iframe, 400 ms after the
-// last change. `sandbox=""` (no scripts, no same-origin) is the security boundary (plan.md §STRIDE).
-import { useEffect, useState } from "react";
+// last change. The iframe is sandboxed WITHOUT `allow-scripts`: nothing in the email can run code. It gets
+// `allow-same-origin` only so the page can read the document's height and fit the frame to it (no inner
+// scroll, the footer is never cut); without scripts that grants the email no capabilities (plan.md §STRIDE).
+import { useEffect, useRef, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
 import type { PreviewOut } from "@/lib/types";
@@ -11,11 +13,36 @@ type Mode = keyof typeof WIDTHS;
 
 const toggle = "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition focus-visible:outline-3";
 
+/** Keeps an iframe as tall as its document, also when images load later or the width changes. */
+function useFitHeight(deps: unknown[]) {
+  const ref = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const [observer, setObserver] = useState<ResizeObserver | null>(null);
+
+  useEffect(() => {
+    const watcher = new ResizeObserver(([entry]) => entry && setHeight(Math.ceil(entry.target.scrollHeight)));
+    setObserver(watcher);
+    return () => watcher.disconnect();
+  }, []);
+
+  function attach() {
+    const doc = ref.current?.contentDocument;
+    if (!doc?.documentElement || !observer) return;
+    observer.disconnect();
+    observer.observe(doc.documentElement);
+    setHeight(Math.ceil(doc.documentElement.scrollHeight));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(attach, [observer, ...deps]);
+  return { ref, height, onLoad: attach };
+}
+
 export function EmailPreview({ payload, emptyHint }: { payload: object | null; emptyHint: string }) {
   const [mode, setMode] = useState<Mode>(() => (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "phone" : "desktop"));
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const key = payload ? JSON.stringify(payload) : null;
+  const fit = useFitHeight([html, mode]);
 
   useEffect(() => {
     if (key === null) {
@@ -61,10 +88,13 @@ export function EmailPreview({ payload, emptyHint }: { payload: object | null; e
       ) : (
         <iframe
           title="Vista previa del correo"
-          sandbox=""
+          ref={fit.ref}
+          onLoad={fit.onLoad}
+          sandbox="allow-same-origin"
           srcDoc={html}
-          style={{ width: WIDTHS[mode] }}
-          className="mx-auto block h-[40rem] max-w-full rounded-2xl border border-line bg-white"
+          scrolling="no"
+          style={{ width: WIDTHS[mode], height: fit.height ?? 640 }}
+          className="mx-auto block max-w-full overflow-hidden rounded-2xl border border-line bg-white"
         />
       )}
     </section>

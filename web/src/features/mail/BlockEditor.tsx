@@ -4,12 +4,16 @@ import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/Button";
 import { TextArea, TextField } from "@/components/Field";
 
+import { EventBlockEditor } from "./EventBlockEditor";
+import { ImageBlockEditor } from "./ImageBlockEditor";
 import { campusUrl, clubUrl, KIND_LABEL, KINDS, MAX_BLOCKS, newDraft, type Draft } from "./blocks";
 
 const iconButton =
   "inline-flex size-11 items-center justify-center rounded-full text-ink transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-3";
 
-function Fields({ draft, onChange, clubSlug }: { draft: Draft; onChange: (next: Draft) => void; clubSlug: string | null }) {
+type FieldsProps = { draft: Draft; onChange: (next: Draft) => void; clubSlug: string | null; eventsAcademy: string | null | undefined; cover: string | null };
+
+function Fields({ draft, onChange, clubSlug, eventsAcademy, cover }: FieldsProps) {
   switch (draft.kind) {
     case "heading":
       return <TextField label="Texto del título" value={draft.text} maxLength={120} onChange={(e) => onChange({ ...draft, text: e.target.value.replace(/[\r\n]+/g, " ") })} />;
@@ -40,6 +44,10 @@ function Fields({ draft, onChange, clubSlug }: { draft: Draft; onChange: (next: 
           <TextField label="Enlace del botón" type="url" inputMode="url" value={draft.url} placeholder="https://" onChange={(e) => onChange({ ...draft, url: e.target.value })} />
         </div>
       );
+    case "event":
+      return <EventBlockEditor draft={draft} onChange={onChange} academy={eventsAcademy} />;
+    case "image":
+      return <ImageBlockEditor draft={draft} onChange={onChange} cover={cover} />;
     case "divider":
       return <p className="text-sm text-muted">Una línea que separa dos partes del correo.</p>;
   }
@@ -49,13 +57,21 @@ export function BlockEditor({
   drafts,
   onChange,
   clubSlug,
+  eventsAcademy,
 }: {
   drafts: Draft[];
   onChange: (next: Draft[]) => void;
   /** Slug of the club the "Ver el club" preset links to; null while none applies. */
   clubSlug: string | null;
+  /** Slug that limits the campus-event picker (a club admin's club); null = every club's events;
+   * undefined = not known yet (the picker waits instead of listing other clubs' events). */
+  eventsAcademy: string | null | undefined;
 }) {
   const full = drafts.length >= MAX_BLOCKS;
+  const hasEvent = drafts.some((d) => d.kind === "event");
+  // "Usar la portada del evento": the cover of the campus event picked in the email's (single) event block.
+  const picked = drafts.find((d) => d.kind === "event");
+  const cover = picked?.kind === "event" && picked.mode === "campus" ? picked.coverUrl : null;
 
   function update(index: number, next: Draft) {
     onChange(drafts.map((d, i) => (i === index ? next : d)));
@@ -91,21 +107,21 @@ export function BlockEditor({
                 </button>
               </div>
             </div>
-            <Fields draft={draft} onChange={(next) => update(index, next)} clubSlug={clubSlug} />
+            <Fields draft={draft} onChange={(next) => update(index, next)} clubSlug={clubSlug} eventsAcademy={eventsAcademy} cover={cover} />
           </li>
         ))}
       </ul>
       <div role="group" aria-label="Agregar bloque" className="flex flex-wrap gap-2">
-        {KINDS.map(({ kind, label, soon }) => (
+        {KINDS.map(({ kind, label }) => (
           <Button
             key={kind}
             type="button"
             size="sm"
             variant="secondary"
             icon={<Plus weight="bold" />}
-            disabled={soon || full}
-            title={soon ? "Próximamente" : undefined}
-            onClick={() => kind !== "event" && kind !== "image" && onChange([...drafts, newDraft(kind)])}
+            disabled={full || (kind === "event" && hasEvent)}
+            title={kind === "event" && hasEvent ? "Un correo lleva un solo evento" : undefined}
+            onClick={() => onChange([...drafts, newDraft(kind)])}
           >
             {`Agregar ${label}`}
           </Button>

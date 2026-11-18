@@ -487,7 +487,7 @@ export type Block =
       description?: string | null;
       link?: string | null;
     }
-  | { kind: "image"; url: string; alt: string }
+  | { kind: "image"; url: string; alt: string; link?: string | null }
   | { kind: "divider" };
 
 export type Blocks = Block[];
