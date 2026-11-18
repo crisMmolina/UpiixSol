@@ -166,6 +166,8 @@ def resolve_audience(db: Session, sender: User, audience: Audience) -> list[Reso
 
 def preview(db: Session, sender: User, audience: Audience) -> PreviewOut:
     check_scope(db, sender, audience)
+    if isinstance(audience, IndividualAudience):
+        _check_outside(db, len({normalize_email(email) for email in audience.emails}))
     recipients, excluded = _compute(db, audience, blind_typed=sender.role != Role.superadmin)
     return PreviewOut(count=len(recipients), excluded=excluded)
 
@@ -201,7 +203,6 @@ def _compute(
     ]
     if isinstance(audience, IndividualAudience):
         typed = list(dict.fromkeys(map(normalize_email, audience.emails)))
-        _check_outside(db, len(typed))
         candidates += [(None, email, email.partition("@")[0], True, True) for email in typed]
     suppressed = _suppressed(
         db, {email for _, email, _, _, typed in candidates if not (blind_typed and typed)}
@@ -227,7 +228,8 @@ def _compute(
 
 
 def _check_outside(db: Session, count: int) -> None:
-    """Typed addresses have no per-campaign cap: only the month's remaining quota (UPS-097)."""
+    """Typed addresses have no per-campaign cap: only the month's remaining quota (UPS-097). Previewed here;
+    sending re-checks the whole campaign (`mail_campaigns._check_quota`)."""
     remaining = mail_status(db).remaining
     if count > remaining:
         raise AppError(
