@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Shared instructions
 
 @../AGENTS.md
@@ -42,6 +46,8 @@ Club platform (IPN · UPIIZ): academies, learning routes with progress, communit
 - Web: `npm --prefix web run lint` (oxlint) · `npm --prefix web run build` (`tsc -b` + vite).
 - E2E (Playwright, outside default `testpaths`): `npm --prefix web run build && uv run pytest e2e` — serves `web/dist` on a fresh seeded SQLite DB, at 1280 and 390 wide; screenshots in `e2e/artifacts/`.
 - Everything: `bash .uak/bin/smoke`.
+- Seed (idempotent): `uv run python -m app.seed`; add `--ruta-ia` for the "De cero a LLMs" route (never seeded by default). Data lives in `app/fixtures/*.json`.
+- Ruff: line length 110, rules `E F I B UP S SIM`; `app/migrations/versions` is excluded.
 
 ## Architecture
 - Auto-discovery, so nobody edits `app/main.py` or `web/src/App.tsx`: a router is `app/routers/<f>.py` exporting `router = APIRouter(prefix="/api/...")`; a screen is `web/src/features/<f>/index.tsx` exporting `routes` (optional `order`); root providers in `web/src/lib/providers.tsx`.
@@ -49,8 +55,12 @@ Club platform (IPN · UPIIZ): academies, learning routes with progress, communit
 - Authorization in `app/security.py`: `current_user`, `require_role(...)`, `ensure_academy_scope(user, academy_id)`. Always take `academy_id` from the DB row, never the request body. Every endpoint is covered by `app/tests/test_permissions_matrix.py`.
 - Errors: `raise AppError(status, "msg")` → `{"error": {"code","message","details"}}`. Lists use `app/pagination.py` cursor pages (≤ 50 items).
 - Tests: `app/tests/conftest.py` gives each test an empty in-memory DB; fixtures `seeded`, `as_superadmin`, `as_admin_ia`, `as_member` load the demo seed.
+- Auth (ADR 0001): argon2id passwords, 15-min HS256 access JWT, 7-day refresh in an `HttpOnly` cookie rotated on every use and stored hashed in the DB. Seeded accounts have `must_change_password` (gated by `REQUIRE_PASSWORD_CHANGE`; tests turn it off in `conftest.py`). Rate limiting is in-memory `slowapi`, so it assumes a single process.
+- `app/main.py` wraps every request: `X-Request-ID`, security headers, PII-free JSON access log (user id only) and `analytics.capture` (usage events written after the response). Uploads go to `/media`: stored in the DB (`media_objects`) or on disk depending on `media_storage()`; both are served with a sandbox CSP. If `web/dist` exists the API also serves the SPA.
+- Sanitization uses `nh3` (`app/sanitize.py`); user-supplied URLs go through `safe_url`. Images are validated and resized with Pillow.
 - Frontend: shared UI in `web/src/components/`, layouts in `web/src/layouts/`, API client and types in `web/src/lib/`; design rules in `web/DESIGN.md`; brand assets in `assets/brand/` used as-is.
 - Shared-file owners: `.uak/OWNERS.md` — check it before editing `pyproject.toml`, `app/config.py`, migration env and similar.
+- Email: manual admin-sent campaigns via Mailgun (spec `docs/specs/003-correo/`, ADR 0002; routers/services `mail_*`, migration 0009). It widens `IDEA.md` §9 only for admin-sent emails (no automatic notifications, no password recovery by email). Off by default: `MAIL_ENABLED=false`, `MAIL_BACKEND=console` logs instead of sending; real sending needs the `MAILGUN_*` settings in `.env.example`.
 - UI numbers come from DB queries, never an LLM. Commits carry no AI co-author lines.
 
 ## When compacting

@@ -1,6 +1,6 @@
 # Auditoría · área auth (/login, registro, cerrar sesión, /cuenta, redirecciones)
 
-Medido con Playwright (Chromium) contra http://100.93.23.54:8301. Escritorio 1280x800 y celular 390x844. Scripts, JSON y capturas en `audit/auth/`. Cuentas de prueba creadas con prefijo AUD- (`aud.pw.1490667@upiixsol.dev`, `aud.auth.1490128@upiixsol.dev`, etc.). No se tocaron cuentas sembradas ni contraseñas sembradas (una pasada de login con alumno.demo fue solo de lectura y no se repitió).
+Medido con Playwright (Chromium) contra una instancia local de desarrollo. Escritorio 1280x800 y celular 390x844. Scripts, JSON y capturas en `audit/auth/`. Cuentas de prueba creadas con prefijo AUD- (`aud.pw.1490667@upiixsol.dev`, `aud.auth.1490128@upiixsol.dev`, etc.). No se tocaron cuentas sembradas ni contraseñas sembradas (una pasada de login con alumno.demo fue solo de lectura y no se repitió).
 
 1. [layout] [alta] /login, pestañas Entrar / Crear cuenta — Al cambiar de pestaña la tarjeta cambia de altura y se recentra verticalmente: sale de y=193 con h=413 (Entrar) y entra en y=68 con h=664 (Crear cuenta). Salta ~125 px hacia arriba; en celular 389 px (y=381) → 660 px (y=279). — Cómo reproducir: abrir /login, clic en "Crear cuenta". — Evidencia: t1_login.json (`vuelta_login_card`, `tab_registro_card`), código features/auth/index.tsx:170-171 (`main` con `min-h-dvh grid items-center`), la tarjeta no tiene altura reservada.
 

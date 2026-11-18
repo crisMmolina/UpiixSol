@@ -1,6 +1,6 @@
 # Auditoría · área content (/calendario, /galeria, /blog)
 
-Entorno: http://100.93.23.54:8301 · cuentas superadmin2, admin.ia, alumno.demo (contraseña admin123). Escritorio 1280x800 y celular 390x844. Scripts y capturas en audit/content/ (cal_*, cal2_*, cal3_*, roles_*, gb_*, gd_*, *.png). Datos de prueba creados con prefijo AUD-.
+Entorno: instancia local de desarrollo · cuentas superadmin2, admin.ia, alumno.demo (contraseña provisional del seed). Escritorio 1280x800 y celular 390x844. Scripts y capturas en audit/content/ (cal_*, cal2_*, cal3_*, roles_*, gb_*, gd_*, *.png). Datos de prueba creados con prefijo AUD-.
 
 1. [bug] media — /calendario (vista Mes) — Con un día seleccionado, al cambiar de mes la sección del día muestra "Sin eventos este día" aunque ese día sí tiene evento. — Cómo: /calendario → clic en "sábado 10 de octubre" (1 evento "Taller: tu primera red neuronal") → "Mes siguiente". URL queda ?dia=2026-10-10 y la sección dice "sábado, 10 de octubre de 2026 · Sin eventos este día". — Evidencia: cal2 "con dia seleccionado, Mes siguiente". Causa: features/events/index.tsx:381-391; dayList se calcula sobre `events` del mes nuevo, no sobre el día real.
 

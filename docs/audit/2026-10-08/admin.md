@@ -1,6 +1,6 @@
 # Auditoría · área admin (superadmin /admin, admin de club /panel/academia, permisos)
 
-Entorno: http://100.93.23.54:8301 · código: /home/joahan/Proyectos/UpiixSol-wt/main-tools (solo lectura).
+Entorno: una instancia local de desarrollo · código: el checkout de desarrollo (solo lectura).
 Capturas y logs: audit/admin/
 Datos AUD creados: club `aud-club-prueba` (id 2) y `aud-x-club`; usuarios aud-admin-ia, aud-miembro (boleta 2099000001, contraseña reseteada), aud-admin-otro, aud-miembro2, aud-x@, aud-ui-admin, aud-ui-miembro; route/módulo/clase/recurso/eventos/posts/proyecto/blog con prefijo "AUD-".
 
