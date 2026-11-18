@@ -54,6 +54,14 @@ class MailCampaign(Base):
     recipient_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Counts per recipient status, kept when the recipient rows are purged (UPS-081).
     counts_snapshot: Mapped[dict[str, int] | None] = mapped_column(JSON)
+    # Spec 004 (UPS-085). `content` = validated blocks (services/mail_blocks.py); NULL = legacy `body`.
+    content: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    # Who the email says it comes from: a club, or NULL = UpiixSol (the board). From the DB, not the body.
+    sender_academy_id: Mapped[int | None] = mapped_column(ForeignKey("academies.id", ondelete="SET NULL"))
+    preheader: Mapped[str | None] = mapped_column(String(140))
+    reply_to: Mapped[str | None] = mapped_column(String(254))
+    # Random per-campaign token of the public `.ics` URL (UPS-087).
+    ics_token: Mapped[str | None] = mapped_column(String(43), unique=True)
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime(), default=utcnow, server_default=func.now(), nullable=False
     )

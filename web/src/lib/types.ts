@@ -419,7 +419,7 @@ export type AudienceOut =
   | { kind: "all" }
   | { kind: "academy"; academy_id: number }
   | { kind: "role"; role: Role }
-  | { kind: "individual"; user_ids: number[]; email_count: number };
+  | { kind: "individual"; user_ids: number[]; outside: number };
 
 export type CampaignStatus = "draft" | "sending" | "sent" | "partial" | "failed";
 export type MailRecipientStatus =
@@ -465,4 +465,33 @@ export interface MailPreferences {
 export interface AudiencePreview {
   count: number;
   excluded: { inactive: number; suppressed: number; blocked_domain: number };
+}
+
+/** Email blocks (spec 004, app/services/mail_blocks.py). Event times are ISO datetimes; one without an
+ * offset is America/Mexico_City, the server stores them in UTC. At most 30 blocks and one `event`. */
+export type Block =
+  | { kind: "heading"; text: string }
+  | { kind: "paragraph"; text: string }
+  | { kind: "list"; items: string[]; ordered?: boolean }
+  | { kind: "button"; label: string; url: string }
+  | {
+      kind: "event";
+      /** Campus event id, or the typed fields below (never both). */
+      event_id?: number | null;
+      title?: string | null;
+      start?: DateTime | null;
+      end?: DateTime | null;
+      place?: string | null;
+      description?: string | null;
+      link?: string | null;
+    }
+  | { kind: "image"; url: string; alt: string }
+  | { kind: "divider" };
+
+export type Blocks = Block[];
+
+/** What the preview endpoint returns: the exact HTML and text a recipient would get. */
+export interface PreviewOut {
+  html: string;
+  text: string;
 }

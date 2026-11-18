@@ -301,3 +301,56 @@ def test_unsafe_address_or_url_is_rejected_without_a_call():
     assert result.failed == {2: "rejected", 3: "rejected"}
     assert list(result.accepted) == [1]
     assert [form["to"] for form in recorder.forms] == [[ok.email]]
+
+
+def test_mailgun_sends_attachment_and_reply_to():
+    ics = b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"
+    message = MailMessage(
+        subject="Hola",
+        html="<p>Hola</p>",
+        text="Hola",
+        campaign_id=42,
+        attachments=[("evento.ics", "text/calendar; charset=utf-8", ics)],
+        reply_to="mesa@ipn.mx",
+    )
+    recorder = Recorder()
+    make_transport(recorder, mail_reply_to="general@ipn.mx").send_batch(message, make_recipients(1))
+    request = recorder.requests[0]
+    assert request.headers["content-type"].startswith("multipart/form-data")
+    body = request.content
+    assert b'name="attachment"; filename="evento.ics"' in body
+    assert b"Content-Type: text/calendar" in body and ics in body
+    assert body.count(b'name="h:Reply-To"') == 1 and b"mesa@ipn.mx" in body  # campaign value wins
+    assert b"general@ipn.mx" not in body
+
+    recorder = Recorder()  # no campaign value: MAIL_REPLY_TO applies; no attachment: plain form as before
+    make_transport(recorder, mail_reply_to="general@ipn.mx").send_batch(make_message(), make_recipients(1))
+    assert recorder.forms[0]["h:Reply-To"] == ["general@ipn.mx"]
+    assert "attachment" not in recorder.forms[0]
+
+
+def test_mailgun_from_name_keeps_the_address():
+    recorder = Recorder()
+    message = MailMessage(subject="Hola", html="<p>Hola</p>", text="Hola", from_name="UpiixIA")
+    make_transport(recorder).send_batch(message, make_recipients(1))
+    assert recorder.forms[0]["from"] == ['"UpiixIA · UpiixSol" <avisos@mg.upiixsol.com>']
+
+    recorder = Recorder()  # no from_name: MAIL_FROM exactly as configured
+    make_transport(recorder).send_batch(make_message(), make_recipients(1))
+    assert recorder.forms[0]["from"] == ["UpiixSol <avisos@mg.upiixsol.com>"]
+
+
+def test_from_name_is_sanitized():
+    recorder = Recorder()
+    nasty = 'Up"iix\r\nBcc: x@y.mx <evil@x.mx>'
+    message = MailMessage(subject="Hola", html="<p>Hola</p>", text="Hola", from_name=nasty)
+    make_transport(recorder).send_batch(message, make_recipients(1))
+    sent = recorder.forms[0]["from"][0]
+    assert "\r" not in sent and "\n" not in sent
+    assert sent.endswith("<avisos@mg.upiixsol.com>") and sent.count("<") == 1 and sent.count('"') == 2
+    assert sent.startswith('"Up iix Bcc: x@y.mx evil@x.mx · UpiixSol" <')  # inert text inside one quoted name
+
+    recorder = Recorder()  # a name that sanitizes to nothing falls back to MAIL_FROM
+    message = MailMessage(subject="Hola", html="<p>Hola</p>", text="Hola", from_name='<>"\r\n')
+    make_transport(recorder).send_batch(message, make_recipients(1))
+    assert recorder.forms[0]["from"] == ["UpiixSol <avisos@mg.upiixsol.com>"]
