@@ -1,6 +1,6 @@
 // Flow step 6 (UPS-009): superadmin panel — academies (with their channel), users, campus home page and the
 // site brand (UPS-041, SiteBrandTab.tsx).
-import { ArrowSquareOut, Info, Key, Plus, Power, UserPlus } from "@phosphor-icons/react";
+import { ArrowSquareOut, Info, Key, Plus, Power, ShieldCheck, ShieldSlash, UserPlus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams, type RouteObject } from "react-router";
 
@@ -302,6 +302,88 @@ function NewUserForm({ academies, onCreated, onClose }: { academies: AcademyOut[
   );
 }
 
+type RoleChange = { user: UserAdminOut; mode: "promote" | "demote" };
+
+const ROLE_TONE: Record<Role, "accent" | "primary" | "neutral"> = {
+  superadmin: "accent",
+  academy_admin: "primary",
+  member: "neutral",
+};
+
+/** UPS-093: confirmation that names the person and the club before a role change is sent. */
+function RoleChangeForm({
+  change,
+  academies,
+  onDone,
+  onClose,
+}: {
+  change: RoleChange;
+  academies: AcademyOut[];
+  onDone: (user: UserAdminOut, clubName: string) => void;
+  onClose: () => void;
+}) {
+  const { user, mode } = change;
+  const active = academies.filter((a) => a.is_active);
+  const [clubId, setClubId] = useState(String(active[0]?.id ?? ""));
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const clubName =
+    academies.find((a) => a.id === (mode === "promote" ? Number(clubId) : user.academy_id))?.name ?? "su club";
+  const question =
+    mode === "promote"
+      ? `¿Hacer admin de ${clubName} a ${user.full_name}?`
+      : `¿Quitar a ${user.full_name} como admin de ${clubName}?`;
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await api<UserAdminOut>(`/admin/users/${user.id}/role`, {
+        method: "PUT",
+        json: mode === "promote" ? { role: "academy_admin", academy_id: Number(clubId) } : { role: "member" },
+      });
+      onDone(updated, clubName);
+      onClose();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-4" noValidate>
+      {mode === "promote" && (
+        <SelectField label="Club" name="academy_id" value={clubId} onChange={(e) => setClubId(e.target.value)}>
+          {active.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
+      <p className="font-semibold">{question}</p>
+      <p className="text-sm text-muted">
+        {mode === "promote"
+          ? "Verá el panel del club desde su siguiente visita y podrá administrar su contenido, eventos e inscripciones."
+          : "Pierde el panel del club de inmediato. Conserva sus inscripciones y los correos que ya envió no cambian."}
+      </p>
+      <div className="grid gap-2">
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={busy} disabled={mode === "promote" && active.length === 0}>
+            {mode === "promote" ? "Hacer admin" : "Quitar admin"}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 function UsersTab() {
   const { user: me } = useAuth();
   const { academies } = useAcademies();
@@ -311,6 +393,8 @@ function UsersTab() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [reset, setReset] = useState<{ user: UserAdminOut; password: string } | null>(null);
+  const [roleChange, setRoleChange] = useState<RoleChange | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(
     async (after: string | null) => {
@@ -382,6 +466,7 @@ function UsersTab() {
         </Button>
       </form>
       {error && <Notice tone="alert">{error}</Notice>}
+      <FormMessage tone="success" message={notice} />
       {!items ? (
         <PageSkeleton />
       ) : (
@@ -417,7 +502,9 @@ function UsersTab() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">{ROLE_LABEL[user.role]}</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={ROLE_TONE[user.role]}>{ROLE_LABEL[user.role]}</Badge>
+                  </td>
                   <td className="px-4 py-3">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
                   <td className="px-4 py-3 tabular-nums">{user.boleta ?? "—"}</td>
                   <td className="px-4 py-3">
@@ -425,6 +512,16 @@ function UsersTab() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
+                      {user.is_active && user.role === "member" && (
+                        <Button size="sm" variant="ghost" icon={<ShieldCheck weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "promote" })}>
+                          Hacer admin de un club
+                        </Button>
+                      )}
+                      {user.is_active && user.role === "academy_admin" && (
+                        <Button size="sm" variant="ghost" icon={<ShieldSlash weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "demote" })}>
+                          Quitar admin
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" icon={<Key weight="bold" />} onClick={() => void resetPassword(user)}>
                         Restablecer
                       </Button>
@@ -463,6 +560,27 @@ function UsersTab() {
       <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo usuario">
         {creating && academies && (
           <NewUserForm academies={academies.filter((a) => a.is_active)} onClose={() => setCreating(false)} onCreated={() => void load(null)} />
+        )}
+      </Modal>
+      <Modal
+        open={roleChange !== null}
+        onClose={() => setRoleChange(null)}
+        title={roleChange?.mode === "demote" ? "Quitar admin" : "Hacer admin de un club"}
+      >
+        {roleChange && academies && (
+          <RoleChangeForm
+            change={roleChange}
+            academies={academies}
+            onClose={() => setRoleChange(null)}
+            onDone={(updated, clubName) => {
+              setItems((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev);
+              setNotice(
+                updated.role === "academy_admin"
+                  ? `${updated.full_name} ahora es admin de ${clubName}.`
+                  : `${updated.full_name} ya no es admin de ${clubName}.`,
+              );
+            }}
+          />
         )}
       </Modal>
       <Modal open={reset !== null} onClose={() => setReset(null)} title="Contraseña temporal">
