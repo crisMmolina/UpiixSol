@@ -1859,3 +1859,24 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Tests that assert the old fallback (one call per recipient below 100, no header above 100) change only there; a human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-096 --tests --reason 'victor verified the per-recipient List-Unsubscribe in a batch'`.
 - **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mailgun.py app/tests/test_mail_campaigns.py`
 - **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-096`; then flip the switch, then the spike note.
+
+## UPS-097 · Paste many outside addresses at once; no per-campaign cap (only the monthly quota)
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** human request (victor) 2026-11-18: he must email 100+ outside addresses and today the composer adds them one by one with a cap of 20 outside addresses and 50 entries per campaign (`MAX_OUTSIDE`, `MAX_ENTRIES` in `app/services/mail_audience.py` and `web/src/features/mail/AudiencePicker.tsx`; spec 003 §Audiences). Decision: **no per-campaign cap on outside addresses; the only limit is the monthly Mailgun quota** (`MAIL_MONTHLY_LIMIT`, 3,000, already checked before sending), for superadmins and club admins alike; and **paste them all at once**. Saved reusable lists are out of scope for now.
+- **Depends on:** UPS-091
+- **Uses contract:** None
+- **Related:** UPS-074, UPS-092, UPS-096
+- **Paths:** app/services/mail_audience.py, app/tests/test_mail_audience.py, web/src/features/mail/AudiencePicker.tsx, e2e/test_mail_paste.py, docs/specs/003-correo/spec.md
+- **Freeze-Allowed:** no
+- **Tests:** test_individual_accepts_hundreds_of_outside_addresses, test_outside_addresses_over_the_monthly_remaining_is_422, test_outside_addresses_are_normalized_and_deduplicated, test_campus_users_still_at_most_50, test_paste_many_addresses_separated_by_commas_spaces_and_lines, test_paste_name_and_angle_bracket_format, test_paste_reports_added_repeated_and_invalid, test_paste_box_at_390_wide
+- **Acceptance:**
+  - API: `IndividualAudience.emails` has no fixed cap; it is refused with 422 (Spanish) only when the deduplicated count exceeds the remaining monthly quota or `MAIL_MONTHLY_LIMIT`. Campus `user_ids` keep their cap of 50 (they are picked one by one) and outside addresses no longer count toward it. Addresses are lowercased, trimmed and deduplicated; suppressed and blocked-domain addresses keep being excluded and counted as today. Same rules for superadmins and club admins.
+  - UI: a "Pegar varios correos" box accepts a pasted block separated by commas, semicolons, spaces or new lines, also `Nombre <correo@x.com>` (as copied from Gmail, Outlook or a spreadsheet); one button adds them all and shows "Se agregaron N · M repetidos · K inválidos" with the invalid ones listed to fix. The single-address input stays. With many addresses the list collapses to a count with "Ver todos" and "Quitar todos"; usable at 390 px; Spanish (Mexico), AA.
+  - The counter shows outside addresses without "/20" and warns when the total exceeds the monthly remaining (the number comes from `GET /api/mail/status`).
+  - `docs/specs/003-correo/spec.md` §Audiences and the answered open question say "no per-campaign cap on outside addresses; monthly quota only (victor 2026-11-18)".
+  - Existing tests that assert the 20/50 caps change only there (`test_individual_over_50_entries_or_20_emails_is_422`); a human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-097 --tests --reason 'victor: no per-campaign cap on outside addresses, monthly quota only'`. `.uak-shots/UPS-097/` and a design-critic SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_audience.py && npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_paste.py'`
+- **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-097`; then the API cap, then the paste parser, then the UI.
