@@ -1818,3 +1818,25 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - `CHANGELOG.md` entry; `bash .uak/bin/smoke` exits 0.
 - **Verify:** `bash .uak/bin/q bash -c 'uv run ruff check app && uv run pytest -q --tb=short -x app/tests/test_event_cover.py app/tests/test_events.py app/tests/test_permissions_matrix.py && npm --prefix web run lint && npm --prefix web run build'`
 - **Next step:** stubs for the `Tests:` names and `uak red UPS-094`; then `replace_cover` and `remove_cover` in `app/services/events.py` copying the blog cover flow, the two routes, the matrix rows, then the form field and the cards.
+
+## UPS-095 · Logos and mascots with a transparent background
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** human request (cris) 2026-11-17 · `docs/specs/006-logos-transparentes/spec.md`
+- **Depends on:** None
+- **Uses contract:** None
+- **Related:** UPS-093, UPS-094
+- **Paths:** app/services/media.py, app/services/academy_admin.py, app/services/site.py, app/routers/academy_admin.py, app/routers/site.py, app/tests/test_logo_transparency.py, web/src/features/academy-admin/index.tsx, web/src/features/superadmin/SiteBrandTab.tsx, e2e/test_logo_transparent.py, CHANGELOG.md
+- **Freeze-Allowed:** no
+- **Tests:** removes_only_the_white_connected_to_the_border_and_keeps_enclosed_white, jpg_and_opaque_png_become_rgba_and_real_transparency_is_kept_as_is, stores_unchanged_when_there_is_no_white_border, refuses_a_mostly_white_image_with_422, svg_is_never_processed_and_the_flag_defaults_to_false
+- **Acceptance:**
+  - `remove_white_background` in `app/services/media.py` makes transparent only near-white pixels (each channel ≥ 245) connected to the image border, with a soft edge and no white halo; white enclosed by the artwork stays opaque. JPG and no-alpha images are converted to `RGBA` first; images that already have real transparency are stored as is; SVG is never touched.
+  - No near-white border: stored unchanged and the response says "No encontramos un fondo blanco para quitar."; more than 98 % transparent: 422 and the logo is unchanged.
+  - The four existing routes (`POST /api/academies/{academy_id}/logo|mascot` and `POST /api/admin/site/logo|mascot`) take an optional multipart field `transparent_background` (default `false`, only for `logo` and `mascot`); permissions, responses and the permission matrix do not change, and no new route exists. A 1024 px logo is processed in under a second.
+  - Recipe: flow · Hero: the logo and mascot upload cards of the club panel and the brand tab, with a "Quitar el fondo blanco" checkbox (checked by default), a preview on a light and a dark checkerboard swatch, and a "Quitar fondo blanco al logo actual" button that re-sends the current same-origin `/media/…` image through the same route (only paths accepted by `safeAssetPath`). Spanish copy, keyboard-operable, screenshots at 1280 and 390 in `.uak-shots/UPS-095/` and a `design-critic` SHIP.
+  - E2E in a real browser: upload a logo on a white background with the box checked and see it over the dark theme without a white box; upload a mostly white image and see the error.
+  - `assets/brand/` and the built-in wordmark are never processed. `CHANGELOG.md` entry; `bash .uak/bin/smoke` exits 0.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run ruff check app && uv run pytest -q --tb=short -x app/tests/test_logo_transparency.py app/tests/test_media.py app/tests/test_media_storage.py app/tests/test_academy_admin.py app/tests/test_permissions_matrix.py && npm --prefix web run lint && npm --prefix web run build'`
+- **Next step:** stubs for the `Tests:` names and `uak red UPS-095`; then `remove_white_background` with `ImageDraw.floodfill` on a border-padded mask, the flag in `save_image_bytes`, the form field in the two routers, then the checkbox, preview and button.
