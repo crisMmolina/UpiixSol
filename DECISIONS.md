@@ -129,3 +129,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794982319 | UPS-096 | always batch with %recipient.unsubscribe_url% | Why: victor verified 2026-11-18
 - 1794982868 | UPS-097 | quota check in preview only | Why: campaign create must succeed, send rejects
 - 1794984117 | UPS-095 | notice computed client-side; X-Background-Removed header for API clients | Why: api.ts is outside Paths
+- 1794984225 | allow | victor | test change: UPS-099 | Why: victor: SVG logos now get a PNG email copy

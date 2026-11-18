@@ -13,3 +13,4 @@ Append-only. Format: - ID | epoch | human | reason. Why: a test is a spec; chang
 - UPS-091 | 1794980223 | victor | UPS-091 changes sandbox and enables Evento/Imagen
 - UPS-096 | 1794981508 | victor | victor verified the per-recipient List-Unsubscribe in a batch
 - UPS-097 | 1794981783 | victor | victor: no per-campaign cap on outside addresses, monthly quota only
+- UPS-099 | 1794984225 | victor | victor: SVG logos now get a PNG email copy

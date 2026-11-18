@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794984212
+Updated: 1794984225
 AVAILABLE: UPS-068 
 CLAIMED: UPS-099 
 BLOCKED: UPS-057 
@@ -17,11 +17,11 @@ UPS-099 | CLAIMED | victor-1 | until 1794998194
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794981508 | allow | victor | test change: UPS-096 | Why: victor verified the per-recipient List-Unsubscribe in a batch
 - 1794981783 | allow | victor | test change: UPS-097 | Why: victor: no per-campaign cap on outside addresses, monthly quota only
 - 1794982319 | UPS-096 | always batch with %recipient.unsubscribe_url% | Why: victor verified 2026-11-18
 - 1794982868 | UPS-097 | quota check in preview only | Why: campaign create must succeed, send rejects
 - 1794984117 | UPS-095 | notice computed client-side; X-Background-Removed header for API clients | Why: api.ts is outside Paths
+- 1794984225 | allow | victor | test change: UPS-099 | Why: victor: SVG logos now get a PNG email copy
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
