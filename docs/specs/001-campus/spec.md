@@ -20,6 +20,7 @@ Club members have their material scattered across WhatsApp, Drive, YouTube and D
 - If an academy_admin calls any write endpoint of another academy, the system shall respond 403 (verified in the backend; hiding the button is not enough).
 - If a member calls any admin write endpoint, the system shall respond 403; an unauthenticated user shall get 401.
 - When a superadmin creates an academy, the system shall create its community channel in the same transaction.
+- When a superadmin changes a user's role (`PUT /api/admin/users/{id}/role`, UPS-093, spec 005), the system shall allow only `member` ⇄ `academy_admin` of an active club, shall refuse `superadmin` as a target or as the new role and any change to their own role, and the new scope shall apply on that user's next request (ROL-07); the only way to change a role is that endpoint, `PATCH /api/admin/users/{id}` keeps rejecting `role`.
 - While a list is requested, the system shall return at most 50 items plus a `next_cursor`.
 - When a post or description containing HTML/JS is saved, the system shall store and render it sanitized (no script execution).
 - If an uploaded image is not png/jpg/webp/svg by its real type, or exceeds 2 MB (logos) / 5 MB (posts), the system shall respond 422; uploaded SVGs are sanitized or served with a restrictive CSP.
