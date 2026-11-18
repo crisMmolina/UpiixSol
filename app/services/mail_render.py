@@ -292,10 +292,10 @@ def _divider() -> str:
 
 def _link_cell(label: str, href: str, theme: Theme) -> str:
     return (
-        f'<td style="padding:0 8px 8px 0"><a href="{escape(href)}" style="display:inline-block;'
+        f'<a href="{escape(href)}" style="display:inline-block;margin:0 8px 8px 0;white-space:nowrap;'
         f"padding:8px 12px;border:1px solid {LINE};border-radius:8px;font-family:{FONT};font-size:13px;"
         f'font-weight:600;line-height:16px;color:{_readable(theme.secondary)};text-decoration:none">'
-        f"{escape(label)}</a></td>"
+        f"{escape(label)}</a>"
     )
 
 
@@ -316,13 +316,13 @@ def _event_view(block: EventBlock, event: EventCard | None) -> EventCard | None:
 
 def _event(event: EventCard, theme: Theme, ics_url: str | None) -> str:
     start, day_line, time_line = _when(event)
-    month = _MONTHS[start.month - 1][:3].upper()
+    month = _MONTHS[start.month - 1][:3].capitalize()
     badge = (
         f'<td width="64" valign="top" style="width:64px;padding:0 16px 0 0"><table role="presentation" '
         f'width="64" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="{theme.secondary}" '
         f'style="background:{theme.secondary};border-radius:12px;padding:8px 0;font-family:{FONT};'
         f'color:{_on(theme.secondary)}"><div style="font-size:11px;line-height:14px;font-weight:700;'
-        f'letter-spacing:1px">{month}</div><div style="font-size:28px;line-height:32px;font-weight:800">'
+        f'letter-spacing:0">{month}</div><div style="font-size:28px;line-height:32px;font-weight:800">'
         f"{start.day}</div></td></tr></table></td>"
     )
     rows = [
@@ -359,9 +359,9 @@ def _event(event: EventCard, theme: Theme, ics_url: str | None) -> str:
     if links:
         calendar = (
             f'<tr><td colspan="2" style="padding-top:16px;font-family:{FONT};font-size:12px;line-height:16px;'
-            f'color:{MUTED}"><div style="padding-bottom:8px;font-weight:700;letter-spacing:0.5px">'
-            'AGREGAR AL CALENDARIO</div><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
-            f"{''.join(links)}</tr></table></td></tr>"
+            f'color:{MUTED}"><div style="padding-bottom:8px;font-weight:700">'
+            "Agregar al calendario</div><div>"
+            f"{''.join(links)}</div></td></tr>"
         )
     cover = ""
     if _usable_image(event.cover_url):
@@ -374,7 +374,7 @@ def _event(event: EventCard, theme: Theme, ics_url: str | None) -> str:
     return (
         '<tr><td style="padding:8px 32px 24px">'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="{TINT}" '
-        f'style="background:{TINT};border:1px solid {LINE};border-left:4px solid {theme.primary};'
+        f'style="background:{TINT};border:1px solid {LINE};'
         'border-radius:12px"><tr><td style="padding:20px">'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{cover}'
         f'<tr>{badge}<td valign="top" style="font-family:{FONT}">{"".join(rows)}</td></tr>{calendar}'
@@ -396,23 +396,16 @@ def _logo(url: str | None, name: str, height: int, theme: Theme) -> str:
 
 
 def _sender_block(sender: Sender, theme: Theme) -> str:
+    """One pattern for every sender: "Enviado por" and then the club (logo, or its name as a wordmark)."""
+    label = f"font-family:{FONT};font-size:14px;line-height:20px;color:{INK}"
     if sender.name:
-        who = _logo(sender.logo_url, sender.name, 36, theme)
-        label = "Enviado por"
-        if _usable_image(sender.logo_url):
-            who += (
-                f'<div style="font-family:{FONT};font-size:14px;line-height:20px;font-weight:700;'
-                f'color:{INK};padding-top:6px">{escape(sender.name)}</div>'
-            )
         body = (
-            f'<div style="font-family:{FONT};font-size:11px;line-height:14px;font-weight:700;'
-            f'letter-spacing:1.5px;color:{MUTED};text-transform:uppercase;padding-bottom:8px">{label}</div>{who}'
+            f'<div style="{label};padding-bottom:8px">Enviado por</div>'
+            f"{_logo(sender.logo_url, sender.name, 36, theme)}"
         )
     else:
-        body = (
-            f'<div style="font-family:{FONT};font-size:14px;line-height:20px;color:{INK}">'
-            f"Enviado por la mesa directiva de <strong>{escape(theme.site_name)}</strong></div>"
-        )
+        name = escape(theme.site_name)
+        body = f'<div style="{label}">Enviado por la mesa directiva de <strong>{name}</strong></div>'
     return (
         f'<tr><td align="center" style="padding:20px 32px 24px;border-bottom:1px solid {LINE}">'
         f"{body}</td></tr>"
