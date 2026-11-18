@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **71/71 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **72/72 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -74,6 +74,7 @@ Cobertura: **71/71 endpoints de escritura (100 %)** × 5 roles.
 | POST | `/api/mail/audience/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | superadmin: any audience; academy_admin: own club, its enrollees and outside addresses |
 | POST | `/api/mail/test` | 🔒 | ❌ | ✅ | ✅ | ✅ | only to the caller's own address |
 | POST | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ❌ | ✅ | draft; same audience scope as the preview |
+| POST | `/api/mail/images` | 🔒 | ❌ | ✅ | ✅ | ✅ | UPS-088: email image (PNG/JPEG copy under /media/mail); rate-limited per user |
 | POST | `/api/mail/campaigns/{campaign_id}/send` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
 | POST | `/api/mail/campaigns/{campaign_id}/resume` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
 | POST | `/api/mail/unsubscribe` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | token in ?t=, same 200 for unknown tokens; rate-limited per IP |

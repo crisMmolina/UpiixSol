@@ -287,6 +287,13 @@ MATRIX: list[Rule] = [
         ),
         note="draft; same audience scope as the preview",
     ),
+    Rule(
+        "POST",
+        "/api/mail/images",
+        SENDERS,
+        _file(),
+        note="UPS-088: email image (PNG/JPEG copy under /media/mail); rate-limited per user",
+    ),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/send", OWN, note="the campaign's sender or superadmin"),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/resume", OWN, note="the campaign's sender or superadmin"),
     # ── Email opt-out (UPS-076): real-token tests in test_mail_unsubscribe.py ──

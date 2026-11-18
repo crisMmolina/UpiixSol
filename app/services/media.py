@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import UploadFile
-from PIL import Image
+from PIL import Image, ImageOps
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -38,7 +38,7 @@ from app.errors import AppError
 from app.models import MediaObject
 
 log = logging.getLogger(__name__)
-Kind = Literal["logo", "mascot", "avatar", "post", "cover", "resource"]
+Kind = Literal["logo", "mascot", "avatar", "post", "cover", "resource", "mail"]
 MB = 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 40_000_000  # decompression-bomb guard
 
@@ -57,10 +57,11 @@ RULES: dict[str, Rule] = {
     "post": Rule(5 * MB, 1600),
     "cover": Rule(5 * MB, 1600),
     "resource": Rule(5 * MB, 1600),
+    "mail": Rule(5 * MB, 1200),  # UPS-088: JPEG/PNG for email clients; max_side is the width
 }
 RASTER_FORMATS = {"PNG", "JPEG", "WEBP"}
-CONTENT_TYPES = {"webp": "image/webp", "svg": "image/svg+xml"}
-MEDIA_KEY = re.compile(r"[a-z]+/[0-9a-f]{32}\.(?:webp|svg)")  # what _store writes: <kind>/<uuid>.<ext>
+CONTENT_TYPES = {"webp": "image/webp", "svg": "image/svg+xml", "jpg": "image/jpeg", "png": "image/png"}
+MEDIA_KEY = re.compile(r"[a-z]+/[0-9a-f]{32}\.(?:webp|svg|jpg|png)")  # <kind>/<name>.<ext>
 
 
 def register_media_types() -> None:
@@ -167,18 +168,35 @@ def media_storage() -> str:
     return StorageSettings().media_storage
 
 
-def _store(data: bytes, kind: str, extension: str) -> str:
-    name = f"{uuid.uuid4().hex}.{extension}"
+def store_named(data: bytes, kind: str, name: str) -> str:
+    """Write `<kind>/<name>` (the name is already `<32 hex>.<ext>`); same name = same content."""
+    extension = name.rsplit(".", 1)[1]
     if media_storage() == "database":
         # Its own short transaction, like the file write: the bytes exist before any row points to them.
         with SessionLocal() as db:
-            db.add(MediaObject(key=f"{kind}/{name}", content_type=CONTENT_TYPES[extension], data=data))
+            db.merge(MediaObject(key=f"{kind}/{name}", content_type=CONTENT_TYPES[extension], data=data))
             db.commit()
     else:
         folder = Path(get_settings().media_dir) / kind
         folder.mkdir(parents=True, exist_ok=True)
         (folder / name).write_bytes(data)
     return f"/media/{kind}/{name}"
+
+
+def _store(data: bytes, kind: str, extension: str) -> str:
+    return store_named(data, kind, f"{uuid.uuid4().hex}.{extension}")
+
+
+def read_public(key: str) -> bytes | None:
+    """The bytes of a stored public upload (either storage mode), or None when it does not exist."""
+    if not MEDIA_KEY.fullmatch(key):
+        return None
+    if media_storage() == "database":
+        with SessionLocal() as db:
+            stored = db.get(MediaObject, key)
+            return stored.data if stored else None
+    path = Path(get_settings().media_dir) / key
+    return path.read_bytes() if path.is_file() else None
 
 
 def load_media(db: Session, key: str) -> MediaObject | None:
@@ -245,6 +263,30 @@ def _svg_is_safe(data: bytes) -> bool:
     return True
 
 
+def _has_transparency(image: Image.Image) -> bool:
+    if image.mode in ("RGBA", "LA"):
+        return image.getchannel("A").getextrema()[0] < 255
+    return image.mode == "P" and "transparency" in image.info
+
+
+def encode_for_email(image: Image.Image, max_width: int = 1200) -> tuple[bytes, str]:
+    """(bytes, extension): PNG when the image has transparency, else JPEG; never wider than `max_width`.
+
+    Outlook desktop shows no WebP and no client shows SVG. Transparency is kept (not flattened onto white),
+    so a logo with a transparent background still reads in Gmail dark mode. EXIF is dropped.
+    """
+    image = ImageOps.exif_transpose(image)
+    transparent = _has_transparency(image)
+    if image.width > max_width:
+        image = image.resize((max_width, max(1, round(image.height * max_width / image.width))))
+    output = io.BytesIO()
+    if transparent:
+        image.convert("RGBA").save(output, "PNG", optimize=True)
+        return output.getvalue(), "png"
+    image.convert("RGB").save(output, "JPEG", quality=88, optimize=True)
+    return output.getvalue(), "jpg"
+
+
 def save_image_bytes(data: bytes, kind: Kind) -> str:
     rule = RULES[kind]
     if len(data) > rule.max_bytes:
@@ -270,6 +312,9 @@ def save_image_bytes(data: bytes, kind: Kind) -> str:
         raise AppError(422, "Formato no permitido: usa PNG, JPG, WebP o SVG.", code="invalid_image")
     try:
         with Image.open(io.BytesIO(data)) as image:
+            if kind == "mail":
+                encoded, extension = encode_for_email(image, rule.max_side)
+                return _store(encoded, kind, extension)
             image.thumbnail((rule.max_side, rule.max_side))
             output = io.BytesIO()
             mode = "RGBA" if image.mode in ("RGBA", "LA", "P") else "RGB"
