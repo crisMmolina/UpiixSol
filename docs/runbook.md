@@ -29,7 +29,7 @@ Todos los comandos se corren desde la raíz del repo en el servidor (p. ej. `/op
 
 ## 3. Rollback
 1. Mira en qué migración está la BD: `docker compose run --rm --no-deps -T --entrypoint alembic api current`.
-2. Si la versión nueva trajo migraciones, regresa **con la imagen nueva** (es la que las conoce) a la revisión que anotaste en §2.1: `docker compose run --rm --no-deps -T --entrypoint alembic api downgrade <rev anotada>`. Usa `downgrade -1` solo si la versión trajo exactamente una migración. Las migraciones son reversibles (CI corre `upgrade` → `downgrade base` → `upgrade`).
+2. Si la versión nueva trajo migraciones, regresa **con la imagen nueva** (es la que las conoce) a la revisión que anotaste en §2.1: `docker compose run --rm --no-deps -T --entrypoint alembic api downgrade <rev anotada>`. Usa `downgrade -1` solo si la versión trajo exactamente una migración. Desde UPS-084 `alembic downgrade` se niega si el host de la BD no es SQLite ni localhost: en un rollback real contra una BD remota (incluido el host `db` de compose) añade `-e ALEMBIC_ALLOW_REMOTE_DOWNGRADE=yes` a ese único comando (§11). Las migraciones son reversibles (CI corre `upgrade` → `downgrade base` → `upgrade`).
 3. Vuelve al código y la imagen anteriores: `git checkout vANTERIOR`, `APP_VERSION=ANTERIOR` en `.env`, y luego `docker compose up -d --wait`. Si la imagen ya no existe, agrega `--build`.
 4. Si el downgrade no es posible, restaura el respaldo previo a la actualización (§5).
 
@@ -103,3 +103,9 @@ Además: `COOKIE_SECURE=true` y `CORS_ORIGINS=https://<dominio>`.
 
 ## 10. Correo (Mailgun)
 Activar, probar, retirar y revertir el correo: [docs/mail-mailgun.md](mail-mailgun.md). Rollback inmediato: `MAIL_ENABLED=false`.
+
+## 11. Nunca apuntes el .env local a producción
+- **Incidente 2026-11-17:** un agente corrió `alembic upgrade head && alembic downgrade base` (Verify de UPS-072) en un worktree. `wt new` enlaza el `.env` del checkout principal en cada worktree, y su `DATABASE_URL` apuntaba a la base de producción en Neon: el downgrade borró todas las tablas.
+- **Recuperación:** restauración a un punto en el tiempo desde el historial de Neon (rama restaurada a justo antes del downgrade y promovida), luego `alembic current` para confirmar la revisión y una prueba rápida de login.
+- **Regla:** el `.env` local solo apunta a SQLite o a una base de desarrollo desechable, nunca a producción. Para ida y vuelta de migraciones usa una base temporal: `DATABASE_URL=sqlite:////tmp/rt.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/rt.db uv run alembic downgrade base`.
+- **Guarda (UPS-084):** `app/migrations/env.py` rechaza cualquier `downgrade` si la URL no es SQLite y el host no es `localhost`, `127.0.0.1` ni `::1`. Solo se salta con `ALEMBIC_ALLOW_REMOTE_DOWNGRADE=yes` en ese único comando (rollback real, §3). `upgrade` no cambia.
