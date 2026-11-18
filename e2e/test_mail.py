@@ -48,6 +48,14 @@ def compose(page: Page, subject: str, body: str = BODY) -> None:
     page.get_by_label("Texto del párrafo").first.fill(body)
 
 
+def preview_view(site: Site, step: str) -> None:
+    """Viewport shot of the preview once its images are in (full-page shots do not paint iframes below the fold)."""
+    page = site.page
+    page.locator(PREVIEW).scroll_into_view_if_needed()
+    page.wait_for_timeout(1200)
+    page.screenshot(path=f"e2e/artifacts/view-{site.name}-{step}.png")
+
+
 def blocks(page: Page):  # noqa: ANN201 - playwright Locator
     return page.get_by_role("list", name="Bloques del correo").get_by_role("listitem")
 
@@ -109,6 +117,7 @@ def test_composer_builds_title_paragraph_button_and_previews(site: Site) -> None
     expect(frame.locator("strong", has_text="laptop")).to_be_visible()
     expect(frame.get_by_role("link", name="Ir al campus").first).to_be_visible()
     site.shot("mail-blocks-preview")
+    preview_view(site, "mail-blocks-preview")
 
 
 def test_preview_iframe_is_sandboxed(site: Site) -> None:
@@ -196,6 +205,7 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
     sender.select_option(label="UpiixIA")
     expect(page.frame_locator(PREVIEW).get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
     site.shot("mail-sender")
+    preview_view(site, "mail-sender")
 
 
 def test_no_test_send_button(site: Site) -> None:

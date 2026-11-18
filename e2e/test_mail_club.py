@@ -78,6 +78,8 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
     page.get_by_role("radio", name="Mi club").check()
     preview = page.frame_locator("iframe[title='Vista previa del correo']")
     expect(preview.get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
+    page.locator("iframe[title='Vista previa del correo']").scroll_into_view_if_needed()
+    view(site, "club-mail-preview")
     expect(page.get_by_role("button", name="Enviarme una prueba")).to_have_count(0)
     page.get_by_role("button", name="Agregar Botón").click()
     page.get_by_role("button", name="Ver el club").click()

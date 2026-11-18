@@ -57,14 +57,14 @@ export function EmailPreview({ payload, emptyHint }: { payload: object | null; e
         </p>
       )}
       {html === null ? (
-        <p className="grid h-[34rem] place-items-center rounded-2xl border border-dashed border-line px-4 text-center text-sm text-muted">{key === null ? emptyHint : "Preparando la vista previa…"}</p>
+        <p className="grid h-48 place-items-center rounded-2xl border border-dashed border-line px-4 text-center text-sm text-muted">{key === null ? emptyHint : "Generando vista previa…"}</p>
       ) : (
         <iframe
           title="Vista previa del correo"
           sandbox=""
           srcDoc={html}
           style={{ width: WIDTHS[mode] }}
-          className="mx-auto block h-[34rem] max-w-full rounded-2xl border border-line bg-white"
+          className="mx-auto block h-[40rem] max-w-full rounded-2xl border border-line bg-white"
         />
       )}
     </section>
