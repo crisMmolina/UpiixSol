@@ -1,5 +1,6 @@
 """Superadmin panel (flow step 6): academies, users and the campus home page."""
 
+import logging
 import secrets
 
 from sqlalchemy import Select, or_, select
@@ -10,12 +11,19 @@ from app.errors import AppError
 from app.models import Academy, Channel, ChannelType, HomeContent, Role, User
 from app.sanitize import clean_markdown
 from app.schemas.academies import AcademyCreateIn, AcademyOut, AcademyUpdateIn, HomeContentIn, HomeContentOut
-from app.schemas.users import AdminUserCreateIn, AdminUserUpdateIn, PasswordResetOut, UserAdminOut
+from app.schemas.users import (
+    AdminUserCreateIn,
+    AdminUserUpdateIn,
+    PasswordResetOut,
+    RoleChangeIn,
+    UserAdminOut,
+)
 from app.security import hash_password
 from app.services.auth import default_nickname, revoke_all_for_user
 from app.services.nicknames import ensure_available, unique_nickname
 
 RESERVED_SLUGS = {"feed", "general"}  # community channel slugs share the namespace
+log = logging.getLogger("app.admin")
 
 
 def _conflict(message: str) -> AppError:
@@ -169,6 +177,37 @@ def update_user(db: Session, actor: User, user_id: int, data: AdminUserUpdateIn)
     if values.get("is_active") is False:
         revoke_all_for_user(db, user.id)
     db.flush()
+    return UserAdminOut.model_validate(user)
+
+
+def change_role(db: Session, actor: User, user_id: int, data: RoleChangeIn) -> UserAdminOut:
+    """UPS-093: member ⇄ academy_admin. Never to or from superadmin, never your own, never inactive.
+
+    `member` clears the club and keeps enrollments. The role is read from the DB on every request, so the
+    change applies on the person's next call with no token revocation.
+    """
+    user = _get_user(db, user_id)
+    if user.id == actor.id:
+        raise _conflict("No puedes cambiar tu propio rol.")
+    if user.role == Role.superadmin:
+        raise _conflict("No se puede cambiar el rol de un superadmin.")
+    if not user.is_active:
+        raise _conflict("Esa cuenta está desactivada. Actívala antes de cambiar su rol.")
+    if data.role == Role.academy_admin:
+        _check_academy(db, data.academy_id)
+    old = user.role
+    user.role = data.role
+    user.academy_id = data.academy_id if data.role == Role.academy_admin else None
+    db.flush()
+    # Ids only: never email, name or nickname (spec 005, repudiation row).
+    log.info(
+        "role.changed actor=%s target=%s old=%s new=%s academy=%s",
+        actor.id,
+        user.id,
+        old.value,
+        user.role.value,
+        user.academy_id,
+    )
     return UserAdminOut.model_validate(user)
 
 

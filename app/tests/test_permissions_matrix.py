@@ -154,6 +154,7 @@ MATRIX: list[Rule] = [
         ),
     ),
     Rule("PATCH", "/api/admin/users/{user_id}", SUPER, _json(lambda _w: {"nickname": "nuevo"})),
+    Rule("PUT", "/api/admin/users/{user_id}/role", SUPER, _json(lambda _w: {"role": "member"})),  # UPS-093
     Rule("POST", "/api/admin/users/{user_id}/reset-password", SUPER),
     Rule("PUT", "/api/admin/home", SUPER, _json(lambda _w: {"hero_title": "UpiixSol Campus"})),
     # ── Site brand (UPS-041); its read, GET /api/site, is public ──
