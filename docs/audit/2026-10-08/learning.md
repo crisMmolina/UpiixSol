@@ -1,8 +1,8 @@
 # Auditoría área "learning" (alumno.demo) · solo reporte, sin cambios de código
 
-Entorno: http://100.93.23.54:8301, cuenta alumno.demo@upiixsol.dev, club upiixia. Escritorio 1280x800 y celular 390x844.
+Entorno: una instancia local de desarrollo, cuenta alumno.demo@upiixsol.dev, club upiixia. Escritorio 1280x800 y celular 390x844.
 Scripts y capturas en: audit/learning/ (s1.py, s2.py, s3.py, *.png)
-Código revisado: /home/joahan/Proyectos/UpiixSol-wt/main-tools/web/src/features/learning/{index,Player,RouteCard,youtube}.tsx/ts y components/Overlay.tsx
+Código revisado: web/src/features/learning/{index,Player,RouteCard,youtube}.tsx/ts y components/Overlay.tsx
 
 1. [layout] media — /a/upiixia/clases/:id al pulsar "Siguiente"/"Anterior" — Al cambiar de clase, Player.tsx:329 devuelve PlayerSkeleton para toda la pantalla (barra superior, sidebar, video, descripción) mientras la nueva clase carga. El reemplazo completo dura unos 140 ms. — Cómo reproducir: entrar a /a/upiixia/clases/3 y pulsar "Siguiente" (desktop y mobile). — Evidencia: MutationObserver registra skeleton visible a los 182 ms y oculto a los 322 ms (s2.py). CLS medido = 0 tras navegar, así que no hay salto de posición medible; el problema es el parpadeo de pantalla completa. Al volver a montar, la vista pasa de contenido a skeleton y otra vez a contenido.
 

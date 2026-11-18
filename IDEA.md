@@ -75,14 +75,14 @@ Se usa el dominio `upiixsol.dev` porque varios validadores de email rechazan `.l
 
 | Rol | Correo | Contraseña |
 |---|---|---|
-| Superadmin 1 | `superadmin1@upiixsol.dev` | `admin123` |
-| Superadmin 2 | `superadmin2@upiixsol.dev` | `admin123` |
-| Superadmin 3 | `superadmin3@upiixsol.dev` | `admin123` |
-| Superadmin 4 | `superadmin4@upiixsol.dev` | `admin123` |
-| Admin de academia UpiixIA (demo) [Recommended] | `admin.ia@upiixsol.dev` | `admin123` |
-| Miembro demo [Recommended] | `alumno.demo@upiixsol.dev` | `admin123` |
+| Superadmin 1 | `superadmin1@upiixsol.dev` | valor de `SEED_DEFAULT_PASSWORD` |
+| Superadmin 2 | `superadmin2@upiixsol.dev` | valor de `SEED_DEFAULT_PASSWORD` |
+| Superadmin 3 | `superadmin3@upiixsol.dev` | valor de `SEED_DEFAULT_PASSWORD` |
+| Superadmin 4 | `superadmin4@upiixsol.dev` | valor de `SEED_DEFAULT_PASSWORD` |
+| Admin de academia UpiixIA (demo) [Recommended] | `admin.ia@upiixsol.dev` | valor de `SEED_DEFAULT_PASSWORD` |
+| Miembro demo [Recommended] | `alumno.demo@upiixsol.dev` | valor de `SEED_DEFAULT_PASSWORD` |
 
-- El seed lee la contraseña inicial de `SEED_DEFAULT_PASSWORD` (default `admin123`) y la guarda con hash.
+- El seed lee la contraseña inicial de la variable `SEED_DEFAULT_PASSWORD` (en `.env`, nunca en el repo) y la guarda con hash. En producción es obligatoria y debe ser fuerte (12 caracteres o más); el valor por defecto de `app/config.py` solo sirve para desarrollo y pruebas, y se rechaza en producción.
 - Las cuentas sembradas llevan `must_change_password = true`; tras el login se muestra un aviso para cambiar correo y contraseña (obligatorio desde UPS-020; `REQUIRE_PASSWORD_CHANGE=false` lo vuelve no bloqueante para una demo). [Decided by @crisMmolina]
 - Pantalla **Mi cuenta → Seguridad**: cambiar correo (pide contraseña actual) y cambiar contraseña (actual + nueva + confirmación). [Decided]
 

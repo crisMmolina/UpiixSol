@@ -38,7 +38,7 @@ Reemplaza `<servicio>` por la URL que te dio Render, p. ej. `upiixsol.onrender.c
 
 ### Si nadie puede entrar con la contraseña inicial
 Puede pasar si cambiaste `SEED_DEFAULT_PASSWORD` antes del primer login: las cuentas se crearon con el valor anterior.
-1. En **Environment** pon un `SEED_DEFAULT_PASSWORD` nuevo, de 12 caracteres o más y distinto de `admin123`.
+1. En **Environment** pon un `SEED_DEFAULT_PASSWORD` nuevo, de 12 caracteres o más y distinto del valor por defecto de desarrollo.
 2. Pon también `SEED_ON_START=true` y guarda con redespliegue.
 3. Las cuentas sembradas que **nunca se usaron** toman esa contraseña. Las que ya la cambiaron, o a las que un admin se la restableció, no se tocan.
 4. Entra, cambia tu contraseña y regresa `SEED_ON_START=false`.
