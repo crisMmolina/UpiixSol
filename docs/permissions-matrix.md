@@ -91,7 +91,7 @@ Cobertura: **71/71 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/admin/academies` | 🔒 | ❌ | ❌ | ❌ | ✅ | inactive clubs included |
 | GET | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
-| GET | `/api/mail/status` | 🔒 | ❌ | ✅ | ✅ | ✅ | monthly quota (UPS-074, UPS-092) |
+| GET | `/api/mail/status` | 🔒 | ❌ | ✅ | ✅ | ✅ | daily quota (UPS-074) |
 | GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins; email only for superadmin |
 | GET | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ✅ | ✅ | history: superadmin all, academy_admin own club (UPS-075) |
 | GET | `/api/mail/campaigns/{campaign_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a campaign of the club (UPS-075) |
