@@ -119,3 +119,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794975540 | UPS-089 | kept test_mail_template.py edit outside Paths (test send removed) | Why: its tests called /api/mail/test
 - 1794975885 | deadline decision/UPS-084-1794974759/1794975659 | REVERSIBLE_AND_LOG | Option: CLAUDE.md: safe round-trip line; Why: incident guard; no money, accounts, publishing or scope expansion.
 - 1794977136 | UPS-090 | board not pickable for club audience (server fallback) | Why: UPS-089 _sender_club
+- 1794978762 | UPS-091 | scope widened by victor | Why: needed for event/image/reply-to
