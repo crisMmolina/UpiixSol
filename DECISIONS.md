@@ -126,3 +126,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794981266 | UPS-094 | Edit mode added to event form so replace/remove work; photo failure on create turns the form into an edit of the new event | Why: Retry must not duplicate the event
 - 1794981508 | allow | victor | test change: UPS-096 | Why: victor verified the per-recipient List-Unsubscribe in a batch
 - 1794981783 | allow | victor | test change: UPS-097 | Why: victor: no per-campaign cap on outside addresses, monthly quota only
+- 1794982319 | UPS-096 | always batch with %recipient.unsubscribe_url% | Why: victor verified 2026-11-18
