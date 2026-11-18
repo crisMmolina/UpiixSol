@@ -1900,3 +1900,23 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Golden fixtures in `app/tests/fixtures/mail_render/` refreshed if their header changes.
 - **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_logos.py app/tests/test_mail_render.py app/tests/test_mail_campaigns.py app/tests/test_mail_preview.py`
 - **Next step:** stubs for the Tests names and `uak red UPS-098`; then wire `email_logo`/`email_copy` where theme and sender are built.
+
+## UPS-099 · SVG logos get a PNG copy for email on the server (resvg-py); the site keeps its SVG
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 120 min
+- **Rubric / Spec:** victor 2026-11-18: the site logo (Marca del sitio) is an SVG and must stay an SVG on the site; only emails need a PNG, because no email client shows SVG. Server-side conversion chosen by victor. New dependency **`resvg-py`** (PyPI 0.5.0, MIT per its GitHub repo `baseplate-admin/resvg-py`, prebuilt wheels for manylinux x86_64 and macOS arm64, Python ≥ 3.10; wraps the Rust `resvg` renderer; small project, 30 stars, last push 2026-11-10). Spec 004 §Images. Works with UPS-098, which wires `email_copy`/`email_logo` into rendering.
+- **Depends on:** UPS-098
+- **Uses contract:** None
+- **Related:** UPS-088
+- **Paths:** pyproject.toml, uv.lock, app/services/mail_images.py, app/tests/test_mail_images.py, docs/security-deps.md
+- **Freeze-Allowed:** no
+- **Tests:** test_svg_site_logo_gets_a_transparent_png_copy, test_svg_png_copy_is_cached_and_reused, test_svg_club_logo_gets_a_png_copy, test_svg_render_never_loads_external_resources, test_broken_svg_falls_back_to_none, test_site_keeps_serving_the_svg
+- **Acceptance:**
+  - `email_copy(url)` for an SVG under `/media/` renders it with `resvg-py` to a transparent PNG at 3× the email display height (about 144 px high for the 48 px header, width by aspect ratio, at most 1200 px), stores it as `mail/<sha256(key)[:32]>.png` (same cache as the WebP copies) and returns its URL; later calls reuse the cache. Site and club logos are covered; event covers are never SVG.
+  - The SVG stays what the site serves (`GET /api/site` keeps `logo_url` = the SVG); nothing in Marca del sitio changes.
+  - Rendering is safe: only SVGs already accepted by the upload check (`media._svg_is_safe`); no external resource loading (no `href` to http or file), size and time bounded; any failure returns None (the renderer then shows the text wordmark).
+  - The dependency is added with uv (pyproject + uv.lock; `uv sync --locked` passes; the Docker build and CI on Linux pass); `docs/security-deps.md` records package, version, license, source and why. Before starting, a human records the decision: `UAK_HUMAN=victor bash .uak/bin/uak decision UPS-099 --option "Add resvg-py (MIT) to rasterize SVG logos for email" --why "no email client shows SVG; the site keeps the SVG" --reversible yes --authorized yes --class scope`.
+- **Verify:** `bash .uak/bin/q bash -c 'uv sync --locked && uv run pytest -q --tb=short -x app/tests/test_mail_images.py app/tests/test_mail_render.py'`
+- **Next step:** after the human decision, stubs for the Tests names and `uak red UPS-099`; then add the dependency, then the SVG branch of `email_copy`.
