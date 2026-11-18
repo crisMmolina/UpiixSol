@@ -9,7 +9,7 @@ Consumers: UPS-073 (transport), UPS-077 (webhook). Plan: `docs/specs/003-correo/
 |---|---|---|
 | Endpoint and auth | `POST {base}/v3/{domain}/messages`, HTTP Basic `api:<key>` | documented |
 | Max recipients per call | 1 000 (`to` repeated + `recipient-variables`) | documented |
-| `%recipient.*%` inside `h:List-Unsubscribe` | not stated anywhere | **unverified** → use the plan fallback until checked |
+| `%recipient.*%` inside `h:List-Unsubscribe` | substituted per recipient | **verified 2026-11-18** (§3) |
 | `List-Unsubscribe-Post` | plain `h:` header, value `List-Unsubscribe=One-Click` (RFC 8058) | header mechanism documented; Mailgun's treatment **unverified** |
 | Webhook body | `{"signature": {...}, "event-data": {...}}` | signature wrapper documented; see conflict below |
 | Signature | hex HMAC-SHA256(signing key, `timestamp + token`) | documented |
@@ -28,7 +28,8 @@ Consumers: UPS-073 (transport), UPS-077 (webhook). Plan: `docs/specs/003-correo/
 - Without `recipient-variables` every recipient sees all addresses in `To`: the call must always include them (batch-sending page, warning). The keys of the JSON must be the plain addresses (no display name), the same strings as in `to`.
 - Plan §Design (batches of ≤ 1 000) holds. Use fewer per call if the 16 KB limit is near: `recipient-variables` counts as a form field, not an option, but a large per-recipient JSON should be checked with a 1 000-recipient test-mode call (**unverified**).
 
-## 3. `%recipient.*%` inside a custom `h:List-Unsubscribe`  — **unverified**
+## 3. `%recipient.*%` inside a custom `h:List-Unsubscribe`  — **verified 2026-11-18**
+- **Result (victor, 2026-11-18):** one Mailgun call to 2 recipients with `recipient-variables` and `h:List-Unsubscribe=<…?t=%recipient.token%>` delivered `List-Unsubscribe: <…?t=tok-uno>` and `<…?t=tok-dos>` respectively (Gmail "Mostrar original"; SPF, DKIM and DMARC pass for mg.upiixsol.com). UPS-096 batches every send (≤ 1 000 per call) with `h:List-Unsubscribe=<%recipient.unsubscribe_url%>`; the one-call fallback below was removed. The notes below are the original pre-verification analysis.
 - Syntax documented: `recipient-variables='{"a@example.com": {"name": "Alice"}}'`, referenced as `%recipient.name%`.
 - Locations shown working in the docs: subject, text body, and `To:` (`To: %recipient%`). The batch-sending page says "Mailgun recommends only placing recipient variables in one of the supported locations described" and does **not** list custom headers. Nothing in the messages reference, the batch page or the tracking pages says that `h:` headers are substituted.
 - `o:testmode` messages are accepted but not delivered ("Messages are processed normally but not actually delivered"), so test mode cannot show the final header either way, except through the stored message (the `accepted` event carries a `storage.url`), which needs the key.
@@ -91,7 +92,7 @@ def verify(signing_key: str, timestamp: str, token: str, signature: str, max_age
 - Optional second check, not planned: the TLS client certificate with CN `webhooks.mgsend.net`.
 
 ## Open questions for victor (run once, key in `.env`, test mode only)
-1. Header substitution in a batch (§3). If it works, UPS-073 batches; if not, the fallback stays.
+1. ~~Header substitution in a batch (§3).~~ Verified 2026-11-18: it works; every send batches.
 2. Exact bodies of the 200/400/401 responses to replace the reconstructed `messages_*.json`.
 3. Region of the `mg.upiixsol.com` domain (US/EU) → `MAILGUN_API_BASE`.
 4. One real webhook delivery to confirm the `event-data` wrapper and the `user-variables` object.

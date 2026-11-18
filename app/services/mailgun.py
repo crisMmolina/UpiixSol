@@ -3,11 +3,9 @@
     transport = MailgunTransport()                       # env settings, httpx with a 10 s timeout
     result = transport.send_batch(message, recipients)   # split into ordered calls of ≤ 1 000 recipients
 
-Unsubscribe headers (docs/spikes/mailgun.md §3): whether Mailgun substitutes `%recipient.*%` inside a custom
-`h:List-Unsubscribe` is UNVERIFIED. Until it is, the plan's fallback applies: below `PER_RECIPIENT_BELOW`
-recipients, one call per recipient with the real URL in the header; above it, batches without a custom
-header (Mailgun's own unsubscribe, synced by webhook in UPS-077). Once verified, set
-`UNSUBSCRIBE_HEADER_IN_BATCH = True`: every send batches and the header carries the recipient variable.
+Unsubscribe header (docs/spikes/mailgun.md §3, verified 2026-11-18): every send batches (≤ 1 000 per call) and
+`h:List-Unsubscribe` carries `%recipient.unsubscribe_url%`, which Mailgun resolves per recipient to the API
+one-click URL (RFC 8058).
 
 Errors never carry the key or an address: a failed call marks its recipients with a short code
 (`auth`, `rate_limited`, `provider_error`, `rejected`, `timeout`, `network`, `bad_response`) and the log
@@ -17,7 +15,6 @@ has status, code and counts only.
 import json
 import logging
 import re
-from collections.abc import Iterator
 
 import httpx
 
@@ -27,26 +24,14 @@ from app.services.mailer import MAX_BATCH, BatchResult, MailMessage, MailRecipie
 logger = logging.getLogger("mail.mailgun")
 
 TIMEOUT_SECONDS = 10.0
-UNSUBSCRIBE_HEADER_IN_BATCH = False  # flip once spike §3 is verified with a test-mode call
-PER_RECIPIENT_BELOW = 100  # plan §Design fallback: one call per recipient below this many recipients
 ONE_CLICK = "List-Unsubscribe=One-Click"  # RFC 8058 §3.1
 NAME_UNSAFE = re.compile(r'[\x00-\x1f\x7f"<>\\]')  # controls, quotes, angle brackets: break the From header
 UNSAFE = re.compile(r'[\s,;<>"]')  # never valid in an address or URL; would split `to` or break a header
 
 
-def unsubscribe_headers(recipient: MailRecipientVars | None) -> dict[str, str]:
-    """The only place the unsubscribe headers are built.
-
-    `recipient` given: a one-recipient call, so the real URL goes in the header. `None`: a batch call, which
-    gets the recipient variable only when `UNSUBSCRIBE_HEADER_IN_BATCH` is on; otherwise no custom header.
-    """
-    if recipient is not None:
-        url = recipient.unsubscribe_url
-    elif UNSUBSCRIBE_HEADER_IN_BATCH:
-        url = "%recipient.unsubscribe_url%"
-    else:
-        return {}
-    return {"h:List-Unsubscribe": f"<{url}>", "h:List-Unsubscribe-Post": ONE_CLICK}
+def unsubscribe_headers() -> dict[str, str]:
+    """The only place the unsubscribe headers are built: the per-recipient variable, resolved by Mailgun."""
+    return {"h:List-Unsubscribe": "<%recipient.unsubscribe_url%>", "h:List-Unsubscribe-Post": ONE_CLICK}
 
 
 def sender_from(mail_from: str, from_name: str | None) -> str:
@@ -92,17 +77,10 @@ class MailgunTransport:
                 result.failed[recipient.recipient_id] = "rejected"  # could add recipients or inject a header
             else:
                 safe.append(recipient)
-        for chunk, headers in self._calls(safe):
-            self._send_one(message, chunk, headers, result)
+        headers = unsubscribe_headers()
+        for start in range(0, len(safe), MAX_BATCH):
+            self._send_one(message, safe[start : start + MAX_BATCH], headers, result)
         return result
-
-    def _calls(self, recipients: list[MailRecipientVars]) -> Iterator[tuple[list[MailRecipientVars], dict]]:
-        if not UNSUBSCRIBE_HEADER_IN_BATCH and len(recipients) < PER_RECIPIENT_BELOW:
-            for recipient in recipients:
-                yield [recipient], unsubscribe_headers(recipient)
-            return
-        for start in range(0, len(recipients), MAX_BATCH):
-            yield recipients[start : start + MAX_BATCH], unsubscribe_headers(None)
 
     def _form(self, message: MailMessage, chunk: list[MailRecipientVars], headers: dict) -> dict:
         settings = self._settings
