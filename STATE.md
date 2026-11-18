@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1794973329
+Updated: 1794973426
 AVAILABLE: UPS-068 UPS-084 UPS-089 UPS-090 UPS-091 
 CLAIMED: UPS-088 
 BLOCKED: UPS-057 
@@ -16,11 +16,11 @@ UPS-088 | CLAIMED | victor-2 | until 1794987729
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1794954598 | UPS-080 | MAIL_ENABLED and MAILGUN_TEST_MODE sync:false so redeploys never override the dashboard or rollback | Why: blueprint value would overwrite manual flips
 - 1794970108 | UPS-085 | batch_alter_table for SQLite FK/unique; MX tz fixed UTC-6 | Why: SQLite cannot ALTER constraints
 - 1794971067 | allow | victor | test change: UPS-092 | Why: victor: monthly Mailgun quota replaces the daily placeholder
 - 1794971535 | UPS-086 | inline-only HTML, no head style; sender block one pattern | Why: Gmail dark inversion + critic P1s
 - 1794971700 | UPS-087 | token lookup, 404 fail-closed | Why: no leak across campaigns
+- 1794973426 | allow | victor | test change: UPS-089 | Why: victor removed the test send (spec 004)
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.

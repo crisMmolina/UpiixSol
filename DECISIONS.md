@@ -113,3 +113,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794971067 | allow | victor | test change: UPS-092 | Why: victor: monthly Mailgun quota replaces the daily placeholder
 - 1794971535 | UPS-086 | inline-only HTML, no head style; sender block one pattern | Why: Gmail dark inversion + critic P1s
 - 1794971700 | UPS-087 | token lookup, 404 fail-closed | Why: no leak across campaigns
+- 1794973426 | allow | victor | test change: UPS-089 | Why: victor removed the test send (spec 004)
