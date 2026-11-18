@@ -17,6 +17,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) · versione
 - Comunidad tipo Discord: Feed, General y canal por academia, posts con imagen, comentarios y moderación (UPS-011).
 - Eventos y calendario (mes y lista), globales o por academia (UPS-013).
 - Flujo de aceptación end-to-end de 6 pasos con Playwright en escritorio y celular (UPS-016).
+- El superadmin hace admin de un club a un miembro y lo regresa a miembro desde la pestaña Usuarios, con insignia de rol y confirmación que nombra a la persona y al club; el cambio aplica en la siguiente petición y queda en el registro sin datos personales (UPS-093).
 
 ### Fixed
 - Comunidad ya no se desplaza de lado en celular (UPS-011).

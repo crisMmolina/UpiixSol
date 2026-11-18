@@ -1,6 +1,6 @@
 // Flow step 6 (UPS-009): superadmin panel — academies (with their channel), users, campus home page and the
 // site brand (UPS-041, SiteBrandTab.tsx).
-import { ArrowSquareOut, Info, Key, Plus, Power, UserPlus } from "@phosphor-icons/react";
+import { ArrowSquareOut, Info, Key, Plus, Power, ShieldCheck, ShieldSlash, UserPlus } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams, type RouteObject } from "react-router";
 
@@ -302,6 +302,88 @@ function NewUserForm({ academies, onCreated, onClose }: { academies: AcademyOut[
   );
 }
 
+type RoleChange = { user: UserAdminOut; mode: "promote" | "demote" };
+
+const ROLE_TONE: Record<Role, "accent" | "primary" | "neutral"> = {
+  superadmin: "accent",
+  academy_admin: "primary",
+  member: "neutral",
+};
+
+/** UPS-093: confirmation that names the person and the club before a role change is sent. */
+function RoleChangeForm({
+  change,
+  academies,
+  onDone,
+  onClose,
+}: {
+  change: RoleChange;
+  academies: AcademyOut[];
+  onDone: (user: UserAdminOut, clubName: string) => void;
+  onClose: () => void;
+}) {
+  const { user, mode } = change;
+  const active = academies.filter((a) => a.is_active);
+  const [clubId, setClubId] = useState(String(active[0]?.id ?? ""));
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const clubName =
+    academies.find((a) => a.id === (mode === "promote" ? Number(clubId) : user.academy_id))?.name ?? "su club";
+  const question =
+    mode === "promote"
+      ? `¿Hacer admin de ${clubName} a ${user.full_name}?`
+      : `¿Quitar a ${user.full_name} como admin de ${clubName}?`;
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await api<UserAdminOut>(`/admin/users/${user.id}/role`, {
+        method: "PUT",
+        json: mode === "promote" ? { role: "academy_admin", academy_id: Number(clubId) } : { role: "member" },
+      });
+      onDone(updated, clubName);
+      onClose();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-4" noValidate>
+      {mode === "promote" && (
+        <SelectField label="Club" name="academy_id" value={clubId} onChange={(e) => setClubId(e.target.value)}>
+          {active.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
+      <p className="font-semibold">{question}</p>
+      <p className="text-sm text-muted">
+        {mode === "promote"
+          ? "Verá el panel del club desde su siguiente visita y podrá administrar su contenido, eventos e inscripciones."
+          : "Pierde el panel del club de inmediato. Sus inscripciones y los correos que ya envió no cambian."}
+      </p>
+      <div className="grid gap-2">
+        <FormMessage message={error} lines={{ base: 2, sm: 1 }} />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" variant={mode === "demote" ? "danger" : "primary"} loading={busy} disabled={mode === "promote" && active.length === 0}>
+            {mode === "promote" ? "Hacer admin" : "Quitar admin"}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 function UsersTab() {
   const { user: me } = useAuth();
   const { academies } = useAcademies();
@@ -311,6 +393,8 @@ function UsersTab() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [reset, setReset] = useState<{ user: UserAdminOut; password: string } | null>(null);
+  const [roleChange, setRoleChange] = useState<RoleChange | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(
     async (after: string | null) => {
@@ -353,6 +437,39 @@ function UsersTab() {
     }
   }
 
+  // The same actions twice: in their own column from `sm` up, under the name on phones (no sideways scroll).
+  function rowActions(user: UserAdminOut, compact: boolean) {
+    return (
+      <div className={compact ? "flex flex-wrap gap-1" : "flex justify-end gap-1"}>
+        {user.is_active && user.role === "member" && (
+          <Button size="sm" variant="ghost" icon={<ShieldCheck weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "promote" })}>
+            Hacer admin de un club
+          </Button>
+        )}
+        {user.is_active && user.role === "academy_admin" && (
+          <Button size="sm" variant="ghost" icon={<ShieldSlash weight="bold" />} className="whitespace-nowrap" onClick={() => setRoleChange({ user, mode: "demote" })}>
+            Quitar admin
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" icon={<Key weight="bold" />} onClick={() => void resetPassword(user)}>
+          Restablecer
+        </Button>
+        {user.id !== me?.id ? (
+          <Button size="sm" variant="ghost" icon={<Power weight="bold" />} onClick={() => void toggle(user)}>
+            {user.is_active ? "Desactivar" : "Activar"}
+          </Button>
+        ) : (
+          !compact && (
+            // Keeps "Restablecer" aligned with the other rows; the reason is under the name.
+            <Button size="sm" variant="ghost" icon={<Power weight="bold" />} className="invisible" aria-hidden tabIndex={-1}>
+              Desactivar
+            </Button>
+          )
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-5">
       <form
@@ -382,19 +499,20 @@ function UsersTab() {
         </Button>
       </form>
       {error && <Notice tone="alert">{error}</Notice>}
+      <FormMessage tone="success" message={notice} />
       {!items ? (
         <PageSkeleton />
       ) : (
         <Card className="overflow-x-auto">
-          <table className="w-full min-w-[48rem] text-left text-sm">
+          <table className="w-full text-left text-sm sm:min-w-[48rem]">
             <thead className="border-b border-line text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold">Nombre</th>
-                <th className="px-4 py-3 font-semibold">Rol</th>
-                <th className="px-4 py-3 font-semibold">Club</th>
-                <th className="px-4 py-3 font-semibold">Boleta</th>
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">Rol</th>
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">Club</th>
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">Boleta</th>
                 <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 font-semibold">
+                <th className="hidden px-4 py-3 font-semibold sm:table-cell">
                   <span className="sr-only">Acciones</span>
                 </th>
               </tr>
@@ -416,29 +534,24 @@ function UsersTab() {
                         No puedes desactivar tu propia cuenta; otro superadmin sí puede.
                       </span>
                     )}
+                    <div className="mt-2 grid gap-2 sm:hidden">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <Badge tone={ROLE_TONE[user.role]}>{ROLE_LABEL[user.role]}</Badge>
+                        {user.role === "academy_admin" && <span className="text-xs text-muted">{academyName(user.academy_id)}</span>}
+                      </span>
+                      {rowActions(user, true)}
+                    </div>
                   </td>
-                  <td className="px-4 py-3">{ROLE_LABEL[user.role]}</td>
-                  <td className="px-4 py-3">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
-                  <td className="px-4 py-3 tabular-nums">{user.boleta ?? "—"}</td>
+                  <td className="hidden px-4 py-3 sm:table-cell">
+                    <Badge tone={ROLE_TONE[user.role]}>{ROLE_LABEL[user.role]}</Badge>
+                  </td>
+                  <td className="hidden px-4 py-3 sm:table-cell">{user.role === "academy_admin" ? academyName(user.academy_id) : "—"}</td>
+                  <td className="hidden px-4 py-3 tabular-nums sm:table-cell">{user.boleta ?? "—"}</td>
                   <td className="px-4 py-3">
                     <Badge tone={user.is_active ? "primary" : "alert"}>{user.is_active ? "Activo" : "Inactivo"}</Badge>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" icon={<Key weight="bold" />} onClick={() => void resetPassword(user)}>
-                        Restablecer
-                      </Button>
-                      {user.id !== me?.id ? (
-                        <Button size="sm" variant="ghost" icon={<Power weight="bold" />} onClick={() => void toggle(user)}>
-                          {user.is_active ? "Desactivar" : "Activar"}
-                        </Button>
-                      ) : (
-                        // Keeps "Restablecer" aligned with the other rows; the reason is under the name.
-                        <Button size="sm" variant="ghost" icon={<Power weight="bold" />} className="invisible" aria-hidden tabIndex={-1}>
-                          Desactivar
-                        </Button>
-                      )}
-                    </div>
+                  <td className="hidden px-4 py-3 sm:table-cell">
+                    {rowActions(user, false)}
                   </td>
                 </tr>
               ))}
@@ -463,6 +576,27 @@ function UsersTab() {
       <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo usuario">
         {creating && academies && (
           <NewUserForm academies={academies.filter((a) => a.is_active)} onClose={() => setCreating(false)} onCreated={() => void load(null)} />
+        )}
+      </Modal>
+      <Modal
+        open={roleChange !== null}
+        onClose={() => setRoleChange(null)}
+        title={roleChange?.mode === "demote" ? "Quitar admin" : "Hacer admin de un club"}
+      >
+        {roleChange && academies && (
+          <RoleChangeForm
+            change={roleChange}
+            academies={academies}
+            onClose={() => setRoleChange(null)}
+            onDone={(updated, clubName) => {
+              setItems((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev);
+              setNotice(
+                updated.role === "academy_admin"
+                  ? `${updated.full_name} ahora es admin de ${clubName}.`
+                  : `${updated.full_name} ya no es admin de ${clubName}.`,
+              );
+            }}
+          />
         )}
       </Modal>
       <Modal open={reset !== null} onClose={() => setReset(null)} title="Contraseña temporal">

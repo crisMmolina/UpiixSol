@@ -10,7 +10,13 @@ from app.models import Academy, Role, User
 from app.pagination import CursorParam, LimitParam, paginate
 from app.schemas.academies import AcademyCreateIn, AcademyOut, AcademyUpdateIn, HomeContentIn, HomeContentOut
 from app.schemas.common import Page
-from app.schemas.users import AdminUserCreateIn, AdminUserUpdateIn, PasswordResetOut, UserAdminOut
+from app.schemas.users import (
+    AdminUserCreateIn,
+    AdminUserUpdateIn,
+    PasswordResetOut,
+    RoleChangeIn,
+    UserAdminOut,
+)
 from app.security import require_role
 from app.services import admin as service
 
@@ -82,6 +88,15 @@ def update_user(
     user_id: int, data: AdminUserUpdateIn, actor: Superadmin, db: Session = Depends(get_db)
 ) -> UserAdminOut:
     result = service.update_user(db, actor, user_id, data)
+    db.commit()
+    return result
+
+
+@router.put("/users/{user_id}/role", response_model=UserAdminOut)
+def change_role(
+    user_id: int, data: RoleChangeIn, actor: Superadmin, db: Session = Depends(get_db)
+) -> UserAdminOut:
+    result = service.change_role(db, actor, user_id, data)
     db.commit()
     return result
 

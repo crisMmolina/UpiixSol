@@ -130,5 +130,12 @@ class AdminUserUpdateIn(InModel):
     is_active: bool | None = None
 
 
+class RoleChangeIn(InModel):
+    """UPS-093: the only way to change a role. `superadmin` is not a choice (spec 005)."""
+
+    role: Literal[Role.member, Role.academy_admin]
+    academy_id: int | None = Field(default=None, description="Required for academy_admin; ignored for member")
+
+
 class PasswordResetOut(OutModel):
     temporary_password: str
