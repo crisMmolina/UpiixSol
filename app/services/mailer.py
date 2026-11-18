@@ -31,6 +31,11 @@ class MailMessage:
     html: str = field(repr=False)
     text: str = field(repr=False)
     campaign_id: int | None = None  # sent to the provider as a tag so webhooks find the campaign
+    # UPS-085: (filename, content type, bytes) parts, e.g. evento.ics; Reply-To of the campaign (wins over
+    # MAIL_REPLY_TO); display name of the sender (the From address always stays MAIL_FROM's).
+    attachments: list[tuple[str, str, bytes]] = field(default_factory=list, repr=False)
+    reply_to: str | None = field(default=None, repr=False)
+    from_name: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
