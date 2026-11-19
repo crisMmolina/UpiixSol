@@ -133,3 +133,5 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794984457 | deadline decision/UPS-099-1794983542/1794984442 | BLOCKED_OTHER_TASK | Option: Add resvg-py (MIT) to rasterize SVG logos for email; Why: no email client shows SVG; the site keeps the SVG; no money, accounts, publishing or scope expansion.
 - 1794985903 | UPS-095 | merged by cris over the reject of victor-3 | Why: The 1 s bound was measured on a laptop (0.3 s); on the shared GitHub runner the same code takes 1.1 s. The test now guards only against a denial of service on an input already capped at 2 MB and 1024 px, so the 3 s margin is the intended bound. All 4 CI checks passed on the merged head.
 - 1794986209 | allow | victor | test change: UPS-102 | Why: victor: composer redesign in three steps (spec 005)
+- 1795070186 | deadline lease/UPS-100/1795000678 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
+- 1795070186 | deadline lease/UPS-102/1795000687 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
