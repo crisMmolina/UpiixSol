@@ -1,12 +1,12 @@
 # worklog/WL-1795240083-victor-2-UPS-107-hack.fCPXEV.md · UPS-107
 
 ## Live summary
-- Done: Verify exit 0 (lint, build, 6 mail e2e files); smoke exit 0; design-critic SHIP; criteria met · existing tests changed with a human's approval (victor) · red at 683b629: FAILED e2e/test_mail_recipients.py::test_add_sources_as_chips_with_counts[desktop]
-- Decision: mix draft in reducer; list fetch ignores excludes (flip in place)
-- Why: no refetch on uncheck
+- Done: PR 172 in REVIEW
+- Decision: Composer.tsx and index.tsx touched, outside Paths (needed)
+- Why: initialState signature, export of removed AudiencePicker
 - Failing: none
-- Commands: Verify cmd in TASKS
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/172; run .uak/bin/smoke
+- Commands: Verify in TASKS
+- Next: Wait for review of PR 172; human must amend Paths
 
 ## History
 - 1795240083 | CLAIMED | victor-2 | claim; next: after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-107`; then the sources, then the list, then exclusions and summary.
@@ -14,3 +14,4 @@
 - 1795241416 | CLAIMED | victor-2 | heartbeat; lease until 1795255816
 - 1795241778 | CLAIMED | victor-2 | checkpoint; next: shots to .uak-shots/UPS-107, design-critic, ship
 - 1795242286 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/172; evidence: Verify exit 0 (lint, build, 6 mail e2e files); smoke exit 0; design-critic SHIP; criteria met · existing tests changed with a human's approval (victor) · red at 683b629: FAILED e2e/test_mail_recipients.py::test_add_sources_as_chips_with_counts[desktop]; reviewer: -
+- 1795242300 | REVIEW | victor-2 | checkpoint; next: Wait for review of PR 172; human must amend Paths
