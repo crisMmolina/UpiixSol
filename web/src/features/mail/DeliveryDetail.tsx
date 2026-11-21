@@ -130,7 +130,7 @@ export function DeliveryDetail({ campaignId, subject, onBack }: { campaignId: nu
         <Button variant="ghost" size="sm" icon={<ArrowLeft weight="bold" />} onClick={onBack}>
           Volver al historial
         </Button>
-        <Button size="sm" variant="secondary" className="ml-auto" onClick={reuse} disabled={!detail}>
+        <Button size="sm" variant="secondary" className="ml-auto" onClick={reuse}>
           Usar de nuevo
         </Button>
       </div>
@@ -142,7 +142,7 @@ export function DeliveryDetail({ campaignId, subject, onBack }: { campaignId: nu
         <ListSkeleton rows={3} />
       ) : (
         <Card>
-          <div role="tablist" aria-label="Estado de la entrega" className="flex flex-wrap gap-1 border-b border-line p-2">
+          <div role="tablist" aria-label="Estado de la entrega" className="flex gap-1 overflow-x-auto border-b border-line p-2">
             {TABS.map(({ status: s, label }, i) => {
               const n = detail.counts_by_status[s] ?? 0;
               return (
@@ -159,7 +159,7 @@ export function DeliveryDetail({ campaignId, subject, onBack }: { campaignId: nu
                   tabIndex={status === s ? 0 : -1}
                   onClick={() => setStatus(s)}
                   onKeyDown={(e) => onKey(e, i)}
-                  className={`min-h-11 rounded-full px-3 text-sm font-semibold ${status === s ? "bg-ink text-surface" : "text-muted hover:bg-line/50 hover:text-ink"}`}
+                  className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-3 text-sm font-semibold ${status === s ? "bg-ink text-surface" : "text-muted hover:bg-line/50 hover:text-ink"}`}
                 >
                   {label} <span className="tabular-nums">{n}</span>
                 </button>

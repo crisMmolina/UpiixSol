@@ -159,9 +159,10 @@ def test_bounced_tab_lists_people_with_reason(site: Site) -> None:
     expect(rita).to_contain_text("El buzón no existe o no acepta correo")
     expect(rita).to_contain_text("bounce")
     expect(people(page).filter(has_text="Dirección suprimida por rebotes previos")).to_have_count(1)
+    site.shot("delivery-bounced")
     tab(page, "Fallidos").click()
     expect(people(page).first).to_contain_text("El servicio de envío no respondió a tiempo")
-    site.shot("delivery-bounced")
+    site.shot("delivery-failed")
 
 
 def test_delivered_tab_lists_people(site: Site) -> None:
