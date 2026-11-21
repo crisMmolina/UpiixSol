@@ -30,8 +30,9 @@ def site(mail_env: None, site: Site) -> Site:  # noqa: ARG001 - overrides confte
 
 
 def open_persons(site: Site) -> Page:
-    sign_in(site, SUPERADMIN, "/admin?tab=correos")
+    sign_in(site, SUPERADMIN, "/")
     page = site.page
+    page.goto(site.url("/admin?tab=correos&paso=envio"))  # the audience lives in the last step (UPS-102)
     expect(page.get_by_role("tab", name="Correos")).to_have_attribute("aria-selected", "true")
     page.get_by_role("radio", name="Personas").check()
     return page

@@ -38,11 +38,18 @@ def view(site: Site, step: str) -> None:
     site.page.screenshot(path=f"e2e/artifacts/view-{site.name}-{step}.png")
 
 
-def open_club_mail(site: Site) -> Page:
-    sign_in(site, CLUB_ADMIN, "/panel/academia?tab=correos")
+def open_club_mail(site: Site, step: str = "envio") -> Page:
+    """The club panel's "Correos" tab at a composer step (UPS-102): `envio` has the audience, `contenido` the blocks."""
+    sign_in(site, CLUB_ADMIN, "/")
     page = site.page
+    page.goto(site.url(f"/panel/academia?tab=correos&paso={step}"))
     expect(page.get_by_role("tab", name="Correos")).to_have_attribute("aria-selected", "true")
     return page
+
+
+def go(page: Page, step: str) -> None:
+    """Jump to a step through the stepper (state is kept): `Contenido` or `Destinatarios`."""
+    page.get_by_role("navigation", name="Pasos del correo").get_by_role("button", name=re.compile(step)).click()
 
 
 def test_club_admin_mails_their_club_only(site: Site) -> None:
@@ -52,9 +59,11 @@ def test_club_admin_mails_their_club_only(site: Site) -> None:
     for name in ("Todo UpiixSol", "Un club", "Un rol"):
         expect(page.get_by_role("radio", name=name)).to_have_count(0)
     page.get_by_role("radio", name="Mi club").check()
+    go(page, "Contenido")
     page.get_by_label("Asunto").fill(SUBJECT)
     page.get_by_label("Texto del párrafo").first.fill(BODY)
     site.shot("club-mail-composer")
+    go(page, "Destinatarios")
     view(site, "club-mail")
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
@@ -70,20 +79,21 @@ def test_club_admin_mails_their_club_only(site: Site) -> None:
 
 
 def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> None:
-    page = open_club_mail(site)
-    expect(page.get_by_label("Enviado por")).to_have_count(0)  # not editable
-    expect(page.get_by_text("Enviado por UpiixIA", exact=True)).to_be_visible()
+    page = open_club_mail(site, "contenido")
     page.get_by_label("Asunto").fill("Aviso del club")
     page.get_by_label("Texto del párrafo").first.fill("Hola club")
+    page.get_by_role("button", name="Agregar Botón").click()
+    page.get_by_role("button", name="Ver el club").click()
+    expect(page.get_by_label("Enlace del botón")).to_have_value("https://www.upiixsol.com/a/upiixia")
+    go(page, "Destinatarios")
+    expect(page.get_by_label("Enviado por")).to_have_count(0)  # not editable
+    expect(page.get_by_text("Enviado por UpiixIA", exact=True)).to_be_visible()
     page.get_by_role("radio", name="Mi club").check()
     preview = page.frame_locator("iframe[title='Vista previa del correo']")
     expect(preview.get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
     page.locator("iframe[title='Vista previa del correo']").scroll_into_view_if_needed()
     view(site, "club-mail-preview")
     expect(page.get_by_role("button", name="Enviarme una prueba")).to_have_count(0)
-    page.get_by_role("button", name="Agregar Botón").click()
-    page.get_by_role("button", name="Ver el club").click()
-    expect(page.get_by_label("Enlace del botón")).to_have_value("https://www.upiixsol.com/a/upiixia")
 
 
 def test_club_admin_picker_lists_only_their_enrollees(site: Site) -> None:
@@ -161,9 +171,11 @@ def test_club_mail_tab_at_390_wide(site: Site) -> None:
     expect(page.get_by_role("tab", name="Correos")).to_be_visible()
     expect(page.get_by_role("radio", name="Mi club")).to_be_visible()
     expect(page.get_by_role("radio", name="Personas")).to_be_visible()
+    page.get_by_role("radio", name="Mi club").check()
+    go(page, "Contenido")
     page.get_by_label("Asunto").fill("Revisión de pantalla")
     page.get_by_label("Texto del párrafo").first.fill(BODY)
-    page.get_by_role("radio", name="Mi club").check()
+    go(page, "Destinatarios")
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
     expect(dialog.get_by_role("button", name="Enviar ahora")).to_be_visible()
