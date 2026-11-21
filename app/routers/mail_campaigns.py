@@ -15,7 +15,7 @@ from app.pagination import CursorParam, LimitParam
 from app.schemas.common import Page
 from app.security import require_role
 from app.services import mail_campaigns as service
-from app.services.mail_campaigns import CampaignIn, CampaignOut, PreviewOut
+from app.services.mail_campaigns import CampaignIn, CampaignOut, PreviewIn, PreviewOut
 from app.services.mailer import MailTransport, get_mail_transport
 
 router = APIRouter(prefix="/api/mail", tags=["mail"])
@@ -24,7 +24,7 @@ Transport = Annotated[MailTransport, Depends(get_mail_transport)]
 
 
 @router.post("/preview", response_model=PreviewOut)
-def preview(data: CampaignIn, user: Sender, db: Session = Depends(get_db)) -> PreviewOut:
+def preview(data: PreviewIn, user: Sender, db: Session = Depends(get_db)) -> PreviewOut:
     return service.preview(db, user, data)
 
 
