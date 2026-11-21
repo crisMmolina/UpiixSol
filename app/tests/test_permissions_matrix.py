@@ -269,6 +269,17 @@ MATRIX: list[Rule] = [
         _json(lambda w: {"kind": "academy", "academy_id": w.academy_id}),
         note="superadmin: any audience; academy_admin: own club, its enrollees and outside addresses",
     ),
+    Rule(
+        "POST",
+        "/api/mail/audience/list",
+        OWN,
+        _json(
+            lambda w: {
+                "audience": {"kind": "mix", "sources": [{"kind": "academy", "academy_id": w.academy_id}]}
+            }
+        ),
+        note="UPS-105: who a mix reaches, by state; same scope as the preview; typed addresses blind",
+    ),
     # ── Email campaigns (UPS-075): payload and sender 403s in test_mail_campaigns.py ──
     Rule(
         "POST",
@@ -564,7 +575,7 @@ READ_MATRIX: list[Rule] = [
         "GET",
         "/api/mail/recipients",
         SENDERS,
-        note="own club's enrollees and co-admins; email only for superadmin",
+        note="own club's enrollees and co-admins, with their address (UPS-105)",
     ),
     Rule(
         "GET",

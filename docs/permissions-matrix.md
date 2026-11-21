@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **78/78 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **79/79 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -75,6 +75,7 @@ Cobertura: **78/78 endpoints de escritura (100 %)** × 5 roles.
 | DELETE | `/api/posts/{post_id}` | 🔒 | ✅ | ❌ | ❌ | ❌ | author only; moderators hide instead |
 | DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ✅ | ❌ | ✅ | author, or the moderators of its channel (UPS-070) |
 | POST | `/api/mail/audience/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | superadmin: any audience; academy_admin: own club, its enrollees and outside addresses |
+| POST | `/api/mail/audience/list` | 🔒 | ❌ | ✅ | ❌ | ✅ | UPS-105: who a mix reaches, by state; same scope as the preview; typed addresses blind |
 | POST | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ❌ | ✅ | draft; same audience scope as the preview |
 | POST | `/api/mail/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | UPS-089: {html, text} of the email; same audience scope as create; UPS-101: theme, render-only |
 | POST | `/api/mail/images` | 🔒 | ❌ | ✅ | ✅ | ✅ | UPS-088: email image (PNG/JPEG copy under /media/mail); rate-limited per user |
@@ -99,7 +100,7 @@ Cobertura: **78/78 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/admin/users` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/admin/home` | 🔒 | ❌ | ❌ | ❌ | ✅ |  |
 | GET | `/api/mail/status` | 🔒 | ❌ | ✅ | ✅ | ✅ | daily quota (UPS-074) |
-| GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins; email only for superadmin |
+| GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins, with their address (UPS-105) |
 | GET | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ✅ | ✅ | history: superadmin all, academy_admin own club (UPS-075) |
 | GET | `/api/mail/campaigns/{campaign_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a campaign of the club (UPS-075) |
 | GET | `/api/mail/templates` | 🔒 | ❌ | ✅ | ✅ | ✅ | built-ins, UpiixSol and own club (UPS-101) |

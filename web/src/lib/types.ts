@@ -412,14 +412,28 @@ export type Audience =
   | { kind: "all" }
   | { kind: "academy"; academy_id: number }
   | { kind: "role"; role: Role }
-  | { kind: "individual"; user_ids: number[]; emails: string[] }; // ≤ 50 entries in total, ≤ 20 emails
+  | { kind: "individual"; user_ids: number[]; emails: string[] } // ≤ 50 entries in total, ≤ 20 emails
+  | MixAudience;
+
+/** A `mix` source (spec 006): sources stay symbolic and the server re-resolves them at send time. */
+export type AudienceSource = { kind: "all" } | { kind: "academy"; academy_id: number } | { kind: "role"; role: Role };
+
+/** Combined audience (spec 006, UPS-105): sources ≤ 10, user_ids ≤ 1000, exclude_user_ids ≤ 5000. */
+export interface MixAudience {
+  kind: "mix";
+  sources: AudienceSource[];
+  user_ids: number[];
+  exclude_user_ids: number[];
+  emails: string[];
+}
 
 /** What the API returns: outside addresses are never echoed back, only how many there were. */
 export type AudienceOut =
   | { kind: "all" }
   | { kind: "academy"; academy_id: number }
   | { kind: "role"; role: Role }
-  | { kind: "individual"; user_ids: number[]; outside: number };
+  | { kind: "individual"; user_ids: number[]; outside: number }
+  | { kind: "mix"; sources: AudienceSource[]; user_ids: number[]; excluded: number; outside: number };
 
 export type CampaignStatus = "draft" | "sending" | "sent" | "partial" | "failed";
 export type MailRecipientStatus =
@@ -466,7 +480,26 @@ export interface MailPreferences {
 /** POST /api/mail/audience/preview */
 export interface AudiencePreview {
   count: number;
+  /** People a source includes that the sender unchecked; only for a `mix` audience. */
+  removed?: number;
   excluded: { inactive: number; suppressed: number; blocked_domain: number };
+}
+
+export type AudienceMemberState = "receives" | "removed" | "cannot";
+
+/** POST /api/mail/audience/list → Page<AudienceMember>; body `{audience, q?, state?, cursor?, limit≤50}`. */
+export interface AudienceMember {
+  /** null for a typed outside address. */
+  user_id: number | null;
+  name: string;
+  nickname: string | null;
+  email: string;
+  avatar_url: string | null;
+  /** `all`, `academy:<id>`, `role:<role>`, `picked`, `outside`. */
+  origins: string[];
+  state: AudienceMemberState;
+  /** Only when `state` is `cannot`. */
+  reason: "inactive" | "suppressed" | "blocked_domain" | null;
 }
 
 /** Email blocks (spec 004, app/services/mail_blocks.py). Event times are ISO datetimes; one without an
