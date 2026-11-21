@@ -2006,22 +2006,105 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
 - **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_canvas.py e2e/test_mail_composer.py e2e/test_mail.py e2e/test_mail_club.py e2e/test_mail_rich.py e2e/test_mail_paste.py'`
 - **Next step:** after victor's OK on the UPS-102 mock and the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-103`; then the canvas render, then inline text, then the inserter, then drag and properties.
 
-## UPS-104 · Web: template gallery (built-in, saved, blank) and "Guardar como plantilla"
+## UPS-104 · Web: template gallery (built-in, saved, recent sent, blank), "Guardar como plantilla" and save on send
 
 - **Type:** feature
 - **Priority:** P1
-- **Estimate:** 240 min
-- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Templates. Skills: product-ui, stack-frontend. Human owner: victor.
-- **Depends on:** UPS-103
-- **Uses contract:** None
-- **Related:** None
-- **Paths:** web/src/features/mail/TemplateStep.tsx, web/src/features/mail/ContentStep.tsx, web/src/features/mail/composerState.ts, web/src/features/mail/TemplateGallery.tsx, web/src/features/mail/TemplateThumbnail.tsx, web/src/features/mail/SaveTemplateDialog.tsx, e2e/test_mail_templates.py
+- **Estimate:** 330 min
+- **Rubric / Spec:** `docs/specs/005-plantillas-compositor/spec.md` §Templates; spec 006 §Decisions (templates on send, victor 2026-11-20). Skills: product-ui, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-103, UPS-106, UPS-107
+- **Uses contract:** UPS-106
+- **Related:** UPS-108
+- **Paths:** web/src/features/mail/TemplateStep.tsx, web/src/features/mail/ContentStep.tsx, web/src/features/mail/composerState.ts, web/src/features/mail/TemplateGallery.tsx, web/src/features/mail/TemplateThumbnail.tsx, web/src/features/mail/SaveTemplateDialog.tsx, web/src/features/mail/SendStep.tsx, web/src/features/mail/RecentSent.tsx, e2e/test_mail_templates.py
 - **Freeze-Allowed:** no
-- **Tests:** test_gallery_shows_builtins_saved_and_blank_with_thumbnails, test_pick_template_loads_subject_preheader_and_blocks, test_event_placeholder_asks_to_complete_the_event, test_save_as_template_and_find_it_in_the_gallery, test_rename_and_delete_own_template, test_club_admin_sees_site_and_own_club_templates_only, test_gallery_at_390_wide
+- **Tests:** test_gallery_shows_builtins_saved_and_blank_with_thumbnails, test_pick_template_loads_subject_preheader_and_blocks, test_event_placeholder_asks_to_complete_the_event, test_save_as_template_and_find_it_in_the_gallery, test_rename_and_delete_own_template, test_club_admin_sees_site_and_own_club_templates_only, test_save_on_send_checked_by_default_and_saved, test_save_on_send_hidden_for_unchanged_template, test_recent_sent_section_reuses_an_email, test_reusar_param_loads_a_sent_email, test_gallery_at_390_wide
 - **Acceptance:**
   - Step 1 gallery: sections "Plantillas de UpiixSol" (built-ins + UpiixSol saved), "Plantillas de mi club" (club admin) and "En blanco"; each card with a live thumbnail (render-only `POST /api/mail/preview` without audience, in a scaled sandboxed iframe, cached), name and description; one click loads it into the canvas (asks before replacing unsaved work).
   - Event placeholders show "Completa el evento" in the canvas until filled.
   - "Guardar como plantilla" in step 2: name (≤ 60), description (≤ 140), shows where it is saved (UpiixSol or my club); rename and delete own templates from the gallery (confirm before delete).
+  - Save on send (victor 2026-11-20): step 3 shows "Guardar como plantilla" **checked by default** with the name prefilled from the subject whenever the content did not come unchanged from a template (built-in or saved); on send it saves to the sender's scope (a 409 name clash suggests "<nombre> (2)"); a failed save never blocks the send and shows a notice.
+  - "Enviados recientes" section in the gallery (always shown when there are any): the sender's last 6 sent emails in scope (`GET /api/mail/campaigns` + `GET /campaigns/{id}` content from UPS-106), "Usar de nuevo" loads subject, preview text and blocks (never recipients); the `?reusar=<id>` param (from the history, UPS-108) does the same.
   - Spanish (Mexico), AA, keyboard, 1280 and 390; `.uak-shots/UPS-104/` and a design-critic SHIP.
 - **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py'`
 - **Next step:** stubs for the e2e Tests names and `uak red UPS-104`; then the gallery, then load, then save/rename/delete.
+
+## UPS-105 · Contract + API: combined audience (`mix`), migration 0012, audience list, addresses visible in scope
+
+- **Type:** contract
+- **Priority:** P1
+- **Estimate:** 300 min
+- **Rubric / Spec:** `docs/specs/006-destinatarios-entregas/spec.md` §Combined recipients, `plan.md` §Design, §Data and migrations, §Contracts, §STRIDE. Human owner: victor.
+- **Depends on:** UPS-101
+- **Uses contract:** None
+- **Related:** UPS-107, UPS-108
+- **Paths:** app/services/mail_audience.py, app/routers/mail_audience.py, app/services/mail_campaigns.py, app/models/mail.py, app/migrations/versions/0012_mail_audience_mix.py, app/tests/test_mail_audience.py, app/tests/test_mail_audience_mix.py, app/tests/test_mail_campaigns.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/lib/types.ts, web/src/features/mail/AudiencePicker.tsx, web/src/features/mail/History.tsx
+- **Freeze-Allowed:** no
+- **Tests:** test_mail_audience_mix_migration_round_trips_on_sqlite, test_mix_unions_sources_people_and_outside_addresses_once, test_mix_exclusions_remove_campus_users, test_mix_scope_for_academy_admin, test_mix_caps_are_422, test_mix_preview_counts_receives_removed_and_cannot, test_mix_list_pages_with_origin_state_and_reason, test_list_returns_only_in_scope_people_with_email, test_mix_list_does_not_confirm_typed_addresses, test_send_resolves_mix_at_send_time, test_old_audience_kinds_still_work
+- **Acceptance:**
+  - `MixAudience` (`kind: "mix"`, `sources` ≤ 10 of `all|academy|role`, `user_ids` ≤ 1000, `exclude_user_ids` ≤ 5000, `emails`) in the `Audience` union; old kinds unchanged. `_compute` resolves it as plan §Design (union by user id, minus exclusions, then typed addresses); `check_scope` per source and per id (club admin: own club, its members, outside addresses).
+  - Migration `0012_mail_audience_mix` (down_revision `0011`), expand-only: `audience_kind` CHECK gains `mix`, index `(campaign_id, status)` on `mail_recipients`. Round-trip only with `DATABASE_URL=sqlite:////tmp/ups105.db` (never the dotenv DB) and CI's localhost Postgres. `mail_campaigns._audience_params` and the sender club logic accept `mix`.
+  - `POST /api/mail/audience/preview` returns `removed`; new `POST /api/mail/audience/list` (cursor page ≤ 50, `q`, `state`) as plan §Contracts; typed addresses blind for non-superadmins.
+  - Visibility (victor 2026-11-20): `GET /api/mail/recipients` and the list return `email` to club admins for people in their scope; their search matches addresses in scope. This changes `test_recipient_search_hides_email_from_academy_admin` by design: a human runs first `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-105 --tests --reason 'victor: club admins see the addresses of their club (spec 006)'`.
+  - `web/src/lib/types.ts` adds `MixAudience` to the `Audience` union; the only web edits here are what keeps the build green: a "Combinado" entry in `AudiencePicker.KIND_LABEL` and a `mix` label in `History.audienceText` ("Combinado · N fuentes, M personas, K externos"). The picker itself is UPS-107.
+  - Matrix rows for the new endpoint; `docs/permissions-matrix.md` regenerated; `web/src/lib/types.ts` mirrors `MixAudience`, `AudienceMember` and the new preview field.
+- **Verify:** `bash .uak/bin/q bash -c 'uv run pytest -q --tb=short -x app/tests/test_mail_audience_mix.py app/tests/test_mail_audience.py app/tests/test_mail_campaigns.py app/tests/test_permissions_matrix.py && DATABASE_URL=sqlite:////tmp/ups105.db uv run alembic upgrade head && DATABASE_URL=sqlite:////tmp/ups105.db uv run alembic downgrade base && npm --prefix web run build'`
+- **Next step:** after the human `uak allow`, stubs for the Tests names and `uak red UPS-105`; then the schema and `_compute`, then scope, then the migration, then the list endpoint.
+
+## UPS-106 · API: delivery detail per sent email (who was delivered, bounced, failed, spam) and its content for reuse
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 180 min
+- **Rubric / Spec:** `docs/specs/006-destinatarios-entregas/spec.md` §Delivery detail, `plan.md` §Design (delivery reasons), §Contracts, §STRIDE. Human owner: victor.
+- **Depends on:** UPS-105
+- **Uses contract:** None
+- **Related:** UPS-108, UPS-104
+- **Paths:** app/services/mail_delivery.py, app/routers/mail_campaigns.py, app/services/mail_campaigns.py, app/tests/test_mail_delivery.py, app/tests/test_permissions_matrix.py, docs/permissions-matrix.md, web/src/lib/types.ts
+- **Freeze-Allowed:** no
+- **Tests:** test_delivery_rows_by_status_with_name_email_and_time, test_bounce_and_failure_reasons_in_spanish, test_unknown_reason_shows_the_code, test_delivery_search_and_pages, test_delivery_detail_scope, test_purged_campaign_reports_details_purged, test_campaign_detail_includes_content_for_reuse, test_member_and_anon_get_403_and_401_on_delivery
+- **Acceptance:**
+  - `GET /api/mail/campaigns/{id}/recipients?status=&q=&cursor=&limit≤50` → `Page[DeliveryRow]` (name, address, status, `reason_code`, Spanish `reason`, `updated_at`), same scope as `GET /campaigns/{id}` (club admin: own club's campaigns; 404 otherwise).
+  - `mail_delivery.reason_text` maps the Mailgun reasons and send errors listed in plan §Design; unknown → "Motivo: <code>".
+  - `GET /api/mail/campaigns/{id}` adds `content: {preheader, blocks}` (legacy text campaigns: blocks from their paragraphs) and `details_purged` (rows purged by retention).
+  - Matrix rows; `docs/permissions-matrix.md` regenerated; `web/src/lib/types.ts` mirrors `DeliveryRow` and the new campaign fields.
+- **Verify:** `bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_delivery.py app/tests/test_mail_campaigns.py app/tests/test_permissions_matrix.py`
+- **Next step:** stubs for the Tests names and `uak red UPS-106`; then the rows endpoint, then reasons, then the campaign content.
+
+## UPS-107 · Web: step 3 recipients: combinable sources as chips and one list with checkboxes
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 300 min
+- **Rubric / Spec:** `docs/specs/006-destinatarios-entregas/spec.md` §Combined recipients, §Non-functional. victor: "actualmente no hay forma de saber a quién le estamos enviando correo". Skills: product-ui, frontend-design, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-102, UPS-103, UPS-105
+- **Uses contract:** UPS-105
+- **Related:** UPS-104
+- **Paths:** web/src/features/mail/SendStep.tsx, web/src/features/mail/AudiencePicker.tsx, web/src/features/mail/composerState.ts, web/src/features/mail/AudienceSources.tsx, web/src/features/mail/RecipientList.tsx, e2e/test_mail_recipients.py, e2e/test_mail_composer.py, e2e/test_mail.py, e2e/test_mail_club.py, e2e/test_mail_rich.py, e2e/test_mail_paste.py
+- **Freeze-Allowed:** no
+- **Tests:** test_add_sources_as_chips_with_counts, test_list_checks_people_of_added_sources, test_uncheck_excludes_and_counts_update, test_search_and_load_more_in_the_list, test_cannot_receive_listed_apart_with_reason, test_outside_addresses_in_the_list_removable, test_club_admin_sees_only_own_club_sources, test_recipients_step_at_390_wide
+- **Acceptance:**
+  - `AudienceSources`: "Agregar destinatarios" menu (Todo UpiixSol and Un rol only for superadmin; Un club; Personas with search; Correos de fuera with paste as today); each source a removable chip with its count.
+  - `RecipientList`: one list from `POST /api/mail/audience/list` (avatar, name, nickname, address, origin), checkbox per person (uncheck → `exclude_user_ids`), search, "Cargar más", summary "N recibirán · M quitados por ti · K no se pueden enviar"; "No se pueden enviar" apart with reason and no checkbox. The composer reducer holds the `mix` audience; "Revisar y enviar" shows the same summary.
+  - The existing mail e2e tests drive the old picker and change where the UI changed. A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-107 --tests --reason 'victor: combined recipients list replaces the one-kind picker (spec 006)'`.
+  - Spanish (Mexico), AA, keyboard, 1280 and 390; `.uak-shots/UPS-107/` and a design-critic SHIP; victor sees the screenshots in the PR.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_recipients.py e2e/test_mail_composer.py e2e/test_mail.py e2e/test_mail_club.py e2e/test_mail_rich.py e2e/test_mail_paste.py'`
+- **Next step:** after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-107`; then the sources, then the list, then exclusions and summary.
+
+## UPS-108 · Web: delivery detail in the history (Entregados, Rebotados, Fallidos, Spam) and "Usar de nuevo"
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 200 min
+- **Rubric / Spec:** `docs/specs/006-destinatarios-entregas/spec.md` §Delivery detail. victor: "INDICAR cuáles fueron esas personas en ambos casos". Skills: product-ui, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-106
+- **Uses contract:** UPS-106
+- **Related:** UPS-104
+- **Paths:** web/src/features/mail/History.tsx, web/src/features/mail/DeliveryDetail.tsx, e2e/test_mail_delivery.py
+- **Freeze-Allowed:** no
+- **Tests:** test_open_sent_email_shows_counts_and_tabs_per_status, test_bounced_tab_lists_people_with_reason, test_delivered_tab_lists_people, test_delivery_search_and_load_more, test_purged_email_says_detail_is_gone, test_usar_de_nuevo_opens_the_composer, test_delivery_detail_at_390_wide
+- **Acceptance:**
+  - Clicking a sent email opens `DeliveryDetail`: counts as today and one tab per status (Entregados, Rebotados, Fallidos, Marcados como spam, En camino, Sin enviar) with name, address, time and reason; search and "Cargar más"; empty tabs say so; purged campaigns show "El detalle por persona se borra al año del envío".
+  - "Usar de nuevo" navigates to the composer with `?paso=plantilla&reusar=<id>` merged into the search params (never drops `tab`); UPS-104 loads the content.
+  - Spanish (Mexico), AA, keyboard, 1280 and 390; `.uak-shots/UPS-108/` and a design-critic SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_delivery.py'`
+- **Next step:** stubs for the e2e Tests names and `uak red UPS-108`; then the detail, then the tabs, then "Usar de nuevo".
