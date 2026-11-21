@@ -343,7 +343,7 @@ export function AudienceSources({
         </ul>
       )}
       {panel !== null && (
-        <div className="grid gap-4 border-l-2 border-line pl-4">
+        <div className="grid gap-4">
           {panel === "academy" && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 basis-48">
