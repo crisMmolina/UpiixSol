@@ -8,7 +8,7 @@ import { TemplateThumbnail, Wireframe } from "./TemplateThumbnail";
 
 const action = "grid size-11 place-items-center rounded-full bg-surface/90 text-ink shadow-soft hover:bg-subtle focus-visible:outline-3";
 
-function Card({ selected, onPick, thumb, name, description, children }: { selected: boolean; onPick: () => void; thumb: ReactNode; name: string; description: string | null; children?: ReactNode }) {
+function Card({ selected, onPick, thumb, name, description, actions, children }: { actions?: boolean; selected: boolean; onPick: () => void; thumb: ReactNode; name: string; description: string | null; children?: ReactNode }) {
   return (
     <li className="relative min-w-0">
       <button
@@ -20,7 +20,7 @@ function Card({ selected, onPick, thumb, name, description, children }: { select
         <span aria-hidden className="block">
           {thumb}
         </span>
-        <span className="grid gap-1 px-1 pb-1 [&>span:last-child]:line-clamp-4">
+        <span className={`grid gap-1 px-1 pb-1 ${actions ? "pb-14" : ""}`}>
           <span className="font-display text-base leading-tight font-semibold sm:text-lg">{name}</span>
           {description && <span className="text-sm text-muted">{description}</span>}
         </span>
@@ -74,9 +74,9 @@ export function TemplateGallery({
   /** Mine to edit: UpiixSol's for a superadmin, my club's for a club admin. Built-ins never. */
   const mine = (t: MailTemplate) => t.kind === "saved" && (ownClub ? t.scope === "academy" : t.scope === "site");
   const card = (t: MailTemplate) => (
-    <Card key={t.id} selected={selected === t.id} onPick={() => onPick(t)} thumb={<TemplateThumbnail name={t.name} subject={t.subject} preheader={t.preheader} blocks={t.blocks} />} name={t.name} description={t.description}>
+    <Card key={t.id} actions={mine(t)} selected={selected === t.id} onPick={() => onPick(t)} thumb={<TemplateThumbnail name={t.name} subject={t.subject} preheader={t.preheader} blocks={t.blocks} />} name={t.name} description={t.description}>
       {mine(t) && (
-        <div className="absolute top-4 right-4 flex gap-1.5">
+        <div className="absolute right-3 bottom-3 flex gap-1.5">
           <button type="button" aria-label={`Renombrar ${t.name}`} title="Renombrar" onClick={() => onRename(t)} className={action}>
             <PencilSimple weight="bold" aria-hidden />
           </button>

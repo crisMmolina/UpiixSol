@@ -74,7 +74,7 @@ def card(page: Page, name: str):  # noqa: ANN201 - playwright Locator
     return page.get_by_role("button", name=re.compile("^" + re.escape(name).replace("/", r"\/")))
 
 
-def write_email(page: Page, subject: str, text: str = "Texto de prueba.") -> None:
+def write_email(page: Page, subject: str, text: str = "Hola a todos: este jueves nos vemos en el salón 205 para repasar lo de la semana.") -> None:
     """From step 1 (blank) to a filled step 2."""
     page.get_by_role("button", name=re.compile("^En blanco")).click()
     expect(current_step(page)).to_contain_text("Contenido")
@@ -82,7 +82,7 @@ def write_email(page: Page, subject: str, text: str = "Texto de prueba.") -> Non
     page.get_by_label("Texto del párrafo").first.fill(text)
 
 
-def save_as_template(page: Page, name: str, description: str | None = None) -> None:
+def save_as_template(page: Page, name: str, description: str | None = "Para correos frecuentes") -> None:
     page.get_by_role("button", name="Guardar como plantilla").click()
     dialog = page.get_by_role("dialog", name="Guardar como plantilla")
     dialog.get_by_label("Nombre de la plantilla").fill(name)
@@ -274,7 +274,7 @@ def test_recent_sent_section_reuses_an_email(site: Site) -> None:
     recent.get_by_role("button", name=re.compile("^Usar de nuevo.*Convocatoria a la reunión")).first.click()
     expect(current_step(page)).to_contain_text("Contenido")
     expect(page.get_by_label("Asunto")).to_have_value("Convocatoria a la reunión")
-    expect(page.get_by_label("Texto del párrafo").first).to_have_value("Texto de prueba.")
+    expect(page.get_by_label("Texto del párrafo").first).to_have_value("Hola a todos: este jueves nos vemos en el salón 205 para repasar lo de la semana.")
     next_step(page)
     expect(page.get_by_role("list", name="Fuentes de destinatarios")).to_have_count(0)  # never the recipients
     keep(site, "reuse-recent")

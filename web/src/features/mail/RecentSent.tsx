@@ -20,9 +20,9 @@ export function RecentSent({ items, busyId, onReuse }: { items: Campaign[]; busy
       </h3>
       <ul className="grid gap-2 sm:grid-cols-2">
         {items.map((c) => (
-          <li key={c.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3 pl-4">
-            <span className="grid min-w-0">
-              <span className="truncate font-semibold">{c.subject}</span>
+          <li key={c.id} className="flex flex-col items-start gap-1 rounded-2xl border border-line bg-surface p-3 pl-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <span className="grid min-w-0 max-sm:w-full">
+              <span className="font-semibold sm:truncate">{c.subject}</span>
               <span className="text-sm text-muted">{c.sent_at ? dateFormat.format(new Date(c.sent_at)) : "Enviándose"}</span>
             </span>
             <button
