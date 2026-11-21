@@ -1,12 +1,12 @@
 # worklog/WL-1795243007-victor-2-UPS-104-hack.BEymMm.md · UPS-104
 
 ## Live summary
-- Done: Gallery, load w/ replace confirm, save dialog, rename/delete, save on send, recent sent, reusar implemented; pushed WIP; e2e mostly green
+- Done: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py' exit 0 (34 passed); smoke exit 0; all 11 Tests names green at 1280 and 390; design-critic SHIP 51ddfc9 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]
 - Decision: TemplateNameDialog mounts NameForm on open; template origin+sig in ComposerState; Composer.tsx edited (Paths amend requested, msg #618)
 - Why: avoid effect racing typing on mobile
 - Failing: test_rename_and_delete_own_template: second save_as_template: Guardar button stays disabled aria-busy (dialog still open after first save? ) after NameForm refactor; club_admin test check after fix
 - Commands: npm --prefix web run build && uv run pytest -q --tb=short e2e/test_mail_templates.py e2e/test_mail_composer.py
-- Next: debug stuck busy Guardar on 2nd save (NameForm: setBusy not reset on success while Modal stays mounted/closing; likely onClose then reopen reuses form), rerun both viewports, then lint, shots .uak-shots/UPS-104 (tests write them), design-critic, /uak-ship
+- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/174; run .uak/bin/smoke
 
 ## History
 - 1795243007 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-104`; then the gallery, then load, then save/rename/delete.
@@ -33,3 +33,4 @@
 - 1795278673 | CLAIMED | victor-2 | heartbeat; lease until 1795293073
 - 1795280090 | CLAIMED | victor-2 | heartbeat; lease until 1795294490
 - 1795281667 | CLAIMED | victor-2 | heartbeat; lease until 1795296067
+- 1795282126 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/174; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py' exit 0 (34 passed); smoke exit 0; all 11 Tests names green at 1280 and 390; design-critic SHIP 51ddfc9 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]; reviewer: -
