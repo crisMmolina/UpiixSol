@@ -115,10 +115,10 @@ export function MenuSelect({
                   close(true);
                   onChange(o.value);
                 }}
-                className="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-3 disabled:text-muted disabled:hover:bg-transparent"
+                className={`flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-3 disabled:text-muted disabled:hover:bg-transparent ${o.value === value ? "bg-subtle" : ""}`}
               >
                 <span className="min-w-0">{o.label}</span>
-                {o.value === value && <Check size={16} weight="bold" aria-hidden className="shrink-0 text-primary" />}
+                {o.value === value && <Check size={16} weight="bold" aria-hidden className="shrink-0 text-secondary" />}
               </button>
             ))}
           </div>

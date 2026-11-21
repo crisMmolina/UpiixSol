@@ -8,7 +8,7 @@ from collections.abc import Iterator
 import pytest
 from playwright.sync_api import Page, expect
 
-from e2e.conftest import SEED_PASSWORD, Site
+from e2e.conftest import ARTIFACTS, SEED_PASSWORD, Site
 from e2e.test_mail_recipients import add_source, open_step
 
 
@@ -50,6 +50,7 @@ def test_sender_picker_uses_the_menu_style(site: Site) -> None:
         expect(menu).to_have_class(re.compile(rf"\b{cls}\b"))
     expect(menu.get_by_role("option", name="UpiixIA")).to_be_visible()
     site.shot("select-sender-open")
+    page.screenshot(path=ARTIFACTS / f"{site.name}-select-sender-viewport.png")  # what the person sees, bottom bar included
     menu.get_by_role("option", name="UpiixIA").click()
     expect(menu).to_have_count(0)
     expect(sender).to_contain_text("UpiixIA")
