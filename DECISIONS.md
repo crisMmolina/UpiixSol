@@ -142,3 +142,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795230793 | allow | victor | test change: UPS-103 | Why: victor: email canvas replaces the block form (spec 005)
 - 1795231876 | UPS-101 | Plain array list per plan Contracts; superadmin manages every template; out-of-scope id 403 per spec | Why: Task criteria outrank the generic pagination rule; spec asks for 403
 - 1795232819 | allow | victor | test change: UPS-105 | Why: victor: club admins see the addresses of their club (spec 006)
+- 1795233283 | allow | victor | test change: UPS-107 | Why: victor: combined recipients list replaces the one-kind picker (spec 006)
