@@ -64,6 +64,9 @@ def keep(site: Site, name: str, full: bool = True) -> None:
     if page.locator("[data-thumb]").count():  # live thumbnails render a moment after the gallery shows
         page.wait_for_function("[...document.querySelectorAll('[data-thumb]')].every(e => e.dataset.thumb === 'loaded')", timeout=30_000)
     page.wait_for_timeout(1000)
+    if full:  # the page grew while the thumbnails and lists loaded: measure again
+        page.set_viewport_size({"width": original["width"], "height": min(8000, page.evaluate("document.documentElement.scrollHeight"))})
+        page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / f"{wide}-{name}.png")
     if name == "gallery":
         page.screenshot(path=SHOTS / f"{wide}.png")

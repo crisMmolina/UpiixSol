@@ -57,10 +57,10 @@ function EventView({ draft, theme }: { draft: Extract<Draft, { kind: "event" }>;
       </div>
       <div className="grid min-w-0 content-start gap-1" style={{ fontFamily: theme.font }}>
         <span style={text(theme, 18, 24, { fontWeight: 800, opacity: title ? 1 : 0.45 })} className="break-words">
-          {title || (typed ? "Título del evento" : "Elige un evento")}
+          {title || (typed ? "Título del evento" : draft.eventId === null ? "Completa el evento" : "Evento del calendario")}
         </span>
         <span style={text(theme, 14, 22, { color: c.muted })}>
-          {typed ? (start ? `${start.slice(11, 16)} h${draft.place.trim() ? ` · ${draft.place.trim()}` : ""}` : "Fecha y hora por definir") : "Del calendario del campus: la fecha y el lugar salen de ahí"}
+          {typed ? (start ? `${start.slice(11, 16)} h${draft.place.trim() ? ` · ${draft.place.trim()}` : ""}` : "Fecha y hora por definir") : draft.eventId === null ? "Elige uno del calendario o escríbelo: sin esto el correo no se envía." : "Del calendario del campus: la fecha y el lugar salen de ahí"}
         </span>
         <span style={text(theme, 14, 22, { color: c.link, fontWeight: 600 })}>Agregar a mi calendario</span>
       </div>

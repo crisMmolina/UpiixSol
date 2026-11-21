@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { TextField } from "@/components/Field";
-import { Notice } from "@/components/States";
 import type { Block } from "@/lib/types";
 
 import { toBlock } from "./blocks";
@@ -61,7 +60,6 @@ export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewP
   const [seeing, setSeeing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
-  const emptyEvent = state.drafts.some((d) => d.kind === "event" && d.mode === "campus" && d.eventId === null);
   return (
     <div className="grid gap-7">
       <StepHeader title="Escribe tu correo" lead="Haz clic en un bloque para editarlo; «+» agrega más." />
@@ -75,7 +73,6 @@ export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewP
           onChange={(e) => dispatch({ type: "patch", patch: { preheader: e.target.value.replace(/[\r\n]+/g, " ") } })}
         />
       </div>
-      {emptyEvent && <Notice>Completa el evento: elige uno del calendario o escríbelo antes de enviar.</Notice>}
       <EmailCanvas drafts={state.drafts} onChange={(drafts) => dispatch({ type: "patch", patch: { drafts } })} clubSlug={clubSlug} eventsAcademy={eventsAcademy} previewPayload={previewPayload} />
       <StepFooter onBack={onBack}>
         <Button variant="secondary" icon={<BookmarkSimple weight="bold" />} onClick={() => { setSaved(null); setSaving(true); }} className="max-sm:w-full" data-keep-selection>

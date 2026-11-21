@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import type { PreviewOut } from "@/lib/types";
 
 const EMAIL_WIDTH = 600;
-const EMAIL_HEIGHT = 900;
+const MAX_HEIGHT = 1400;
 const cache = new Map<string, Promise<string>>();
 
 function render(key: string, payload: object): Promise<string> {
@@ -39,13 +39,20 @@ export function TemplateThumbnail({ name, subject, preheader, blocks }: { name: 
   const [scale, setScale] = useState(0.4);
   const [html, setHtml] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
+  /** The email's real height and page color, read once it loaded: a short email is centered, not left in a void. */
+  const [fit, setFit] = useState<{ height: number; bg: string } | null>(null);
+  const [frame, setFrame] = useState(0.8 * EMAIL_WIDTH * 0.4);
   const payload = { subject, blocks, ...(preheader ? { preheader } : {}) };
   const key = JSON.stringify(payload);
 
   useEffect(() => {
     const node = box.current;
     if (!node) return;
-    const watcher = new ResizeObserver(([entry]) => entry && setScale(entry.contentRect.width / EMAIL_WIDTH));
+    const watcher = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      setScale(entry.contentRect.width / EMAIL_WIDTH);
+      setFrame(entry.contentRect.height);
+    });
     watcher.observe(node);
     return () => watcher.disconnect();
   }, []);
@@ -61,7 +68,7 @@ export function TemplateThumbnail({ name, subject, preheader, blocks }: { name: 
   }, [key]);
 
   return (
-    <span ref={box} data-thumb={shown ? "loaded" : "loading"} className="relative block aspect-[3/4] w-full overflow-hidden rounded-xl border border-line bg-white">
+    <span ref={box} data-thumb={shown ? "loaded" : "loading"} className="relative block aspect-[4/5] w-full overflow-hidden rounded-xl border border-line bg-white" style={fit ? { background: fit.bg } : undefined}>
       {!shown && (
         <span className="absolute inset-0">
           <Wireframe />
@@ -69,13 +76,18 @@ export function TemplateThumbnail({ name, subject, preheader, blocks }: { name: 
       )}
       {html !== null && (
         <iframe
-          onLoad={() => setShown(true)}
+          onLoad={(e) => {
+            const doc = e.currentTarget.contentDocument; // readable: `allow-same-origin` without scripts grants nothing else
+            // The body's own height (the document's is never shorter than the frame, so a short email would not shrink).
+            if (doc?.body) setFit({ height: Math.min(MAX_HEIGHT, Math.max(200, Math.ceil(doc.body.getBoundingClientRect().height))), bg: getComputedStyle(doc.body).backgroundColor });
+            setShown(true);
+          }}
           title={`Miniatura de ${name}`}
-          sandbox=""
+          sandbox="allow-same-origin"
           srcDoc={html}
           tabIndex={-1}
           scrolling="no"
-          style={{ width: EMAIL_WIDTH, height: EMAIL_HEIGHT, transform: `scale(${scale})` }}
+          style={{ width: EMAIL_WIDTH, height: fit?.height ?? 900, transform: `translateY(${fit ? Math.max(0, (frame - fit.height * scale) / 2) : 0}px) scale(${scale})` }}
           className={`pointer-events-none absolute top-0 left-0 max-w-none origin-top-left border-0 ${shown ? "" : "opacity-0"}`}
         />
       )}
