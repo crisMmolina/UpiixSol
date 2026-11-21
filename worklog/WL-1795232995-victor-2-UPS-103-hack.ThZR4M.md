@@ -1,12 +1,12 @@
 # worklog/WL-1795232995-victor-2-UPS-103-hack.ThZR4M.md · UPS-103
 
 ## Live summary
-- Done: Verify (lint, build, 6 mail e2e files) exit 0 and smoke exit 0 at 2970dba; design-critic SHIP 2970dba; e2e/test_mail_composer.py and mail/index.tsx edited outside Paths by victor's option A · existing tests changed with a human's approval (victor) · red at ae798a1: FAILED e2e/test_mail_canvas.py::test_canvas_shows_logo_sender_and_theme_like_the_email[desktop] · existing tests changed with a human's approval (victor) · red at ae798a1: FAILED e2e/test_mail_canvas.py::test_canvas_shows_logo_sender_and_theme_like_the_email[desktop]
-- Decision: raw markers while editing per plan.md; toolbar floats like mock
-- Why: spec/plan + approved mock
-- Failing: Verify red only on test_mail_composer::test_composer_steps_at_390_wide (step-2 preview now behind Ver como llega); file outside Paths, amend requested msg #597
+- Done: PR #171 open, task in REVIEW at 2970dba; Verify+smoke exit 0; critic SHIP 2970dba
+- Decision: two files outside Paths per victor option A; merge is MERGE_HUMAN
+- Why: scope gate sends them to the human
+- Failing: none
 - Commands: Verify per task
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/171; run .uak/bin/smoke
+- Next: Wait for review of SHA 2970dba3; victor merges on GitHub
 
 ## History
 - 1795232995 | CLAIMED | victor-2 | claim; next: after victor's OK on the UPS-102 mock and the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-103`; then the canvas render, then inline text, then the inserter, then drag and properties.
@@ -18,3 +18,4 @@
 - 1795235627 | CLAIMED | victor-2 | checkpoint; next: on amend: click Ver como llega in that test, drop /maqueta-correo mock (index.tsx, ContentStep CanvasMock, test_canvas_mock), rerun Verify + critic, /uak-ship
 - 1795238206 | CLAIMED | victor-2 | heartbeat; lease until 1795252606
 - 1795238880 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/171; evidence: Verify (lint, build, 6 mail e2e files) exit 0 and smoke exit 0 at 2970dba; design-critic SHIP 2970dba; e2e/test_mail_composer.py and mail/index.tsx edited outside Paths by victor's option A · existing tests changed with a human's approval (victor) · red at ae798a1: FAILED e2e/test_mail_canvas.py::test_canvas_shows_logo_sender_and_theme_like_the_email[desktop] · existing tests changed with a human's approval (victor) · red at ae798a1: FAILED e2e/test_mail_canvas.py::test_canvas_shows_logo_sender_and_theme_like_the_email[desktop]; reviewer: -
+- 1795238886 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA 2970dba3; victor merges on GitHub

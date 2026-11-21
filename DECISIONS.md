@@ -153,3 +153,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795236924 | deadline decision/UPS-106-1795235653/1795236553 | REVERSIBLE_AND_LOG | Option: Another club's campaign gets 403 on the delivery detail (an unknown id gets 404), the same as GET /campaigns/{id}; Why: The task says 404, but GET /campaigns/{id} answers 403 through _load (test_mail_campaigns.py:230) and test_read_matrix expects 403; no money, accounts, publishing or scope expansion.
 - 1795238567 | UPS-108 | Inline detail replaces history list; tabs per status; reuse merges paso+reusar into params | Why: Keeps tab param, no new dependency
 - 1795238822 | UPS-108 | Detail replaces history list inline | Why: Within Paths
+- 1795238886 | UPS-103 | two files outside Paths per victor option A; merge is MERGE_HUMAN | Why: scope gate sends them to the human
