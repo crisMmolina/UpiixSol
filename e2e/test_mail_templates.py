@@ -191,7 +191,7 @@ def test_save_as_template_and_find_it_in_the_gallery(site: Site) -> None:
 
 def test_rename_and_delete_own_template(site: Site) -> None:
     page = fresh(site)
-    write_email(page, "Para renombrar")
+    write_email(page, "Para renombrar", "Citatorio para la junta general: llega puntual, trae tu credencial y confirma tu asistencia respondiendo este correo. Habrá registro de nuevos integrantes, entrega de playeras y una convivencia al final de la sesión.")
     save_as_template(page, "Aviso de junta")
     save_as_template(page, "Borrador de convocatoria")
     go_to_gallery(page)
@@ -213,7 +213,8 @@ def test_rename_and_delete_own_template(site: Site) -> None:
 
 def test_club_admin_sees_site_and_own_club_templates_only(site: Site) -> None:
     page = fresh(site)
-    write_email(page, "Plantilla del sitio")
+    card(page, "Recordatorio").click()  # a richer start (heading, event slot, list, button) than the plain ones
+    expect(current_step(page)).to_contain_text("Contenido")
     save_as_template(page, "Bienvenida UpiixSol")
     page = fresh(site, CLUB_PANEL, CLUB_ADMIN)
     write_email(page, "Plantilla del club")
