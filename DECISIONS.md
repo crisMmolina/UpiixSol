@@ -158,3 +158,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795242300 | UPS-107 | Composer.tsx and index.tsx touched, outside Paths (needed) | Why: initialState signature, export of removed AudiencePicker
 - 1795243531 | allow | victor | test change: UPS-109 | Why: victor: native selects become the app menu style
 - 1795243909 | UPS-104 | template origin+sig in ComposerState; Composer.tsx edited (needs Paths amend, asked human #618) | Why: save after send never blocks
+- 1795244290 | UPS-104 | TemplateNameDialog mounts NameForm on open; template origin+sig in ComposerState; Composer.tsx edited (Paths amend requested, msg #618) | Why: avoid effect racing typing on mobile
