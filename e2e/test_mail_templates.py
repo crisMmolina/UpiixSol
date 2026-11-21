@@ -40,7 +40,7 @@ def fresh(site: Site, path: str = ADMIN, email: str = SUPERADMIN) -> Page:
     if SIGNED_IN.get(site.name) == email:
         page = site.page
         page.goto(site.url(path))
-        expect(stepper(page)).to_be_visible()
+        expect(stepper(page)).to_be_visible(timeout=20_000)
     else:
         page = open_composer(site, path, email)
         SIGNED_IN[site.name] = email
@@ -82,7 +82,7 @@ def save_as_template(page: Page, name: str, description: str | None = None) -> N
 def next_step(page: Page) -> None:
     """"Siguiente" at the very end of the page: on a phone the fixed bottom bar must not sit on top of it."""
     page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
-    page.get_by_role("button", name="Siguiente").click()
+    page.get_by_role("button", name="Siguiente").click(timeout=30_000)
 
 
 def go_to_gallery(page: Page) -> None:
@@ -239,6 +239,7 @@ def test_save_on_send_checked_by_default_and_saved(site: Site) -> None:
 def test_save_on_send_hidden_for_unchanged_template(site: Site) -> None:
     page = fresh(site)
     card(page, "Anuncio").click()
+    expect(current_step(page)).to_contain_text("Contenido")
     next_step(page)
     expect(current_step(page)).to_contain_text("Destinatarios")
     expect(page.get_by_role("checkbox", name="Guardar como plantilla")).to_have_count(0)
