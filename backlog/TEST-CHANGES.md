@@ -18,3 +18,4 @@ Append-only. Format: - ID | epoch | human | reason. Why: a test is a spec; chang
 - UPS-103 | 1795230793 | victor | victor: email canvas replaces the block form (spec 005)
 - UPS-105 | 1795232819 | victor | victor: club admins see the addresses of their club (spec 006)
 - UPS-107 | 1795233283 | victor | victor: combined recipients list replaces the one-kind picker (spec 006)
+- UPS-109 | 1795243531 | victor | victor: native selects become the app menu style

@@ -1,8 +1,8 @@
 # STATE
 
 Phase: execution
-Updated: 1795243425
-AVAILABLE: UPS-068 
+Updated: 1795243531
+AVAILABLE: UPS-068 UPS-109 
 CLAIMED: UPS-104 
 BLOCKED: UPS-057 
 REVIEW: UPS-060 
@@ -16,11 +16,11 @@ UPS-104 | CLAIMED | victor-2 | until 1795257432
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1795238567 | UPS-108 | Inline detail replaces history list; tabs per status; reuse merges paso+reusar into params | Why: Keeps tab param, no new dependency
 - 1795238822 | UPS-108 | Detail replaces history list inline | Why: Within Paths
 - 1795238886 | UPS-103 | two files outside Paths per victor option A; merge is MERGE_HUMAN | Why: scope gate sends them to the human
 - 1795241778 | UPS-107 | mix draft in reducer; list fetch ignores excludes (flip in place) | Why: no refetch on uncheck
 - 1795242300 | UPS-107 | Composer.tsx and index.tsx touched, outside Paths (needed) | Why: initialState signature, export of removed AudiencePicker
+- 1795243531 | allow | victor | test change: UPS-109 | Why: victor: native selects become the app menu style
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
