@@ -1,12 +1,12 @@
 # worklog/WL-1795243007-victor-2-UPS-104-hack.BEymMm.md · UPS-104
 
 ## Live summary
-- Done: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py' exit 0 (34 passed); smoke exit 0; all 11 Tests names green at 1280 and 390; design-critic SHIP 51ddfc9 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]
-- Decision: TemplateNameDialog mounts NameForm on open; template origin+sig in ComposerState; Composer.tsx edited (Paths amend requested, msg #618)
-- Why: avoid effect racing typing on mobile
-- Failing: test_rename_and_delete_own_template: second save_as_template: Guardar button stays disabled aria-busy (dialog still open after first save? ) after NameForm refactor; club_admin test check after fix
-- Commands: npm --prefix web run build && uv run pytest -q --tb=short e2e/test_mail_templates.py e2e/test_mail_composer.py
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/174; run .uak/bin/smoke
+- Done: All criteria met; Verify+smoke green; PR #174; design-critic SHIP 51ddfc9; in REVIEW
+- Decision: Composer.tsx edited outside Paths: merge gate sends it to the human
+- Why: save on send and template load hook into its confirm()
+- Failing: none open; e2e composer 390 test flaked twice under load, passes alone
+- Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py'
+- Next: Wait for review of SHA 299cf209; human to amend Paths with Composer.tsx
 
 ## History
 - 1795243007 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-104`; then the gallery, then load, then save/rename/delete.
@@ -34,3 +34,4 @@
 - 1795280090 | CLAIMED | victor-2 | heartbeat; lease until 1795294490
 - 1795281667 | CLAIMED | victor-2 | heartbeat; lease until 1795296067
 - 1795282126 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/174; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py' exit 0 (34 passed); smoke exit 0; all 11 Tests names green at 1280 and 390; design-critic SHIP 51ddfc9 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]; reviewer: -
+- 1795282140 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA 299cf209; human to amend Paths with Composer.tsx
