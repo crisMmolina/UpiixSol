@@ -150,3 +150,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795235248 | UPS-103 | toolbar floats above block as in mock; preview keeps selection (data-keep-selection) | Why: approved UPS-102 mock
 - 1795235627 | UPS-103 | raw markers while editing per plan.md; toolbar floats like mock | Why: spec/plan + approved mock
 - 1795236459 | UPS-106 | Out-of-scope club 403 like GET /campaigns/{id}; order by id; CampaignDetail only on GET detail | Why: Matrix and existing test assert 403; id is stable under webhook updates; keeps history list light
+- 1795236924 | deadline decision/UPS-106-1795235653/1795236553 | REVERSIBLE_AND_LOG | Option: Another club's campaign gets 403 on the delivery detail (an unknown id gets 404), the same as GET /campaigns/{id}; Why: The task says 404, but GET /campaigns/{id} answers 403 through _load (test_mail_campaigns.py:230) and test_read_matrix expects 403; no money, accounts, publishing or scope expansion.
