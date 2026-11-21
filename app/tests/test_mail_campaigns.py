@@ -485,3 +485,79 @@ def test_test_send_endpoint_is_gone(as_superadmin: TestClient, fake: FakeTranspo
     response = as_superadmin.post("/api/mail/test", json={"subject": "Prueba", "body": "Hola"})
     assert response.status_code in (404, 405)
     assert fake.calls == []
+
+
+def test_send_resolves_mix_at_send_time(
+    as_admin_ia: TestClient, db: Session, seeded: dict, fake: FakeTransport
+) -> None:
+    from app.models import Enrollment
+    from app.models.mail import MailSuppression
+
+    ia = seeded["academy_id"]
+    uno = make_user(db, email="uno@ipn.mx")
+    dos = make_user(db, email="dos@ipn.mx")
+    db.add_all([Enrollment(user_id=uno.id, academy_id=ia), Enrollment(user_id=dos.id, academy_id=ia)])
+    db.add(MailSuppression(email="baja.fuera@gmail.com", reason="unsubscribed"))
+    db.flush()
+    audience = {
+        "kind": "mix",
+        "sources": [{"kind": "academy", "academy_id": ia}],
+        "exclude_user_ids": [dos.id],
+        "emails": ["fuera@gmail.com", "baja.fuera@gmail.com"],
+    }
+    preview = as_admin_ia.post("/api/mail/audience/preview", json=audience).json()
+    assert preview["count"] == 3  # blind for a club admin: the unsubscribed typed address still counts
+    tres = make_user(db, email="tres@ipn.mx")  # joins the club after the preview
+    db.add(Enrollment(user_id=tres.id, academy_id=ia))
+    db.flush()
+    response = as_admin_ia.post(CAMPAIGNS, json={"subject": "Hola", "body": "Texto", "audience": audience})
+    assert response.status_code == 201, response.text
+    campaign = response.json()
+    assert campaign["audience"] == {
+        "kind": "mix",
+        "sources": [{"kind": "academy", "academy_id": ia}],
+        "user_ids": [],
+        "excluded": 1,
+        "outside": 2,
+    }  # ids and counts, never addresses
+    stored = db.get(MailCampaign, campaign["id"])
+    assert stored.academy_id == ia and stored.sender_academy_id == ia and stored.audience_kind == "mix"
+    _send(as_admin_ia, campaign["id"])
+    assert sorted(fake.sent_to) == ["fuera@gmail.com", "tres@ipn.mx", "uno@ipn.mx"]
+
+
+def test_old_audience_kinds_still_work(
+    as_superadmin: TestClient, db: Session, seeded: dict, fake: FakeTransport
+) -> None:
+    from app.models import Enrollment
+
+    ia = seeded["academy_id"]
+    robotica = Academy(slug="robotica", name="Robótica")
+    db.add(robotica)
+    db.flush()
+    ana = make_user(db, email="ana@ipn.mx")
+    db.add(Enrollment(user_id=ana.id, academy_id=robotica.id))
+    db.flush()
+    for audience in (
+        {"kind": "all"},
+        {"kind": "academy", "academy_id": robotica.id},
+        {"kind": "role", "role": "member"},
+        {"kind": "individual", "user_ids": [ana.id], "emails": ["fuera@gmail.com"]},
+    ):
+        preview = as_superadmin.post("/api/mail/audience/preview", json=audience)
+        assert preview.status_code == 200, preview.text
+        assert "removed" not in preview.json()  # old kinds answer exactly as before (`removed` is mix-only)
+        response = as_superadmin.post(CAMPAIGNS, json={"subject": "A", "body": "B", "audience": audience})
+        assert response.status_code == 201, response.text
+        assert response.json()["audience"]["kind"] == audience["kind"]
+    # superadmin mix: one club source → that club is the campaign's club and its sender
+    mix = {"kind": "mix", "sources": [{"kind": "academy", "academy_id": robotica.id}], "user_ids": [ana.id]}
+    response = as_superadmin.post(CAMPAIGNS, json={"subject": "A", "body": "B", "audience": mix})
+    assert response.status_code == 201, response.text
+    stored = db.get(MailCampaign, response.json()["id"])
+    assert (stored.academy_id, stored.sender_academy_id) == (robotica.id, robotica.id)
+    wide = {"kind": "mix", "sources": [{"kind": "all"}, {"kind": "academy", "academy_id": ia}]}
+    response = as_superadmin.post(CAMPAIGNS, json={"subject": "A", "body": "B", "audience": wide})
+    assert response.status_code == 201, response.text
+    stored = db.get(MailCampaign, response.json()["id"])
+    assert (stored.academy_id, stored.sender_academy_id) == (None, None)

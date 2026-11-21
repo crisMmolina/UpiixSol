@@ -39,6 +39,7 @@ from app.services.mail_audience import (
     AcademyAudience,
     Audience,
     IndividualAudience,
+    MixAudience,
     RoleAudience,
     check_scope,
     mail_status,
@@ -301,8 +302,8 @@ def _sender_club(db: Session, user: User, data: CampaignIn) -> Academy | None:
     if user.role != Role.superadmin:
         return db.get(Academy, user.academy_id) if user.academy_id else None
     club_id = data.sender_academy_id
-    if club_id is None and isinstance(data.audience, AcademyAudience):
-        club_id = data.audience.academy_id
+    if club_id is None and data.audience is not None:
+        club_id = _audience_club(data.audience)
     if club_id is None:
         return None
     club = db.get(Academy, club_id)
@@ -364,6 +365,18 @@ def _audience_reason(db: Session, audience: Audience, site_name: str, user: User
     )
 
 
+def _audience_club(audience: Audience) -> int | None:
+    """The one club an audience is about, for a superadmin's campaign: an `academy` audience, or a `mix`
+    whose only sources are that same club. Anything wider is the board's (None)."""
+    if isinstance(audience, AcademyAudience):
+        return audience.academy_id
+    if isinstance(audience, MixAudience) and audience.sources:
+        clubs = {s.academy_id if isinstance(s, AcademyAudience) else None for s in audience.sources}
+        if len(clubs) == 1:
+            return clubs.pop()
+    return None
+
+
 def _audience_params(audience: Audience) -> dict[str, Any]:
     """What the history shows of the audience: ids and counts, never addresses."""
     if isinstance(audience, AcademyAudience):
@@ -372,6 +385,13 @@ def _audience_params(audience: Audience) -> dict[str, Any]:
         return {"role": audience.role.value}
     if isinstance(audience, IndividualAudience):
         return {"user_ids": list(audience.user_ids), "outside": len(audience.emails)}
+    if isinstance(audience, MixAudience):
+        return {
+            "sources": [source.model_dump(mode="json") for source in audience.sources],
+            "user_ids": list(audience.user_ids),
+            "excluded": len(set(audience.exclude_user_ids)),  # a count: the history never lists them
+            "outside": len({email.lower() for email in audience.emails}),
+        }
     return {}
 
 
@@ -379,10 +399,8 @@ def create_campaign(db: Session, sender: User, data: CampaignIn) -> CampaignOut:
     recipients = resolve_audience(db, sender, data.audience)  # 403 outside the sender's scope
     if not recipients:
         raise AppError(422, "La audiencia no tiene destinatarios.", code="empty_audience")
-    if sender.role == Role.superadmin:
-        club = data.audience.academy_id if isinstance(data.audience, AcademyAudience) else None
-    else:
-        club = sender.academy_id  # from the DB row, never the request body
+    # academy_admin: from the DB row, never the request body
+    club = _audience_club(data.audience) if sender.role == Role.superadmin else sender.academy_id
     from_club = _sender_club(db, sender, data)
     content = _dump(data.blocks) if data.blocks is not None else None
     _refuse_placeholder(content)

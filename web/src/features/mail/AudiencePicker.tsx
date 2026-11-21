@@ -41,6 +41,7 @@ export const KIND_LABEL: Record<AudienceKind, string> = {
   academy: "Un club",
   role: "Un rol",
   individual: "Personas",
+  mix: "Combinado",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -62,6 +63,8 @@ export function toAudience(draft: AudienceDraft): Audience | null {
       return draft.people.length + draft.emails.length > 0
         ? { kind: "individual", user_ids: draft.people.map((p) => p.id), emails: draft.emails }
         : null;
+    case "mix": // built by the step-3 source list (UPS-107), not by this picker
+      return null;
   }
 }
 

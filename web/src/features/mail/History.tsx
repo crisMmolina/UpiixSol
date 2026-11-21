@@ -48,6 +48,12 @@ function audienceText(campaign: Campaign, academies: AcademyChoice[], ownClub: b
     const parts = [`${a.user_ids.length} de la plataforma`, `${outside} ${outside === 1 ? "externo" : "externos"}`];
     return `${KIND_LABEL.individual} · ${parts.join(", ")}`;
   }
+  if (a.kind === "mix") {
+    const n = a.sources.length;
+    const m = a.user_ids.length;
+    const k = a.outside;
+    return `${KIND_LABEL.mix} · ${n} ${n === 1 ? "fuente" : "fuentes"}, ${m} ${m === 1 ? "persona" : "personas"}, ${k} ${k === 1 ? "externo" : "externos"}`;
+  }
   return KIND_LABEL.all;
 }
 
