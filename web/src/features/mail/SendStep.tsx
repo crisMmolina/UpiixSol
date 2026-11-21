@@ -3,14 +3,14 @@ import { PaperPlaneTilt } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/Button";
-import { SelectField } from "@/components/Field";
+import { SelectField, TextField } from "@/components/Field";
 import { FormMessage } from "@/components/FormMessage";
 import { Notice } from "@/components/States";
 import type { MailStatus } from "@/lib/types";
 
 import { toAudience, type AcademyChoice, type AudienceKind } from "./AudiencePicker";
 import { AudienceSources } from "./AudienceSources";
-import { BOARD, renewal, type StepProps } from "./composerState";
+import { BOARD, isUnchangedTemplate, MAX_TEMPLATE_NAME, renewal, type StepProps } from "./composerState";
 import { StepFooter, StepHeader } from "./ComposerSteps";
 import { EmailPreview } from "./EmailPreview";
 import { RecipientList } from "./RecipientList";
@@ -95,6 +95,23 @@ export function SendStep({
             )}
             <ReplyToField value={state.replyTo} onChange={(replyTo) => dispatch({ type: "patch", patch: { replyTo } })} />
           </Section>
+          {!isUnchangedTemplate(state) && (
+            <Section title="Plantilla">
+              <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+                <input type="checkbox" className="size-5 accent-[var(--color-primary)]" checked={state.saveOnSend} onChange={(e) => dispatch({ type: "patch", patch: { saveOnSend: e.target.checked } })} />
+                Guardar como plantilla
+              </label>
+              {state.saveOnSend && (
+                <TextField
+                  label="Nombre de la plantilla"
+                  value={state.templateName ?? state.subject.trim().slice(0, MAX_TEMPLATE_NAME)}
+                  maxLength={MAX_TEMPLATE_NAME}
+                  hint={`Se guardará en ${ownClub ? "tu club" : "UpiixSol"} al enviar, para usarla otra vez.`}
+                  onChange={(e) => dispatch({ type: "patch", patch: { templateName: e.target.value.replace(/[\r\n]+/g, " ") } })}
+                />
+              )}
+            </Section>
+          )}
           <Quota status={status} />
         </div>
         <div className="min-w-0 lg:sticky lg:top-20">

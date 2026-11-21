@@ -24,6 +24,7 @@ def mail_env() -> Iterator[None]:
         patch.setenv("SEED_DEFAULT_PASSWORD", SEED_PASSWORD)
         patch.setenv("MAIL_ENABLED", "true")
         patch.setenv("MAIL_BACKEND", "console")
+        patch.setenv("MAIL_BLOCKED_DOMAINS", "blocked.invalid")
         yield
 
 
@@ -48,14 +49,13 @@ def keep(site: Site, name: str) -> None:
 
 
 def card(page: Page, name: str):  # noqa: ANN201 - playwright Locator
-    return page.get_by_role("button", name=re.compile(f"^{re.escape(name)}"))
+    return page.get_by_role("button", name=re.compile("^" + re.escape(name).replace("/", r"\/")))
 
 
 def write_email(page: Page, subject: str, text: str = "Texto de prueba.") -> None:
     """From step 1 (blank) to a filled step 2."""
     page.get_by_role("button", name=re.compile("^En blanco")).click()
-    if current_step(page).inner_text().startswith("Plantilla"):
-        page.get_by_role("button", name="Siguiente").click()
+    expect(current_step(page)).to_contain_text("Contenido")
     page.get_by_label("Asunto").fill(subject)
     page.get_by_label("Texto del párrafo").first.fill(text)
 

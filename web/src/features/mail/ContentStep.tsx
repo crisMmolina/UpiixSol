@@ -1,15 +1,19 @@
 // Step 2 · Contenido (spec 005 §Canvas): subject, preview text and the email canvas, where the sender edits on a
 // picture of the email; "Ver como llega" opens the exact server render (desktop 600 / phone 375).
-import { Eye, X } from "@phosphor-icons/react";
+import { BookmarkSimple, Eye, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { TextField } from "@/components/Field";
+import { Notice } from "@/components/States";
+import type { Block } from "@/lib/types";
 
-import { MAX_PREHEADER, MAX_SUBJECT, type StepProps } from "./composerState";
+import { toBlock } from "./blocks";
+import { contentSignature, MAX_PREHEADER, MAX_TEMPLATE_NAME, MAX_SUBJECT, type StepProps } from "./composerState";
 import { NextButton, StepFooter, StepHeader } from "./ComposerSteps";
 import { EmailCanvas } from "./EmailCanvas";
 import { EmailPreview } from "./EmailPreview";
+import { createTemplate, TemplateNameDialog } from "./SaveTemplateDialog";
 
 /** The exact server render in a native modal dialog (focus trap, Esc), wide enough for the 600 px email. */
 function SeeAsSent({ open, onClose, payload }: { open: boolean; onClose: () => void; payload: object | null }) {
@@ -44,8 +48,20 @@ function SeeAsSent({ open, onClose, payload }: { open: boolean; onClose: () => v
   );
 }
 
-export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewPayload, onBack, onNext }: StepProps & { onNext: () => void }) {
+/** What a template keeps: the complete blocks, plus the event slot ("Completa el evento") when the event is still empty. */
+function templateBlocks(state: StepProps["state"]): Block[] {
+  return state.drafts.flatMap((draft): Block[] => {
+    const block = toBlock(draft);
+    if (block) return [block];
+    return draft.kind === "event" && draft.mode === "campus" && draft.eventId === null ? [{ kind: "event", placeholder: true }] : [];
+  });
+}
+
+export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewPayload, ownClub, onBack, onNext }: StepProps & { ownClub: boolean; onNext: () => void }) {
   const [seeing, setSeeing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const emptyEvent = state.drafts.some((d) => d.kind === "event" && d.mode === "campus" && d.eventId === null);
   return (
     <div className="grid gap-7">
       <StepHeader title="Escribe tu correo" lead="Haz clic en un bloque para editarlo; «+» agrega más." />
@@ -59,13 +75,36 @@ export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewP
           onChange={(e) => dispatch({ type: "patch", patch: { preheader: e.target.value.replace(/[\r\n]+/g, " ") } })}
         />
       </div>
+      {emptyEvent && <Notice>Completa el evento: elige uno del calendario o escríbelo antes de enviar.</Notice>}
       <EmailCanvas drafts={state.drafts} onChange={(drafts) => dispatch({ type: "patch", patch: { drafts } })} clubSlug={clubSlug} eventsAcademy={eventsAcademy} previewPayload={previewPayload} />
       <StepFooter onBack={onBack}>
+        <Button variant="secondary" icon={<BookmarkSimple weight="bold" />} onClick={() => { setSaved(null); setSaving(true); }} className="max-sm:w-full" data-keep-selection>
+          Guardar como plantilla
+        </Button>
         <Button variant="secondary" icon={<Eye weight="bold" />} onClick={() => setSeeing(true)} className="max-sm:w-full" data-keep-selection>
           Ver como llega
         </Button>
         <NextButton onClick={onNext} />
       </StepFooter>
+      {saved && (
+        <p role="status" className="text-sm font-semibold text-link">
+          {saved}
+        </p>
+      )}
+      <TemplateNameDialog
+        open={saving}
+        mode="save"
+        where={ownClub ? "tu club" : "UpiixSol"}
+        initial={{ name: state.templateName ?? state.subject.trim().slice(0, MAX_TEMPLATE_NAME), description: "" }}
+        onClose={() => setSaving(false)}
+        onSubmit={async (name, description) => {
+          const blocks = templateBlocks(state);
+          if (!state.subject.trim() || blocks.length === 0) throw new Error("Escribe un asunto y al menos un bloque antes de guardar la plantilla.");
+          const created = await createTemplate(name, description, { subject: state.subject.trim(), preheader: state.preheader.trim() || undefined, blocks });
+          dispatch({ type: "patch", patch: { template: { id: created.id, sig: contentSignature(state) } } });
+          setSaved("Plantilla guardada. La encuentras en el primer paso.");
+        }}
+      />
       <SeeAsSent open={seeing} onClose={() => setSeeing(false)} payload={previewPayload} />
     </div>
   );
