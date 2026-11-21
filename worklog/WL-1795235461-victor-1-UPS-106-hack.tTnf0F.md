@@ -6,7 +6,7 @@
 - Why: The task says 404, but GET /campaigns/{id} answers 403 through _load (test_mail_campaigns.py:230) and test_read_matrix expects 403
 - Failing: none
 - Commands: bash .uak/bin/q uv run pytest -q --tb=short -x app/tests/test_mail_delivery.py app/tests/test_mail_campaigns.py app/tests/test_permissions_matrix.py
-- Next: Apply option: Another club's campaign gets 403 on the delivery detail (an unknown id gets 404), the same as GET /campaigns/{id}
+- Next: Integrated in main: ab076a0288f29fb2aef85f1fc530fbdb85a4a915
 
 ## History
 - 1795235461 | CLAIMED | victor-1 | claim; next: stubs for the Tests names and `uak red UPS-106`; then the rows endpoint, then reasons, then the campaign content.
@@ -16,3 +16,4 @@
 - 1795236459 | REVIEW | victor-1 | checkpoint; next: Wait for review of SHA 32463ecb
 - 1795236924 | REVIEW | scheduler | deadline decision UPS-106-1795235653; option: Another club's campaign gets 403 on the delivery detail (an unknown id gets 404), the same as GET /campaigns/{id}; Why: The task says 404, but GET /campaigns/{id} answers 403 through _load (test_mail_campaigns.py:230) and test_read_matrix expects 403
 - 1795237154 | REVIEW | victor-3 | review; approve; SHA 32463ecbf8374695835a5e20e5098e7280471a3d; reviewer victor-3
+- 1795237926 | INTEGRATED | victor-1 | merge; smoke and Verify PASS (smoke: full); commit ab076a0288f29fb2aef85f1fc530fbdb85a4a915; reviewer victor-3
