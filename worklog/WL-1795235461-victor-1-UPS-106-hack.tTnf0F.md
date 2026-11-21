@@ -11,3 +11,4 @@
 ## History
 - 1795235461 | CLAIMED | victor-1 | claim; next: stubs for the Tests names and `uak red UPS-106`; then the rows endpoint, then reasons, then the campaign content.
 - 1795235483 | CLAIMED | victor-1 | heartbeat; lease until 1795249883
+- 1795235653 | CLAIMED | victor-1 | pending decision UPS-106-1795235653; option: Another club's campaign gets 403 on the delivery detail (an unknown id gets 404), the same as GET /campaigns/{id}; Why: The task says 404, but GET /campaigns/{id} answers 403 through _load (test_mail_campaigns.py:230) and test_read_matrix expects 403
