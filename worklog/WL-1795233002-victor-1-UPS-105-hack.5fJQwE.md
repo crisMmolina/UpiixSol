@@ -13,3 +13,4 @@
 - 1795233036 | CLAIMED | victor-1 | heartbeat; lease until 1795247436
 - 1795233866 | CLAIMED | victor-1 | checkpoint; next: /uak-ship: contract msg, push, PR, security-reviewer, uak done
 - 1795234253 | CLAIMED | victor-1 | heartbeat; lease until 1795248653
+- 1795234276 | CLAIMED | victor-1 | pending decision UPS-105-1795234276; option: Keep create non-blind (pre-existing draft oracle on typed addresses, now also via mix) and no rate limit on audience/list; flag both to victor as debt; Why: fixing needs blind drafts filtered at send time (changes create/send contract and existing tests, beyond UPS-105); preview has no limit either
