@@ -42,6 +42,7 @@ function ConfirmBody({ preview, status }: { preview: AudiencePreview; status: Ma
   return (
     <div className="grid gap-3">
       <p className="text-lg font-semibold">{`Se enviará a ${plural(preview.count, "persona", "personas")}`}</p>
+      {(preview.removed ?? 0) > 0 && <p className="text-sm text-muted">{`${preview.removed} ${preview.removed === 1 ? "quitado" : "quitados"} por ti`}</p>}
       {skipped.length > 0 && <p className="text-sm text-muted">{`No se incluyen: ${skipped.join(", ")}.`}</p>}
       <p className="text-sm text-muted">{`Te quedan ${status.remaining.toLocaleString("en-US")} de ${status.monthly_limit.toLocaleString("en-US")} correos este mes · se renueva el ${renewal(status.period_end)}`}</p>
     </div>
@@ -65,7 +66,7 @@ export function Composer({
   const userId = user?.id ?? null;
   const [search, setSearch] = useSearchParams();
   const step = parseStep(search.get("paso"));
-  const [state, dispatch] = useReducer(composerReducer, undefined, () => initialState(kinds, ownClub, academies));
+  const [state, dispatch] = useReducer(composerReducer, undefined, () => initialState());
   const [slugs, setSlugs] = useState<Record<number, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -125,7 +126,8 @@ export function Composer({
   // The sender: a club admin's is their club (the server takes it from their account); a superadmin's follows
   // the audience's club until they pick one. The board cannot be picked for a club audience (the server
   // would still send as that club), so that option is off then.
-  const audienceClub = state.audience.kind === "academy" ? state.audience.academyId : null;
+  const only = state.audience.sources.length === 1 && state.audience.people.length + state.audience.emails.length === 0 ? state.audience.sources[0] : null;
+  const audienceClub = only?.kind === "academy" ? only.academy_id : null;
   const senderId = ownClub ? (academies[0]?.id ?? null) : state.sender === "auto" ? audienceClub : state.sender;
   const { subject, preheader, replyTo } = state;
 
@@ -174,7 +176,7 @@ export function Composer({
       const campaign = await api<Campaign>(`/mail/campaigns/${created.id}/send`, { method: "POST" });
       setPreview(null);
       clearDraft();
-      dispatch({ type: "reset", state: { ...initialState(kinds, ownClub, academies), replyTo: state.replyTo, audience: { ...initialState(kinds, ownClub, academies).audience, kind: state.audience.kind, academyId: state.audience.academyId } } });
+      dispatch({ type: "reset", state: { ...initialState(), replyTo: state.replyTo } });
       goTo("plantilla");
       setSentNote("El envío está en curso. Sigue su avance en el historial.");
       onSent(campaign);

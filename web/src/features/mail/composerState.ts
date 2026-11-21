@@ -2,7 +2,7 @@
 // (this browser, this user). Pure functions only, so the steps stay dumb and the draft logic is testable.
 import type { Dispatch } from "react";
 
-import { EMPTY_AUDIENCE, type AcademyChoice, type AudienceDraft, type AudienceKind } from "./AudiencePicker";
+import { EMPTY_AUDIENCE, type AudienceDraft } from "./AudiencePicker";
 import { newDraft, toBlocks, type Draft } from "./blocks";
 
 export const STEPS = ["plantilla", "contenido", "envio"] as const;
@@ -36,14 +36,14 @@ export type ComposerAction =
   | { type: "restore"; state: ComposerState }
   | { type: "reset"; state: ComposerState };
 
-export function initialState(kinds: AudienceKind[] | undefined, ownClub: boolean | undefined, academies: AcademyChoice[]): ComposerState {
+export function initialState(): ComposerState {
   return {
     template: "blank",
     subject: "",
     preheader: "",
     replyTo: "",
     drafts: [newDraft("paragraph")],
-    audience: { ...EMPTY_AUDIENCE, kind: kinds?.[0] ?? "all", academyId: ownClub ? (academies[0]?.id ?? null) : null },
+    audience: EMPTY_AUDIENCE,
     sender: "auto",
   };
 }
@@ -78,11 +78,17 @@ export interface StoredDraft {
   state: ComposerState;
 }
 
+/** A draft saved before spec 006 held one audience kind; it has no `sources` and is dropped. */
+function isDraftAudience(value: unknown): boolean {
+  const a = value as Record<string, unknown> | null;
+  return typeof a === "object" && a !== null && Array.isArray(a.sources) && Array.isArray(a.people) && Array.isArray(a.emails) && Array.isArray(a.excluded);
+}
+
 function isStoredDraft(value: unknown): value is StoredDraft {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   const state = v.state as Record<string, unknown> | null;
-  return typeof v.userId === "number" && typeof v.savedAt === "number" && typeof state === "object" && state !== null && Array.isArray(state.drafts) && typeof state.subject === "string";
+  return typeof v.userId === "number" && typeof v.savedAt === "number" && typeof state === "object" && state !== null && Array.isArray(state.drafts) && typeof state.subject === "string" && isDraftAudience(state.audience);
 }
 
 export function clearDraft(): void {
