@@ -10,6 +10,7 @@ from playwright.sync_api import Page, expect
 
 from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import sign_in
+from e2e.test_mail_recipients import add_club, add_source
 
 SUPERADMIN = "superadmin1@upiixsol.dev"
 CLUB_ADMIN = "admin.ia@upiixsol.dev"
@@ -84,15 +85,13 @@ def test_three_steps_with_back_and_next_keep_state(site: Site) -> None:
     page.get_by_label("Texto del párrafo").first.fill("Hola, nos vemos el viernes.")
     page.get_by_role("button", name="Siguiente").click()
     expect(current_step(page)).to_contain_text("Destinatarios")
-    page.get_by_role("radio", name="Un club").check()
-    page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
+    add_club(page)
     page.get_by_role("button", name="Atrás").click()
     expect(current_step(page)).to_contain_text("Contenido")
     expect(page.get_by_label("Asunto")).to_have_value("Aviso de prueba")
     expect(page.get_by_label("Texto del párrafo").first).to_have_value("Hola, nos vemos el viernes.")
     stepper(page).get_by_role("button", name=re.compile("Destinatarios")).click()
-    expect(page.get_by_role("radio", name="Un club")).to_be_checked()
-    expect(page.get_by_label("Club", exact=True).locator("option:checked")).to_have_text("UpiixIA")
+    expect(page.get_by_role("list", name="Fuentes de destinatarios").get_by_text(re.compile(r"Club UpiixIA"))).to_be_visible()
     stepper(page).get_by_role("button", name=re.compile("Plantilla")).click()
     expect(page.get_by_role("button", name="Atrás")).to_have_count(0)  # nothing before the first step
     site.shot("composer-keeps-state")
@@ -152,6 +151,7 @@ def test_draft_cleared_on_send_and_logout(site: Site) -> None:
     page.get_by_label("Texto del párrafo").first.fill("Contenido listo.")
     page.wait_for_function(f"localStorage.getItem('{DRAFT_KEY}') !== null")
     page.get_by_role("button", name="Siguiente").click()
+    add_source(page, "Todo UpiixSol")
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
     dialog.get_by_role("button", name="Enviar ahora").click()
@@ -172,7 +172,7 @@ def test_draft_cleared_on_send_and_logout(site: Site) -> None:
 
 def test_send_step_has_audience_sender_reply_to_and_quota(site: Site) -> None:
     page = open_composer(site, f"{ADMIN}&paso=envio")
-    expect(page.get_by_role("radio", name="Todo UpiixSol")).to_be_visible()
+    expect(page.get_by_role("button", name="Agregar destinatarios")).to_be_visible()
     expect(page.get_by_label("Enviado por")).to_be_visible()
     expect(page.get_by_label("Responder a")).to_be_visible()
     expect(page.get_by_text(re.compile(r"Te quedan [\d,]+ de [\d,]+ correos este mes"))).to_be_visible()
@@ -181,7 +181,7 @@ def test_send_step_has_audience_sender_reply_to_and_quota(site: Site) -> None:
     expect(page.get_by_label("Asunto")).to_have_count(0)  # the subject belongs to the content step
     page.get_by_role("button", name="Atrás").click()
     expect(page.get_by_label("Asunto")).to_be_visible()
-    expect(page.get_by_role("radio", name="Todo UpiixSol")).to_have_count(0)
+    expect(page.get_by_role("button", name="Agregar destinatarios")).to_have_count(0)
     expect(page.get_by_label("Responder a")).to_have_count(0)
 
 

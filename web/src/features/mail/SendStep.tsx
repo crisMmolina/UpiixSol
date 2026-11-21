@@ -8,10 +8,12 @@ import { FormMessage } from "@/components/FormMessage";
 import { Notice } from "@/components/States";
 import type { MailStatus } from "@/lib/types";
 
-import { AudiencePicker, type AcademyChoice, type AudienceKind } from "./AudiencePicker";
+import { toAudience, type AcademyChoice, type AudienceKind } from "./AudiencePicker";
+import { AudienceSources } from "./AudienceSources";
 import { BOARD, renewal, type StepProps } from "./composerState";
 import { StepFooter, StepHeader } from "./ComposerSteps";
 import { EmailPreview } from "./EmailPreview";
+import { RecipientList } from "./RecipientList";
 import { ReplyToField } from "./ReplyToField";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -61,13 +63,21 @@ export function SendStep({
   onReview: () => void;
 }) {
   const off = !status.enabled;
+  const setAudience = (audience: typeof state.audience) => dispatch({ type: "patch", patch: { audience, sender: "auto" } });
   return (
     <div className="grid gap-7">
       <StepHeader title="¿A quién se lo mandas?" lead="Elige los destinatarios, revisa quién lo envía y confirma. Antes de enviar verás cuántas personas lo reciben." />
       {off && <Notice tone="alert">El correo está desactivado. Puedes redactar, pero no enviar, hasta que se active.</Notice>}
       <div className="grid items-start gap-8 lg:grid-cols-2">
         <div className="grid min-w-0 content-start gap-7">
-          <AudiencePicker draft={state.audience} onChange={(audience) => dispatch({ type: "patch", patch: { audience, sender: "auto" } })} academies={academies} kinds={kinds} ownClub={ownClub} />
+          <AudienceSources draft={state.audience} onChange={setAudience} academies={academies} kinds={kinds} ownClub={ownClub} />
+          <RecipientList
+            audience={toAudience(state.audience)}
+            academies={academies}
+            ownClub={ownClub}
+            onToggle={(id, receives) => setAudience({ ...state.audience, excluded: receives ? state.audience.excluded.filter((x) => x !== id) : [...state.audience.excluded, id] })}
+            onRemoveEmail={(address) => setAudience({ ...state.audience, emails: state.audience.emails.filter((x) => x !== address) })}
+          />
           <Section title="Quién lo envía">
             {ownClub ? (
               <p className="text-sm">{`Enviado por ${academies[0]?.name ?? ""}`}</p>

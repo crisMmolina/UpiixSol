@@ -9,6 +9,7 @@ from playwright.sync_api import Page, expect
 
 from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import sign_in
+from e2e.test_mail_recipients import add_club, add_source
 
 SUPERADMIN = "superadmin1@upiixsol.dev"
 CLUB_SUBJECT = "Junta semanal de UpiixIA"
@@ -38,6 +39,10 @@ def open_mail(site: Site, step: str = "contenido") -> Page:
     page.goto(site.url(f"/admin?tab=correos&paso={step}"))
     expect(page.get_by_role("tab", name="Correos")).to_have_attribute("aria-selected", "true")
     return page
+
+
+def chips(page: Page):  # noqa: ANN201 - playwright Locator
+    return page.get_by_role("list", name="Fuentes de destinatarios").get_by_role("listitem")
 
 
 def go(page: Page, step: str) -> None:
@@ -103,8 +108,7 @@ def review_and_confirm(page: Page, people: str) -> None:
 
 def test_superadmin_sends_to_a_club_after_preview_and_confirm(site: Site) -> None:
     page = open_mail(site, "envio")
-    page.get_by_role("radio", name="Un club").check()
-    page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
+    add_club(page)
     go(page, "Contenido")
     compose(page, CLUB_SUBJECT)
     see_as_sent(page)
@@ -120,19 +124,18 @@ def test_superadmin_sends_to_a_club_after_preview_and_confirm(site: Site) -> Non
 
 def test_superadmin_mixes_users_and_outside_addresses(site: Site) -> None:
     page = open_mail(site, "envio")
-    page.get_by_role("radio", name="Personas").check()
-    expect(page.get_by_text("Personas 0/50")).to_be_visible()
-    expect(page.get_by_text("Correos externos 0")).to_be_visible()
+    add_source(page, "Personas")
     page.get_by_label("Buscar personas por nombre o apodo").fill("alumno")
     page.get_by_role("button", name="Agregar Alumno Demo").click()
-    expect(page.get_by_text("Personas 1/50")).to_be_visible()
-    expect(page.get_by_role("button", name="Quitar a Alumno Demo")).to_be_visible()
+    expect(chips(page).filter(has_text="Personas · 1")).to_be_visible()
+    expect(page.get_by_role("listitem").filter(has_text="Alumno Demo").get_by_role("checkbox")).to_be_checked()
+    add_source(page, "Correos de fuera")
     page.get_by_label("Correo externo").fill("no-es-un-correo")
     page.get_by_role("button", name="Agregar correo").click()
     expect(page.get_by_text("Escribe un correo válido.")).to_be_visible()
     page.get_by_label("Correo externo").fill(OUTSIDE)
     page.get_by_role("button", name="Agregar correo").click()
-    expect(page.get_by_text("Correos externos 1")).to_be_visible()
+    expect(chips(page).filter(has_text="Correos de fuera · 1")).to_be_visible()
     expect(page.get_by_role("button", name=f"Quitar {OUTSIDE}")).to_be_visible()
     go(page, "Contenido")
     compose(page, MIX_SUBJECT)
@@ -237,8 +240,7 @@ def test_button_presets_campus_and_club(site: Site) -> None:
     expect(button.get_by_label("Texto del botón")).to_have_value("Ir al campus")
     expect(button.get_by_label("Enlace del botón")).to_have_value("https://www.upiixsol.com/")
     go(page, "Destinatarios")
-    page.get_by_role("radio", name="Un club").check()
-    page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
+    add_club(page)
     go(page, "Contenido")
     blocks(page).nth(1).click()  # select the button again to open its properties
     button.get_by_role("button", name="Ver el club").click()
@@ -253,11 +255,11 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
     sender = page.get_by_label("Enviado por")
     expect(sender).to_have_value("")  # the board
     expect(sender.locator("option", has_text="UpiixIA")).to_have_count(1)
-    page.get_by_role("radio", name="Un club").check()
-    page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
+    add_club(page)
     expect(sender.locator("option:checked")).to_have_text("UpiixIA")  # follows the audience's club
     expect(page.frame_locator(PREVIEW).get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
-    page.get_by_role("radio", name="Todo UpiixSol").check()
+    page.get_by_role("button", name="Quitar fuente Club UpiixIA").click()
+    add_source(page, "Todo UpiixSol")
     expect(sender.locator("option:checked")).to_have_text("La mesa directiva de UpiixSol")
     expect(page.frame_locator(PREVIEW).get_by_text("mesa directiva de UpiixSol").first).to_be_visible(timeout=10_000)
     sender.select_option(label="UpiixIA")
@@ -312,13 +314,13 @@ def test_history_lists_the_campaign_with_counts(site: Site) -> None:
     page = open_mail(site)
     row = page.get_by_role("region", name="Historial").get_by_role("listitem").filter(has_text=CLUB_SUBJECT)
     expect(row).to_have_count(1)
-    expect(row.get_by_text("Un club")).to_be_visible()
+    expect(row.get_by_text(re.compile(r"Combinado · 1 fuente"))).to_be_visible()
     expect(row).not_to_contain_text("undefined")
     expect(row.get_by_text("superadmin1")).to_be_visible()
     expect(row.get_by_text(re.compile(r"Enviado|Enviando"))).to_be_visible()
     expect(row.get_by_text(re.compile(r"\d+ (aceptados?|entregados?|pendientes?)"))).to_be_visible()
     mixed = page.get_by_role("region", name="Historial").get_by_role("listitem").filter(has_text=MIX_SUBJECT)
-    expect(mixed.get_by_text("Personas")).to_be_visible()
+    expect(mixed.get_by_text("Combinado", exact=False)).to_be_visible()
     expect(mixed).to_contain_text("1 externo")
     expect(mixed).not_to_contain_text("undefined")
     site.shot("mail-history")
@@ -327,11 +329,14 @@ def test_history_lists_the_campaign_with_counts(site: Site) -> None:
 def test_mail_tab_at_390_wide(site: Site) -> None:
     page = open_mail(site, "envio")
     expect(page.get_by_role("tab", name="Correos")).to_be_visible()
-    for name in ("Todo UpiixSol", "Un club", "Un rol", "Personas"):
-        expect(page.get_by_role("radio", name=name)).to_be_visible()
+    page.get_by_role("button", name="Agregar destinatarios").click()
+    for name in ("Todo UpiixSol", "Un club", "Un rol", "Personas", "Correos de fuera"):
+        expect(page.get_by_role("menuitem", name=name, exact=True)).to_be_visible()
+    page.keyboard.press("Escape")
     go(page, "Contenido")
     compose(page, "Revisión de pantalla")
     go(page, "Destinatarios")
+    add_source(page, "Todo UpiixSol")
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
     expect(dialog.get_by_text(re.compile(r"Se enviará a"))).to_be_visible()

@@ -12,7 +12,8 @@ import { BajaPage } from "./BajaPage";
 import { Composer } from "./Composer";
 import { History } from "./History";
 
-export { AudiencePicker, toAudience, EMPTY_AUDIENCE } from "./AudiencePicker";
+export { toAudience, EMPTY_AUDIENCE } from "./AudiencePicker";
+export { AudienceSources } from "./AudienceSources";
 export { Composer } from "./Composer";
 export { History } from "./History";
 

@@ -9,6 +9,7 @@ from playwright.sync_api import Page, expect
 
 from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import sign_in
+from e2e.test_mail_recipients import add_club, add_source
 
 CLUB_ADMIN = "admin.ia@upiixsol.dev"
 MEMBER = "alumno.demo@upiixsol.dev"
@@ -54,11 +55,13 @@ def go(page: Page, step: str) -> None:
 
 def test_club_admin_mails_their_club_only(site: Site) -> None:
     page = open_club_mail(site)
-    expect(page.get_by_role("radio", name="Mi club")).to_be_visible()
-    expect(page.get_by_role("radio", name="Personas")).to_be_visible()
+    page.get_by_role("button", name="Agregar destinatarios").click()
+    for name in ("Mi club", "Personas", "Correos de fuera"):
+        expect(page.get_by_role("menuitem", name=name, exact=True)).to_be_visible()
     for name in ("Todo UpiixSol", "Un club", "Un rol"):
-        expect(page.get_by_role("radio", name=name)).to_have_count(0)
-    page.get_by_role("radio", name="Mi club").check()
+        expect(page.get_by_role("menuitem", name=name, exact=True)).to_have_count(0)
+    page.keyboard.press("Escape")
+    add_source(page, "Mi club")
     go(page, "Contenido")
     page.get_by_label("Asunto").fill(SUBJECT)
     page.get_by_label("Texto del párrafo").first.fill(BODY)
@@ -73,7 +76,7 @@ def test_club_admin_mails_their_club_only(site: Site) -> None:
     history = page.get_by_role("region", name="Historial")
     row = history.get_by_role("listitem").filter(has_text=SUBJECT)
     expect(row).to_have_count(1)
-    expect(row.get_by_text("Mi club")).to_be_visible()
+    expect(row.get_by_text(re.compile(r"Combinado · 1 fuente"))).to_be_visible()
     expect(row).not_to_contain_text("undefined")
     site.shot("club-mail-sent")
 
@@ -89,7 +92,7 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
     go(page, "Destinatarios")
     expect(page.get_by_label("Enviado por")).to_have_count(0)  # not editable
     expect(page.get_by_text("Enviado por UpiixIA", exact=True)).to_be_visible()
-    page.get_by_role("radio", name="Mi club").check()
+    add_source(page, "Mi club")
     preview = page.frame_locator("iframe[title='Vista previa del correo']")
     expect(preview.get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
     page.locator("iframe[title='Vista previa del correo']").scroll_into_view_if_needed()
@@ -99,17 +102,19 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
 
 def test_club_admin_picker_lists_only_their_enrollees(site: Site) -> None:
     page = open_club_mail(site)
-    page.get_by_role("radio", name="Personas").check()
+    add_source(page, "Personas")
     search = page.get_by_label("Buscar personas por nombre o apodo")
     search.fill("superadmin")
     expect(page.get_by_role("list", name="Resultados").get_by_text("Sin resultados.")).to_be_visible()
     expect(page.get_by_role("button", name=re.compile(r"^Agregar Superadmin"))).to_have_count(0)
     search.fill("alumno")
     page.get_by_role("button", name="Agregar Alumno Demo").click()
+    add_source(page, "Correos de fuera")
     page.get_by_label("Correo externo").fill("invitado@example.com")
     page.get_by_role("button", name="Agregar correo").click()
-    expect(page.get_by_text("Personas 1/50")).to_be_visible()
-    expect(page.get_by_text("Correos externos 1")).to_be_visible()
+    chips = page.get_by_role("list", name="Fuentes de destinatarios")
+    expect(chips.get_by_text("Personas · 1")).to_be_visible()
+    expect(chips.get_by_text("Correos de fuera · 1")).to_be_visible()
     view(site, "club-mail-individual")
     site.shot("club-mail-individual")
 
@@ -170,9 +175,11 @@ def test_baja_page_with_bad_token_shows_the_same_message(site: Site) -> None:
 def test_club_mail_tab_at_390_wide(site: Site) -> None:
     page = open_club_mail(site)
     expect(page.get_by_role("tab", name="Correos")).to_be_visible()
-    expect(page.get_by_role("radio", name="Mi club")).to_be_visible()
-    expect(page.get_by_role("radio", name="Personas")).to_be_visible()
-    page.get_by_role("radio", name="Mi club").check()
+    page.get_by_role("button", name="Agregar destinatarios").click()
+    expect(page.get_by_role("menuitem", name="Mi club", exact=True)).to_be_visible()
+    expect(page.get_by_role("menuitem", name="Personas", exact=True)).to_be_visible()
+    page.keyboard.press("Escape")
+    add_source(page, "Mi club")
     go(page, "Contenido")
     page.get_by_label("Asunto").fill("Revisión de pantalla")
     page.get_by_label("Texto del párrafo").first.fill(BODY)

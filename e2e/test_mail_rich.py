@@ -15,6 +15,7 @@ from playwright.sync_api import Page, expect
 import e2e.conftest as base
 from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import sign_in
+from e2e.test_mail_recipients import add_club, add_source
 
 SUPERADMIN = "superadmin1@upiixsol.dev"
 CLUB_ADMIN = "admin.ia@upiixsol.dev"
@@ -81,10 +82,9 @@ def open_composer(site: Site, email: str = SUPERADMIN) -> Page:
     page.goto(site.url(f"{path}&paso=envio"))  # the audience first (last step), then the content (UPS-102)
     expect(page.get_by_role("tab", name="Correos")).to_have_attribute("aria-selected", "true")
     if email == SUPERADMIN:
-        page.get_by_role("radio", name="Un club").check()
-        page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
+        add_club(page)
     else:
-        page.get_by_role("radio", name="Mi club").check()
+        add_source(page, "Mi club")
     go(page, "Contenido")
     page.get_by_label("Asunto").fill("Prueba de bloques")
     return page
