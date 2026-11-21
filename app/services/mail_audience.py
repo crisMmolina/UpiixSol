@@ -3,7 +3,8 @@
     check_scope(db, sender, audience)              # 403 unless the sender may mail that audience
     resolve_audience(db, sender, audience)         # → list[ResolvedRecipient]: one per deliverable address
     preview(db, sender, audience)                  # → PreviewOut: count and what was excluded, from the DB
-    search_recipients(db, sender, q, cursor, limit)  # picker for `individual`; email only for superadmins
+    list_audience(db, sender, data)                # → Page[AudienceMember]: who it reaches, by state
+    search_recipients(db, sender, q, cursor, limit)  # picker: people in scope, with address
     mail_status(db)                                # monthly quota, counted in mail_recipients
 
 The club scope of an academy_admin is always `sender.academy_id` and `enrollments` (DB rows), never the
@@ -16,15 +17,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import (
-    BaseModel,
-    Field,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
-    model_serializer,
-    model_validator,
-)
-from sqlalchemy import Select, and_, false, func, or_, select
+from pydantic import BaseModel, Field, SerializerFunctionWrapHandler, model_serializer, model_validator
+from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -32,12 +26,15 @@ from app.errors import AppError
 from app.models import Enrollment, Role, User
 from app.models.common import utcnow
 from app.models.mail import MailRecipient, MailSuppression
-from app.pagination import paginate
+from app.pagination import decode_cursor, encode_cursor, paginate
 from app.schemas.common import InModel, Page
 from app.schemas.users import Email
 from app.services.mailer import normalize_email
 
 MAX_ENTRIES = 50  # campus users picked one by one; outside addresses have no per-campaign cap (UPS-097)
+MAX_SOURCES = 10  # `mix` caps (plan 006 §STRIDE · Tampering)
+MAX_MIX_USERS = 1000
+MAX_MIX_EXCLUDED = 5000
 _IN_CHUNK = 900  # keeps every IN (...) under SQLite's bound-parameter limit
 
 
@@ -70,8 +67,29 @@ class IndividualAudience(InModel):
         return self
 
 
+Source = Annotated[AllAudience | AcademyAudience | RoleAudience, Field(discriminator="kind")]
+
+
+class MixAudience(InModel):
+    """Spec 006: sources stay symbolic (re-resolved on the server at send time); the client only sends the
+    people it added, the ones it unchecked and the outside addresses."""
+
+    kind: Literal["mix"]
+    sources: list[Source] = Field(default_factory=list, max_length=MAX_SOURCES)
+    user_ids: list[int] = Field(default_factory=list, max_length=MAX_MIX_USERS)
+    exclude_user_ids: list[int] = Field(default_factory=list, max_length=MAX_MIX_EXCLUDED)
+    emails: list[Email] = Field(default_factory=list)  # bounded by the monthly quota (_check_outside)
+
+    @model_validator(mode="after")
+    def _size(self) -> "MixAudience":
+        if not self.sources and not self.user_ids and not self.emails:
+            raise ValueError("Agrega al menos una fuente, una persona o un correo.")
+        return self
+
+
 Audience = Annotated[
-    AllAudience | AcademyAudience | RoleAudience | IndividualAudience, Field(discriminator="kind")
+    AllAudience | AcademyAudience | RoleAudience | IndividualAudience | MixAudience,
+    Field(discriminator="kind"),
 ]
 
 
@@ -83,24 +101,52 @@ class ExcludedOut(BaseModel):
 
 class PreviewOut(BaseModel):
     count: int
+    # People a source includes that the sender unchecked; `mix` only, so the old kinds answer as before.
+    removed: int | None = None
     excluded: ExcludedOut
+
+    @model_serializer(mode="wrap")
+    def _drop_unset_removed(self, handler: SerializerFunctionWrapHandler) -> dict:
+        data = handler(self)
+        if data.get("removed") is None:
+            data.pop("removed", None)
+        return data
 
 
 class RecipientOut(BaseModel):
-    """A campus user in the picker. `email` is filled (and serialized) only for superadmins."""
+    """A campus user in the picker, always someone the sender may pick (spec 006: with the address)."""
 
     id: int
     full_name: str
     nickname: str
     avatar_url: str | None = None
-    email: str | None = None
+    email: str
 
-    @model_serializer(mode="wrap")
-    def _drop_hidden_email(self, handler: SerializerFunctionWrapHandler, _info: SerializationInfo) -> dict:
-        data = handler(self)
-        if data.get("email") is None:
-            data.pop("email", None)
-        return data
+
+MemberState = Literal["receives", "removed", "cannot"]
+CannotReason = Literal["inactive", "suppressed", "blocked_domain"]
+
+
+class AudienceListIn(InModel):
+    audience: Audience
+    q: Annotated[str | None, Field(max_length=100)] = None
+    state: MemberState | None = None
+    cursor: Annotated[str | None, Field(max_length=500)] = None
+    limit: Annotated[int, Field(ge=1, le=50)] = 50
+
+
+class AudienceMember(BaseModel):
+    """One row of the audience list. `origins`: `all`, `academy:<id>`, `role:<role>`, `picked`, `outside`.
+    `user_id` is None for a typed outside address; `reason` only when `state` is `cannot`."""
+
+    user_id: int | None
+    name: str
+    nickname: str | None
+    email: str
+    avatar_url: str | None
+    origins: list[str]
+    state: MemberState
+    reason: CannotReason | None = None
 
 
 class MailStatusOut(BaseModel):
@@ -136,7 +182,15 @@ def check_scope(db: Session, sender: User, audience: Audience) -> None:
         return
     if isinstance(audience, IndividualAudience):
         wanted = set(audience.user_ids)
-        if wanted <= _pickable(db, club, wanted):
+        if wanted <= pickable(db, club, wanted):
+            return
+    if isinstance(audience, MixAudience):
+        # Per source and per id; exclusions are not checked: removing someone is always safe.
+        own_club = all(
+            isinstance(source, AcademyAudience) and source.academy_id == club for source in audience.sources
+        )
+        wanted = set(audience.user_ids)
+        if own_club and wanted <= pickable(db, club, wanted):
             return
     raise AppError(403)
 
@@ -149,7 +203,8 @@ def _club_members(academy_id: int | None):
     return or_(User.id.in_(enrolled), and_(User.role == Role.academy_admin, User.academy_id == academy_id))
 
 
-def _pickable(db: Session, academy_id: int, user_ids: set[int]) -> set[int]:
+def pickable(db: Session, academy_id: int, user_ids: set[int]) -> set[int]:
+    """Which of `user_ids` are the club's enrollees or co-admins."""
     found: set[int] = set()
     for chunk in _chunks(sorted(user_ids)):
         found.update(db.scalars(select(User.id).where(User.id.in_(chunk), _club_members(academy_id))))
@@ -166,65 +221,190 @@ def resolve_audience(db: Session, sender: User, audience: Audience) -> list[Reso
 
 def preview(db: Session, sender: User, audience: Audience) -> PreviewOut:
     check_scope(db, sender, audience)
-    if isinstance(audience, IndividualAudience):
+    _check_typed(db, audience)
+    rows = _resolve(db, audience, blind_typed=sender.role != Role.superadmin)
+    excluded = _excluded(rows)
+    return PreviewOut(
+        count=sum(row.state == "receives" for row in rows),
+        removed=sum(row.state == "removed" for row in rows) if isinstance(audience, MixAudience) else None,
+        excluded=excluded,
+    )
+
+
+def list_audience(db: Session, sender: User, data: AudienceListIn) -> Page[AudienceMember]:
+    """Everyone the audience reaches, from the same resolution as the preview and the send, one row per
+    person, ordered by name then address. A non-superadmin only ever gets people they may pick (checked
+    again here before serializing) and typed addresses back as typed: never a state that reveals them."""
+    check_scope(db, sender, data.audience)
+    _check_typed(db, data.audience)
+    is_super = sender.role == Role.superadmin
+    rows = _resolve(db, data.audience, blind_typed=not is_super)
+    if not is_super:
+        campus = {row.user_id for row in rows if row.user_id is not None}
+        allowed = pickable(db, sender.academy_id, campus) if sender.academy_id is not None else set()
+        rows = [row for row in rows if row.user_id is None or row.user_id in allowed]
+    if data.state is not None:
+        rows = [row for row in rows if row.state == data.state]
+    if data.q and data.q.strip():
+        needle = data.q.strip().lower()
+        rows = [row for row in rows if any(needle in (field or "").lower() for field in row.searchable)]
+    rows.sort(key=_sort_key)
+    if data.cursor:
+        after = tuple(decode_cursor(data.cursor, [User.full_name, User.email]))
+        rows = [row for row in rows if _sort_key(row) > after]
+    page = rows[: data.limit]
+    more = len(rows) > data.limit
+    return Page(
+        items=[row.member() for row in page],
+        next_cursor=encode_cursor(list(_sort_key(page[-1]))) if more else None,
+    )
+
+
+def _check_typed(db: Session, audience: Audience) -> None:
+    if isinstance(audience, IndividualAudience | MixAudience):
         _check_outside(db, len({normalize_email(email) for email in audience.emails}))
-    recipients, excluded = _compute(db, audience, blind_typed=sender.role != Role.superadmin)
-    return PreviewOut(count=len(recipients), excluded=excluded)
 
 
-def _users_stmt(audience: Audience) -> Select | None:
-    stmt = select(User.id, User.email, User.full_name, User.is_active).order_by(User.id)
-    if isinstance(audience, AllAudience):
-        return stmt
-    if isinstance(audience, AcademyAudience):
-        enrolled = select(Enrollment.user_id).where(Enrollment.academy_id == audience.academy_id)
-        admins = and_(User.role == Role.academy_admin, User.academy_id == audience.academy_id)
-        return stmt.where(or_(User.id.in_(enrolled), admins))
-    if isinstance(audience, RoleAudience):
-        return stmt.where(User.role == audience.role)
-    return stmt.where(User.id.in_(audience.user_ids)) if audience.user_ids else None
+@dataclass
+class _Row:
+    """One person or typed address of an audience while it is resolved (never logged: holds addresses)."""
+
+    user_id: int | None
+    email: str = field(repr=False)
+    name: str = field(repr=False)
+    nickname: str | None = field(default=None, repr=False)
+    avatar_url: str | None = None
+    is_active: bool = True
+    typed: bool = False
+    origins: list[str] = field(default_factory=list)
+    state: MemberState = "receives"
+    reason: CannotReason | None = None
+
+    @property
+    def searchable(self) -> tuple[str | None, ...]:
+        return (self.name, self.nickname, self.email)
+
+    def member(self) -> AudienceMember:
+        return AudienceMember(
+            user_id=self.user_id,
+            name=self.name,
+            nickname=self.nickname,
+            email=self.email,
+            avatar_url=self.avatar_url,
+            origins=list(self.origins),
+            state=self.state,
+            reason=self.reason,
+        )
+
+
+def _sort_key(row: _Row) -> tuple[str, str]:
+    return (row.name.lower(), row.email)
+
+
+def _source_condition(source: AllAudience | AcademyAudience | RoleAudience):
+    if isinstance(source, AllAudience):
+        return true()
+    if isinstance(source, AcademyAudience):
+        enrolled = select(Enrollment.user_id).where(Enrollment.academy_id == source.academy_id)
+        admins = and_(User.role == Role.academy_admin, User.academy_id == source.academy_id)
+        return or_(User.id.in_(enrolled), admins)
+    return User.role == source.role
+
+
+def _origin(source: AllAudience | AcademyAudience | RoleAudience) -> str:
+    if isinstance(source, AcademyAudience):
+        return f"academy:{source.academy_id}"
+    if isinstance(source, RoleAudience):
+        return f"role:{source.role.value}"
+    return "all"
+
+
+def _campus(db: Session, audience: Audience) -> list[_Row]:
+    """Campus users of the audience, each once (by user id), with every source that brought them in."""
+    if isinstance(audience, MixAudience):
+        sources, picked = list(audience.sources), audience.user_ids
+    elif isinstance(audience, IndividualAudience):
+        sources, picked = [], audience.user_ids
+    else:
+        sources, picked = [audience], []
+    columns = (User.id, User.email, User.full_name, User.nickname, User.avatar_url, User.is_active)
+    found: dict[int, _Row] = {}
+
+    def add(rows: Iterable, origin: str) -> None:
+        for row in rows:
+            entry = found.get(row.id)
+            if entry is None:
+                entry = found[row.id] = _Row(
+                    user_id=row.id,
+                    email=normalize_email(row.email),
+                    name=row.full_name,
+                    nickname=row.nickname,
+                    avatar_url=row.avatar_url,
+                    is_active=row.is_active,
+                )
+            entry.origins.append(origin)  # origins are distinct per call, and each row comes once per query
+
+    for origin, source in {_origin(source): source for source in sources}.items():  # repeats: one query
+        add(db.execute(select(*columns).where(_source_condition(source))), origin)
+    for chunk in _chunks(sorted(set(picked))):
+        add(db.execute(select(*columns).where(User.id.in_(chunk))), "picked")
+    return [found[user_id] for user_id in sorted(found)]
+
+
+def _resolve(db: Session, audience: Audience, *, blind_typed: bool = False) -> list[_Row]:
+    """Every person and typed address of the audience with its state: `receives`, `removed` (a `mix`
+    exclusion) or `cannot` (inactive, blocked domain, suppressed; it wins over `removed`, since those rows
+    have no checkbox). A typed address equal to a campus user of the audience is that user.
+
+    `blind_typed` (preview and list for a non-superadmin): typed addresses are deduplicated only among
+    themselves and not checked against suppressions, so nothing confirms whose address a guess is or that
+    it unsubscribed (security review UPS-074). The list that is actually sent always applies both.
+    """
+    rows = _campus(db, audience)
+    by_email = {row.email: row for row in rows}
+    emails = audience.emails if isinstance(audience, IndividualAudience | MixAudience) else []
+    for email in dict.fromkeys(map(normalize_email, emails)):
+        existing = None if blind_typed else by_email.get(email)
+        if existing is not None:
+            existing.origins.append("outside")  # typed addresses are already deduplicated
+            continue
+        rows.append(
+            _Row(user_id=None, email=email, name=email.partition("@")[0], typed=True, origins=["outside"])
+        )
+    suppressed = _suppressed(db, {row.email for row in rows if not (blind_typed and row.typed)})
+    blocked = get_settings().mail_blocked_domains
+    excluded_ids = set(audience.exclude_user_ids) if isinstance(audience, MixAudience) else set()
+    for row in rows:
+        if not row.is_active:
+            row.state, row.reason = "cannot", "inactive"
+        elif _is_blocked(row.email, blocked):
+            row.state, row.reason = "cannot", "blocked_domain"
+        elif row.email in suppressed:
+            row.state, row.reason = "cannot", "suppressed"
+        elif row.user_id is not None and row.user_id in excluded_ids:
+            row.state = "removed"
+    return rows
+
+
+def _excluded(rows: list[_Row]) -> ExcludedOut:
+    excluded = ExcludedOut()
+    for row in rows:
+        if row.reason is not None:
+            setattr(excluded, row.reason, getattr(excluded, row.reason) + 1)
+    return excluded
 
 
 def _compute(
     db: Session, audience: Audience, *, blind_typed: bool = False
 ) -> tuple[list[ResolvedRecipient], ExcludedOut]:
-    """Deliverable recipients and the exclusions. Campus users come first, so a typed address that is also
-    one of them is sent once, as that user; typed addresses are never looked up among other users.
-
-    `blind_typed` (preview for a non-superadmin): typed addresses are deduplicated only among themselves
-    and not checked against suppressions, so the count never confirms whose address a guess is or that it
-    unsubscribed (security review UPS-074). The list that is actually sent always applies both.
-    """
-    stmt = _users_stmt(audience)
-    # (user_id, email, name, is_active, typed)
-    candidates: list[tuple[int | None, str, str, bool, bool]] = [
-        (row.id, normalize_email(row.email), row.full_name, row.is_active, False)
-        for row in (db.execute(stmt) if stmt is not None else ())
+    """Deliverable recipients (campus users first, then typed addresses) and the exclusions."""
+    rows = _resolve(db, audience, blind_typed=blind_typed)
+    kept = [
+        ResolvedRecipient(user_id=row.user_id, email=row.email, name=row.name)
+        for row in rows
+        if row.state == "receives"
     ]
-    if isinstance(audience, IndividualAudience):
-        typed = list(dict.fromkeys(map(normalize_email, audience.emails)))
-        candidates += [(None, email, email.partition("@")[0], True, True) for email in typed]
-    suppressed = _suppressed(
-        db, {email for _, email, _, _, typed in candidates if not (blind_typed and typed)}
-    )
-    blocked = get_settings().mail_blocked_domains
-    excluded = ExcludedOut()
-    seen: set[tuple[str, bool]] = set()
-    kept: list[ResolvedRecipient] = []
-    for user_id, email, name, is_active, typed in candidates:
-        key = (email, typed and blind_typed)
-        if key in seen:
-            continue
-        seen.add(key)
-        if not is_active:
-            excluded.inactive += 1
-        elif _is_blocked(email, blocked):
-            excluded.blocked_domain += 1
-        elif email in suppressed:
-            excluded.suppressed += 1
-        else:
-            kept.append(ResolvedRecipient(user_id=user_id, email=email, name=name))
-    return kept, excluded
+    return kept, _excluded(rows)
 
 
 def _check_outside(db: Session, count: int) -> None:
@@ -267,8 +447,8 @@ def search_recipients(
     """Active users the sender may pick: everyone for a superadmin, the club's enrollees
     and co-admins otherwise.
 
-    Only a superadmin's search matches (and returns) addresses; the others match name and nickname, so
-    the search cannot be used to find out whether an address belongs to someone.
+    Every sender sees (and searches by) the address of the people they may pick (spec 006, victor
+    2026-11-20); people outside the scope are filtered out in SQL, before anything is serialized.
     """
     is_super = sender.role == Role.superadmin
     # The sender is left out: mailing yourself is the test send (POST /api/mail/test), not a recipient.
@@ -279,7 +459,7 @@ def search_recipients(
         # LIKE wildcards in the search are literal characters (as app/services/admin.py does).
         escaped = q.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         needle = f"%{escaped}%"
-        fields = [User.full_name, User.nickname] + ([User.email] if is_super else [])
+        fields = [User.full_name, User.nickname, User.email]
         stmt = stmt.where(or_(*(column.ilike(needle, escape="\\") for column in fields)))
     return paginate(
         db,
@@ -293,7 +473,7 @@ def search_recipients(
             full_name=user.full_name,
             nickname=user.nickname,
             avatar_url=user.avatar_url,
-            email=user.email if is_super else None,
+            email=user.email,
         ),
     )
 

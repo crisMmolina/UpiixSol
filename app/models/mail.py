@@ -23,7 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 from app.models.common import UTCDateTime, utcnow
 
-AUDIENCE_KINDS = ("all", "academy", "role", "individual")
+AUDIENCE_KINDS = ("all", "academy", "role", "individual", "mix")  # mix: spec 006, migration 0012
 CAMPAIGN_STATUSES = ("draft", "sending", "sent", "partial", "failed")
 RECIPIENT_STATUSES = ("pending", "accepted", "delivered", "failed", "bounced", "complained")
 SUPPRESSION_REASONS = ("unsubscribed", "bounced", "complained")
@@ -77,6 +77,7 @@ class MailRecipient(Base):
         UniqueConstraint("campaign_id", "email"),
         CheckConstraint(_one_of("status", RECIPIENT_STATUSES), name="status"),
         CheckConstraint("email = lower(email)", name="email_lowercase"),
+        Index("ix_mail_recipients_campaign_id_status", "campaign_id", "status"),  # delivery detail (0012)
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

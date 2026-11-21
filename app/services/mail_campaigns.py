@@ -15,6 +15,7 @@ batch writes a fresh token's hash right before the call that carries the token i
 """
 
 import logging
+import re
 import unicodedata
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -39,9 +40,11 @@ from app.services.mail_audience import (
     AcademyAudience,
     Audience,
     IndividualAudience,
+    MixAudience,
     RoleAudience,
     check_scope,
     mail_status,
+    pickable,
     resolve_audience,
 )
 from app.services.mail_blocks import Blocks, EventBlock, ReplyTo
@@ -136,6 +139,18 @@ class CampaignOut(BaseModel):
     created_at: datetime
     sent_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+class CampaignContent(BaseModel):
+    """What "Usar de nuevo" loads in the composer (spec 006): never the recipients."""
+
+    preheader: str | None = None
+    blocks: list[dict[str, Any]]  # stored blocks as is; old data must not fail output validation
+
+
+class CampaignDetail(CampaignOut):
+    content: CampaignContent
+    details_purged: bool  # the per-person rows were deleted by retention (UPS-081)
 
 
 # ── Guards ──────────────────────────────────────────────────
@@ -301,8 +316,8 @@ def _sender_club(db: Session, user: User, data: CampaignIn) -> Academy | None:
     if user.role != Role.superadmin:
         return db.get(Academy, user.academy_id) if user.academy_id else None
     club_id = data.sender_academy_id
-    if club_id is None and isinstance(data.audience, AcademyAudience):
-        club_id = data.audience.academy_id
+    if club_id is None and data.audience is not None:
+        club_id = _audience_club(db, data.audience)
     if club_id is None:
         return None
     club = db.get(Academy, club_id)
@@ -364,6 +379,22 @@ def _audience_reason(db: Session, audience: Audience, site_name: str, user: User
     )
 
 
+def _audience_club(db: Session, audience: Audience) -> int | None:
+    """The one club a superadmin's audience is about: an `academy` audience, or a `mix` that stays wholly
+    inside one club (only that club as source, picked people from it, no outside addresses). Its admins
+    see the campaign in their history, so anything wider is the board's (None)."""
+    if isinstance(audience, AcademyAudience):
+        return audience.academy_id
+    if not isinstance(audience, MixAudience) or not audience.sources or audience.emails:
+        return None
+    clubs = {s.academy_id if isinstance(s, AcademyAudience) else None for s in audience.sources}
+    club = clubs.pop() if len(clubs) == 1 else None
+    if club is None:
+        return None
+    wanted = set(audience.user_ids)
+    return club if wanted <= pickable(db, club, wanted) else None
+
+
 def _audience_params(audience: Audience) -> dict[str, Any]:
     """What the history shows of the audience: ids and counts, never addresses."""
     if isinstance(audience, AcademyAudience):
@@ -372,6 +403,13 @@ def _audience_params(audience: Audience) -> dict[str, Any]:
         return {"role": audience.role.value}
     if isinstance(audience, IndividualAudience):
         return {"user_ids": list(audience.user_ids), "outside": len(audience.emails)}
+    if isinstance(audience, MixAudience):
+        return {
+            "sources": [source.model_dump(mode="json") for source in audience.sources],
+            "user_ids": list(audience.user_ids),
+            "excluded": len(set(audience.exclude_user_ids)),  # a count: the history never lists them
+            "outside": len({email.lower() for email in audience.emails}),
+        }
     return {}
 
 
@@ -379,10 +417,8 @@ def create_campaign(db: Session, sender: User, data: CampaignIn) -> CampaignOut:
     recipients = resolve_audience(db, sender, data.audience)  # 403 outside the sender's scope
     if not recipients:
         raise AppError(422, "La audiencia no tiene destinatarios.", code="empty_audience")
-    if sender.role == Role.superadmin:
-        club = data.audience.academy_id if isinstance(data.audience, AcademyAudience) else None
-    else:
-        club = sender.academy_id  # from the DB row, never the request body
+    # academy_admin: from the DB row, never the request body
+    club = _audience_club(db, data.audience) if sender.role == Role.superadmin else sender.academy_id
     from_club = _sender_club(db, sender, data)
     content = _dump(data.blocks) if data.blocks is not None else None
     _refuse_placeholder(content)
@@ -678,5 +714,21 @@ def list_campaigns(db: Session, user: User, cursor: str | None, limit: int) -> P
     )
 
 
-def get_campaign(db: Session, user: User, campaign_id: int) -> CampaignOut:
-    return campaign_out(db, _load(db, user, campaign_id))
+_PARAGRAPHS = re.compile(r"\n[ \t]*\n+")  # the same split as mail_template._body_html
+
+
+def _content_blocks(campaign: MailCampaign) -> list[dict[str, Any]]:
+    if campaign.content is not None:
+        return campaign.content
+    body = campaign.body.replace("\r\n", "\n").strip()
+    return [{"kind": "paragraph", "text": p.strip()} for p in _PARAGRAPHS.split(body) if p.strip()]
+
+
+def get_campaign(db: Session, user: User, campaign_id: int) -> CampaignDetail:
+    campaign = _load(db, user, campaign_id)
+    out = campaign_out(db, campaign)
+    return CampaignDetail(
+        **out.model_dump(),
+        content=CampaignContent(preheader=campaign.preheader, blocks=_content_blocks(campaign)),
+        details_purged=campaign.counts_snapshot is not None and not _counts(db, campaign.id),
+    )

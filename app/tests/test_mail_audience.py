@@ -222,10 +222,12 @@ def test_recipient_search_hides_email_from_academy_admin(
     assert page.status_code == 200, page.text
     items = page.json()["items"]
     assert [item["id"] for item in items] == [lucia.id]
-    assert set(items[0]) == {"id", "full_name", "nickname", "avatar_url"}
-    assert "secreta" not in page.text
-    # Searching by a piece of the address is no oracle: it matches names and nicknames only.
-    assert as_admin_ia.get(RECIPIENTS, params={"q": "ipn.mx"}).json()["items"] == []
+    # Spec 006 (victor 2026-11-20): club admins see the addresses of the people they may pick.
+    assert set(items[0]) == {"id", "full_name", "nickname", "avatar_url", "email"}
+    assert items[0]["email"] == "lucia.secreta@ipn.mx"
+    # Searching by address matches only people in their scope (not Luciano's club, not the inactive Lucio).
+    by_address = as_admin_ia.get(RECIPIENTS, params={"q": "ipn.mx"}).json()["items"]
+    assert [item["id"] for item in by_address] == [lucia.id]
     found = as_superadmin.get(RECIPIENTS, params={"q": "secreta"}).json()["items"]
     assert [(item["id"], item["email"]) for item in found] == [(lucia.id, "lucia.secreta@ipn.mx")]
     assert len(as_superadmin.get(RECIPIENTS, params={"q": "luc"}).json()["items"]) == 2
@@ -379,4 +381,4 @@ def test_academy_admin_can_pick_a_co_admin_of_their_club(
     assert response.status_code == 403
     found = as_admin_ia.get(RECIPIENTS, params={"q": "jef"}).json()["items"]
     assert [item["id"] for item in found] == [co_admin.id]
-    assert "email" not in found[0]
+    assert found[0]["email"] == "jefa@ipn.mx"  # spec 006 (victor 2026-11-20): addresses visible in scope
