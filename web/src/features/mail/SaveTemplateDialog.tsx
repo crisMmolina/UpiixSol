@@ -38,6 +38,7 @@ function NameForm({ mode, where, initial, onClose, onSubmit }: DialogProps) {
     setBusy(true);
     try {
       await onSubmit(name.trim(), description.trim());
+      setBusy(false);
       onClose();
     } catch (err) {
       setError(err instanceof ApiError && err.status === 409 ? "Ya tienes una plantilla con ese nombre." : err instanceof Error && !(err instanceof ApiError) ? err.message : errorMessage(err));

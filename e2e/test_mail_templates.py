@@ -15,6 +15,7 @@ from e2e.test_mail_recipients import add_source
 
 CLUB_PANEL = "/panel/academia?tab=correos"
 SHOTS = Path(".uak-shots/UPS-104")
+SIGNED_IN: dict[str, str] = {}
 BUILTINS = ("Anuncio", "Invitación a evento", "Recordatorio", "Nueva clase / boletín")
 
 
@@ -35,7 +36,14 @@ def site(mail_env: None, site: Site) -> Site:  # noqa: ARG001 - overrides confte
 
 def fresh(site: Site, path: str = ADMIN, email: str = SUPERADMIN) -> Page:
     """The composer at step 1 with no local draft."""
-    page = open_composer(site, path, email)
+    # Signing in again for every test trips the login rate limit: only when the account changes.
+    if SIGNED_IN.get(site.name) == email:
+        page = site.page
+        page.goto(site.url(path))
+        expect(stepper(page)).to_be_visible()
+    else:
+        page = open_composer(site, path, email)
+        SIGNED_IN[site.name] = email
     forget_draft(page)
     page.reload()
     expect(current_step(page)).to_contain_text("Plantilla")
@@ -68,6 +76,13 @@ def save_as_template(page: Page, name: str, description: str | None = None) -> N
         dialog.get_by_label("Descripción (opcional)").fill(description)
     dialog.get_by_role("button", name="Guardar", exact=True).click()
     expect(page.get_by_role("status").filter(has_text="Plantilla guardada")).to_be_visible()
+    expect(dialog).to_be_hidden()  # the closing dialog must be gone before the next one opens
+
+
+def next_step(page: Page) -> None:
+    """"Siguiente" at the very end of the page: on a phone the fixed bottom bar must not sit on top of it."""
+    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+    page.get_by_role("button", name="Siguiente").click()
 
 
 def go_to_gallery(page: Page) -> None:
@@ -78,7 +93,7 @@ def go_to_gallery(page: Page) -> None:
 def send_email(page: Page, subject: str, save: bool = False) -> int:
     """Writes, sends to everyone and returns the campaign id. Leaves the composer on step 1."""
     write_email(page, subject)
-    page.get_by_role("button", name="Siguiente").click()
+    next_step(page)
     add_source(page, "Todo UpiixSol")
     box = page.get_by_role("checkbox", name="Guardar como plantilla")
     if not save and box.count():
@@ -207,7 +222,7 @@ def test_club_admin_sees_site_and_own_club_templates_only(site: Site) -> None:
 def test_save_on_send_checked_by_default_and_saved(site: Site) -> None:
     page = fresh(site)
     write_email(page, "Guardar al enviar e2e")
-    page.get_by_role("button", name="Siguiente").click()
+    next_step(page)
     add_source(page, "Todo UpiixSol")
     box = page.get_by_role("checkbox", name="Guardar como plantilla")
     expect(box).to_be_checked()
@@ -224,12 +239,12 @@ def test_save_on_send_checked_by_default_and_saved(site: Site) -> None:
 def test_save_on_send_hidden_for_unchanged_template(site: Site) -> None:
     page = fresh(site)
     card(page, "Anuncio").click()
-    page.get_by_role("button", name="Siguiente").click()
+    next_step(page)
     expect(current_step(page)).to_contain_text("Destinatarios")
     expect(page.get_by_role("checkbox", name="Guardar como plantilla")).to_have_count(0)
     page.get_by_role("button", name="Atrás").click()
     page.get_by_label("Asunto").fill("Anuncio con cambios")
-    page.get_by_role("button", name="Siguiente").click()
+    next_step(page)
     expect(page.get_by_role("checkbox", name="Guardar como plantilla")).to_be_checked()
 
 
@@ -243,7 +258,7 @@ def test_recent_sent_section_reuses_an_email(site: Site) -> None:
     expect(current_step(page)).to_contain_text("Contenido")
     expect(page.get_by_label("Asunto")).to_have_value("Reutilizable e2e")
     expect(page.get_by_label("Texto del párrafo").first).to_have_value("Texto de prueba.")
-    page.get_by_role("button", name="Siguiente").click()
+    next_step(page)
     expect(page.get_by_role("list", name="Fuentes de destinatarios")).to_have_count(0)  # never the recipients
     keep(site, "reuse-recent")
 
