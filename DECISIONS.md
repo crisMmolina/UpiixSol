@@ -143,3 +143,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795231876 | UPS-101 | Plain array list per plan Contracts; superadmin manages every template; out-of-scope id 403 per spec | Why: Task criteria outrank the generic pagination rule; spec asks for 403
 - 1795232819 | allow | victor | test change: UPS-105 | Why: victor: club admins see the addresses of their club (spec 006)
 - 1795233283 | allow | victor | test change: UPS-107 | Why: victor: combined recipients list replaces the one-kind picker (spec 006)
+- 1795233837 | UPS-103 | CanvasMock kept (index.tsx out of Paths); preview behind 'Ver como llega' native dialog; textarea always mounted under aria-hidden formatted view | Why: Paths gate; Modal is 512 wide
