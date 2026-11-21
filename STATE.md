@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1795230693
+Updated: 1795230793
 AVAILABLE: UPS-068 UPS-103 UPS-104 UPS-105 UPS-106 UPS-107 UPS-108 
 CLAIMED: UPS-101 
 BLOCKED: UPS-057 
@@ -17,11 +17,11 @@ UPS-102 | REVIEW | victor-2 | until 1795316652
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1795070186 | deadline lease/UPS-102/1795000687 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1795229608 | UPS-102 | Preview in steps 2 and 3, render-only falls back to audience all | Why: UPS-100 not integrated
 - 1795229772 | UPS-100 | no edits to mail_campaigns; 500 on placeholder handed to UPS-101 | Why: outside Paths
 - 1795230149 | UPS-102 | Mobile preview stays below editor (test_composer_at_390_wide relies on it); UPS-103 canvas changes it | Why: scope
 - 1795230248 | UPS-102 | Screenshots referenced from .uak-shots (gitignored), sent to victor directly | Why: no image hosting for PR body
+- 1795230793 | allow | victor | test change: UPS-103 | Why: victor: email canvas replaces the block form (spec 005)
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
