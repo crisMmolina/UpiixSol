@@ -6,7 +6,7 @@
 - Why: initialState signature, export of removed AudiencePicker
 - Failing: none
 - Commands: Verify in TASKS
-- Next: Humano: Edits a file outside Paths: web/src/features/mail/Composer.tsx (Paths of UPS-078). Revert that file on the branch (git checkout origin/main -- web/src/features/mail/Composer.tsx), or the human merges the PR
+- Next: Integrated in main: ec85f4169d6f73789e368adc2d234d68656f818f (recorded by victor-2)
 
 ## History
 - 1795240083 | CLAIMED | victor-2 | claim; next: after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-107`; then the sources, then the list, then exclusions and summary.
@@ -17,3 +17,4 @@
 - 1795242300 | REVIEW | victor-2 | checkpoint; next: Wait for review of PR 172; human must amend Paths
 - 1795242684 | REVIEW | victor-3 | review; approve; SHA 77b0fd69b92f320fdac7a1081c9b60ee55bb71cd; reviewer victor-3
 - 1795242904 | REVIEW | victor-2 | merge rechazado; Edits a file outside Paths: web/src/features/mail/Composer.tsx (Paths of UPS-078). Revert that file on the branch (git checkout origin/main -- web/src/features/mail/Composer.tsx), or the human merges the PR
+- 1795242997 | INTEGRATED | victor-2 | integrate; recorded by victor-2; PR https://github.com/crisMmolina/UpiixSol/pull/172; merged ec85f4169d6f73789e368adc2d234d68656f818f; proof ancestry
