@@ -3,6 +3,7 @@ URL (merged into the panel's `?tab=`), one state kept across steps and a local d
 
 import re
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -14,6 +15,7 @@ SUPERADMIN = "superadmin1@upiixsol.dev"
 CLUB_ADMIN = "admin.ia@upiixsol.dev"
 DRAFT_KEY = "upiixsol.mail-draft"
 ADMIN = "/admin?tab=correos"
+SHOTS = Path(".uak-shots/UPS-102")
 STEPS = ("Plantilla", "Contenido", "Destinatarios y envío")
 
 
@@ -46,6 +48,18 @@ def stepper(page: Page):  # noqa: ANN201 - playwright Locator
 
 def current_step(page: Page):  # noqa: ANN201
     return stepper(page).locator("[aria-current='step']")
+
+
+def keep(site: Site, name: str, focus: str | None = None) -> None:
+    """Shot for the design review: .uak-shots/UPS-102/<1280|390>-<name>.png. Full page, or with `focus` the viewport
+    scrolled to that selector (a fixed bottom sheet would otherwise cover the middle of a full-page shot)."""
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    page = site.page
+    if focus:
+        page.locator(focus).first.scroll_into_view_if_needed()
+        page.evaluate("window.scrollBy(0, -140)")
+    page.wait_for_timeout(400)
+    page.screenshot(path=SHOTS / f"{'1280' if site.name == 'desktop' else '390'}-{name}.png", full_page=focus is None)
 
 
 def forget_draft(page: Page) -> None:
@@ -173,18 +187,42 @@ def test_send_step_has_audience_sender_reply_to_and_quota(site: Site) -> None:
 
 def test_composer_steps_at_390_wide(site: Site) -> None:
     page = open_composer(site)
+    forget_draft(page)
+    page.reload()
     for name in STEPS:
         expect(stepper(page).get_by_role("button", name=re.compile(name))).to_be_visible()
     box = stepper(page).bounding_box()
     viewport = page.viewport_size
     assert box and viewport and box["x"] >= 0 and box["x"] + box["width"] <= viewport["width"] + 1
     site.shot("composer-step-1")
+    keep(site, "1-plantilla")
     page.get_by_role("button", name="Siguiente").click()
-    expect(page.get_by_label("Asunto")).to_be_visible()
+    page.get_by_label("Asunto").fill("Primera clase de robótica")
+    page.get_by_label("Texto del párrafo").first.fill("Trae tu laptop al salón 205 este jueves.")
+    expect(page.frame_locator("iframe[title='Vista previa del correo']").get_by_text("salón 205")).to_be_visible(timeout=10_000)
     site.shot("composer-step-2")
+    keep(site, "2-contenido")
     page.get_by_role("button", name="Siguiente").click()
     expect(page.get_by_role("button", name="Revisar y enviar")).to_be_visible()
+    expect(page.frame_locator("iframe[title='Vista previa del correo']").get_by_text("salón 205")).to_be_visible(timeout=10_000)
     site.shot("composer-step-3")
+    keep(site, "3-envio")
     if site.name == "mobile":
         action = page.get_by_role("button", name="Revisar y enviar").bounding_box()
         assert action and action["width"] >= 160 and action["height"] >= 44
+    forget_draft(page)
+
+
+def test_canvas_mock_shows_toolbar_inserter_and_properties(site: Site) -> None:
+    """Design gate: the static picture of step 2's canvas (UPS-103 builds it for real)."""
+    page = site.page
+    page.goto(site.url("/maqueta-correo"))
+    expect(page.get_by_role("toolbar", name="Formato del texto")).to_be_visible()
+    keep(site, "4-lienzo-texto", ".ring-primary" if site.name == "mobile" else None)
+    page.get_by_role("button", name="Insertor abierto").click()
+    expect(page.get_by_role("menu", name="Tipo de bloque").get_by_role("menuitem")).to_have_count(7)
+    keep(site, "5-lienzo-insertar", "[role=menu]" if site.name == "mobile" else None)
+    page.get_by_role("button", name="Botón seleccionado").click()
+    expect(page.get_by_label("Texto del botón").locator("visible=true")).to_have_count(1)
+    keep(site, "6-lienzo-boton", ".ring-primary" if site.name == "mobile" else None)
+    site.shot("canvas-mock")
