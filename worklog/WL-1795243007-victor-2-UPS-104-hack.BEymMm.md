@@ -6,7 +6,7 @@
 - Why: save on send and template load hook into its confirm()
 - Failing: none open; e2e composer 390 test flaked twice under load, passes alone
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py'
-- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/174; run .uak/bin/smoke
+- Next: Integrated in main: 1f35f8c6a588e69d84f4c2dbffa269a8ce7a70a9 (recorded by victor-2)
 
 ## History
 - 1795243007 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-104`; then the gallery, then load, then save/rename/delete.
@@ -41,3 +41,4 @@
 - 1795283576 | REVIEW | victor-3 | review; approve; SHA 99e432b886c0a1b5b31f8299f6f4c7b02dc426c7; reviewer victor-3
 - 1795284098 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/174; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py' exit 0 (34 passed); design-critic SHIP 747fdd6 (a662204 only changes an e2e shot); shots 1280 and 390 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]; reviewer: -
 - 1795284847 | REVIEW | victor-3 | review; approve; SHA a662204a6272805ab1336a5892e75d6ae9288d58; reviewer victor-3
+- 1795286175 | INTEGRATED | victor-2 | integrate; recorded by victor-2; PR https://github.com/crisMmolina/UpiixSol/pull/174; merged 1f35f8c6a588e69d84f4c2dbffa269a8ce7a70a9; proof ancestry
