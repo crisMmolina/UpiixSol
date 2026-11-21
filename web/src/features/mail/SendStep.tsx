@@ -3,7 +3,7 @@ import { PaperPlaneTilt } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/Button";
-import { SelectField, TextField } from "@/components/Field";
+import { TextField } from "@/components/Field";
 import { FormMessage } from "@/components/FormMessage";
 import { Notice } from "@/components/States";
 import type { MailStatus } from "@/lib/types";
@@ -13,6 +13,7 @@ import { AudienceSources } from "./AudienceSources";
 import { BOARD, isUnchangedTemplate, MAX_TEMPLATE_NAME, renewal, type StepProps } from "./composerState";
 import { StepFooter, StepHeader } from "./ComposerSteps";
 import { EmailPreview } from "./EmailPreview";
+import { MenuSelect } from "./MenuSelect";
 import { RecipientList } from "./RecipientList";
 import { ReplyToField } from "./ReplyToField";
 
@@ -82,16 +83,12 @@ export function SendStep({
             {ownClub ? (
               <p className="text-sm">{`Enviado por ${academies[0]?.name ?? ""}`}</p>
             ) : (
-              <SelectField label="Enviado por" value={senderId ?? ""} onChange={(e) => dispatch({ type: "patch", patch: { sender: e.target.value ? Number(e.target.value) : null } })}>
-                <option value="" disabled={audienceClub !== null}>
-                  {BOARD}
-                </option>
-                {academies.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </SelectField>
+              <MenuSelect
+                label="Enviado por"
+                value={senderId === null ? "" : String(senderId)}
+                options={[{ value: "", label: BOARD, disabled: audienceClub !== null }, ...academies.map((a) => ({ value: String(a.id), label: a.name }))]}
+                onChange={(v) => dispatch({ type: "patch", patch: { sender: v ? Number(v) : null } })}
+              />
             )}
             <ReplyToField value={state.replyTo} onChange={(replyTo) => dispatch({ type: "patch", patch: { replyTo } })} />
           </Section>
