@@ -160,3 +160,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795243909 | UPS-104 | template origin+sig in ComposerState; Composer.tsx edited (needs Paths amend, asked human #618) | Why: save after send never blocks
 - 1795244290 | UPS-104 | TemplateNameDialog mounts NameForm on open; template origin+sig in ComposerState; Composer.tsx edited (Paths amend requested, msg #618) | Why: avoid effect racing typing on mobile
 - 1795282140 | UPS-104 | Composer.tsx edited outside Paths: merge gate sends it to the human | Why: save on send and template load hook into its confirm()
+- 1795295930 | UPS-109 | viewport shots 1280/390; check uses text-secondary | Why: AA for the check, bottom bar never covers the list
