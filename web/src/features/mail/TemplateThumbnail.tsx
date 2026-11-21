@@ -71,7 +71,7 @@ export function TemplateThumbnail({ name, subject, preheader, blocks }: { name: 
           tabIndex={-1}
           scrolling="no"
           style={{ width: EMAIL_WIDTH, height: EMAIL_HEIGHT, transform: `scale(${scale})` }}
-          className="pointer-events-none absolute top-0 left-0 origin-top-left border-0"
+          className="pointer-events-none absolute top-0 left-0 max-w-none origin-top-left border-0"
         />
       )}
     </span>

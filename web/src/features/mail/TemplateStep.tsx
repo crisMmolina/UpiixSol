@@ -19,6 +19,7 @@ export function TemplateStep({ state, dispatch, ownClub, refreshKey, onNext }: {
   const [search, setSearch] = useSearchParams();
   const [templates, setTemplates] = useState<MailTemplate[]>([]);
   const [recent, setRecent] = useState<Campaign[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reuseError, setReuseError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -36,7 +37,8 @@ export function TemplateStep({ state, dispatch, ownClub, refreshKey, onNext }: {
         setTemplates(list);
         setLoadError(null);
       })
-      .catch((err) => setLoadError(errorMessage(err)));
+      .catch((err) => setLoadError(errorMessage(err)))
+      .finally(() => setLoaded(true));
     api<Page<Campaign>>("/mail/campaigns", { query: { limit: 20 } })
       .then((page) => setRecent(recentSent(page.items)))
       .catch(() => setRecent([])); // the section only appears when there is something to show
@@ -117,6 +119,7 @@ export function TemplateStep({ state, dispatch, ownClub, refreshKey, onNext }: {
       )}
       <TemplateGallery
         templates={templates}
+        loading={!loaded}
         blank={state.template === "blank"}
         selected={selected}
         ownClub={ownClub}

@@ -10,12 +10,12 @@ const action = "grid size-11 place-items-center rounded-full bg-surface/90 text-
 
 function Card({ selected, onPick, thumb, name, description, children }: { selected: boolean; onPick: () => void; thumb: ReactNode; name: string; description: string | null; children?: ReactNode }) {
   return (
-    <li className="relative">
+    <li className="relative min-w-0">
       <button
         type="button"
         onClick={onPick}
         aria-pressed={selected}
-        className={`grid h-full w-full content-start gap-3 rounded-2xl border-2 p-2.5 text-left sm:rounded-3xl sm:p-3 transition duration-200 hover:shadow-lift focus-visible:outline-3 ${selected ? "border-primary bg-subtle" : "border-line bg-surface"}`}
+        className={`grid h-full w-full min-w-0 content-start gap-3 rounded-2xl border-2 p-2.5 text-left sm:rounded-3xl sm:p-3 transition duration-200 hover:shadow-lift focus-visible:outline-3 ${selected ? "border-primary bg-subtle" : "border-line bg-surface"}`}
       >
         <span aria-hidden className="block">
           {thumb}
@@ -49,6 +49,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export function TemplateGallery({
   templates,
+  loading,
   blank,
   selected,
   ownClub,
@@ -58,6 +59,8 @@ export function TemplateGallery({
   onDelete,
 }: {
   templates: MailTemplate[];
+  /** The list has not arrived: placeholders hold the space so nothing below jumps when it does. */
+  loading: boolean;
   blank: boolean;
   selected: string | number | null;
   ownClub: boolean;
@@ -86,6 +89,17 @@ export function TemplateGallery({
   );
   return (
     <div className="grid gap-7">
+      {loading && (
+        <Section title="Plantillas de UpiixSol">
+          {[0, 1, 2, 3].map((n) => (
+            <li key={n} aria-hidden className="grid gap-3 rounded-2xl border-2 border-line p-2.5 sm:rounded-3xl sm:p-3">
+              <span className="block aspect-[3/4] animate-pulse rounded-xl bg-subtle" />
+              <span className="h-5 w-2/3 animate-pulse rounded-full bg-subtle" />
+              <span className="h-4 w-full animate-pulse rounded-full bg-subtle" />
+            </li>
+          ))}
+        </Section>
+      )}
       {site.length > 0 && <Section title="Plantillas de UpiixSol">{site.map(card)}</Section>}
       {clubs.length > 0 && <Section title={ownClub ? "Plantillas de mi club" : "Plantillas de clubes"}>{clubs.map(card)}</Section>}
       <Section title="En blanco">

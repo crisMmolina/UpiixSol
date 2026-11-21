@@ -156,24 +156,24 @@ def test_event_placeholder_asks_to_complete_the_event(site: Site) -> None:
 
 def test_save_as_template_and_find_it_in_the_gallery(site: Site) -> None:
     page = fresh(site)
-    write_email(page, "Asunto de mi plantilla", "Cuerpo de mi plantilla.")
+    write_email(page, "Boletín de octubre", "Resumen de lo que pasó este mes.")
     page.get_by_role("button", name="Guardar como plantilla").click()
     dialog = page.get_by_role("dialog", name="Guardar como plantilla")
     expect(dialog.get_by_text("Se guardará en UpiixSol")).to_be_visible()
     dialog.get_by_label("Nombre de la plantilla").fill("x" * 70)
     assert len(dialog.get_by_label("Nombre de la plantilla").input_value()) == 60
     dialog.get_by_label("Nombre de la plantilla").fill("Boletín mensual")
-    dialog.get_by_label("Descripción (opcional)").fill("Para probar el guardado")
+    dialog.get_by_label("Descripción (opcional)").fill("Para anuncios del club")
     keep(site, "save-dialog", full=False)
     dialog.get_by_role("button", name="Guardar", exact=True).click()
     expect(page.get_by_role("status").filter(has_text="Plantilla guardada")).to_be_visible()
     go_to_gallery(page)
     saved = card(page.get_by_role("region", name="Plantillas de UpiixSol"), "Boletín mensual")
     expect(saved).to_be_visible()
-    expect(saved).to_contain_text("Para probar el guardado")
+    expect(saved).to_contain_text("Para anuncios del club")
     saved.click()
     page.get_by_role("dialog", name="¿Reemplazar tu correo?").get_by_role("button", name="Reemplazar").click()
-    expect(page.get_by_label("Asunto")).to_have_value("Asunto de mi plantilla")
+    expect(page.get_by_label("Asunto")).to_have_value("Boletín de octubre")
 
 
 def test_rename_and_delete_own_template(site: Site) -> None:
@@ -255,15 +255,15 @@ def test_save_on_send_hidden_for_unchanged_template(site: Site) -> None:
 
 def test_recent_sent_section_reuses_an_email(site: Site) -> None:
     page = fresh(site)
-    send_email(page, "Reutilizable e2e")
+    send_email(page, "Convocatoria a la reunión")
     recent = page.get_by_role("region", name="Enviados recientes")
     expect(recent).to_be_visible()
     assert recent.get_by_role("button", name=re.compile("^Usar de nuevo")).count() <= 6
     recent.scroll_into_view_if_needed()
     keep(site, "recent-sent", full=False)
-    recent.get_by_role("button", name=re.compile("^Usar de nuevo.*Reutilizable e2e")).first.click()
+    recent.get_by_role("button", name=re.compile("^Usar de nuevo.*Convocatoria a la reunión")).first.click()
     expect(current_step(page)).to_contain_text("Contenido")
-    expect(page.get_by_label("Asunto")).to_have_value("Reutilizable e2e")
+    expect(page.get_by_label("Asunto")).to_have_value("Convocatoria a la reunión")
     expect(page.get_by_label("Texto del párrafo").first).to_have_value("Texto de prueba.")
     next_step(page)
     expect(page.get_by_role("list", name="Fuentes de destinatarios")).to_have_count(0)  # never the recipients
@@ -272,11 +272,11 @@ def test_recent_sent_section_reuses_an_email(site: Site) -> None:
 
 def test_reusar_param_loads_a_sent_email(site: Site) -> None:
     page = fresh(site)
-    campaign_id = send_email(page, "Por parámetro e2e")
+    campaign_id = send_email(page, "Cambio de salón")
     forget_draft(page)
     page.goto(site.url(f"{ADMIN}&paso=plantilla&reusar={campaign_id}"))
     expect(current_step(page)).to_contain_text("Contenido")
-    expect(page.get_by_label("Asunto")).to_have_value("Por parámetro e2e")
+    expect(page.get_by_label("Asunto")).to_have_value("Cambio de salón")
     expect(page).not_to_have_url(re.compile("reusar="))
     page.goto(site.url(f"{ADMIN}&paso=plantilla&reusar=999999"))
     expect(page.get_by_role("alert").filter(has_text="No pudimos cargar ese correo")).to_be_visible()
