@@ -10,6 +10,7 @@ import { api, errorMessage } from "@/lib/api";
 import type { Campaign, MailRecipientStatus, Page } from "@/lib/types";
 
 import { KIND_LABEL, ROLE_LABEL, type AcademyChoice } from "./AudiencePicker";
+import { DeliveryDetail, when } from "./DeliveryDetail";
 
 const STALE_MS = 15 * 60 * 1000;
 const POLL_MS = 3000;
@@ -57,19 +58,13 @@ function audienceText(campaign: Campaign, academies: AcademyChoice[], ownClub: b
   return KIND_LABEL.all;
 }
 
-const DATE = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" });
-
-function when(value: string): string {
-  const t = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
-  return Number.isFinite(t) ? DATE.format(t) : "";
-}
-
 export function History({ academies, reloadKey = 0, ownClub = false }: { academies: AcademyChoice[]; reloadKey?: number; ownClub?: boolean }) {
   const [items, setItems] = useState<Campaign[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [more, setMore] = useState(false);
+  const [open, setOpen] = useState<Campaign | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -120,6 +115,8 @@ export function History({ academies, reloadKey = 0, ownClub = false }: { academi
     }
   }
 
+  if (open) return <DeliveryDetail campaignId={open.id} subject={open.subject} onBack={() => setOpen(null)} />;
+
   return (
     <section aria-label="Historial" className="grid gap-3">
       <h2 className="text-2xl">Historial</h2>
@@ -140,6 +137,9 @@ export function History({ academies, reloadKey = 0, ownClub = false }: { academi
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="min-w-0 flex-1 basis-48 break-words font-semibold">{c.subject}</p>
                     <Badge tone={state.tone}>{state.label}</Badge>
+                    <Button size="sm" variant="ghost" aria-label={`Ver entregas de ${c.subject}`} onClick={() => setOpen(c)}>
+                      Ver entregas
+                    </Button>
                     {stuck && (
                       <Button size="sm" variant="secondary" loading={busy === c.id} onClick={() => void resume(c)}>
                         Reanudar
