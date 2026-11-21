@@ -180,3 +180,20 @@ def test_member_and_anon_get_403_and_401(as_member: TestClient, as_superadmin: T
         assert client.post(TEMPLATES, json=_payload("X")).status_code == code
         assert client.patch(url, json={"name": "Y"}).status_code == code
         assert client.delete(url).status_code == code
+
+
+def test_concurrent_duplicate_and_clubless_admin(
+    as_admin_ia: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.services import mail_templates
+
+    _save(as_admin_ia, "Aviso")
+    # Two saves racing past the pre-check: the unique index still answers 409, and the session recovers.
+    monkeypatch.setattr(mail_templates, "_check_unique", lambda *_args, **_kwargs: None)
+    raced = as_admin_ia.post(TEMPLATES, json=_payload("AVISO"))
+    assert raced.status_code == 409, raced.text
+    assert as_admin_ia.get(TEMPLATES).status_code == 200
+    make_user(db, role=Role.academy_admin, email="sin.club@upiixsol.dev")
+    clubless = next(_client_as(db, "sin.club@upiixsol.dev"))
+    assert clubless.get(TEMPLATES).status_code == 403
+    assert clubless.post(TEMPLATES, json=_payload("X")).status_code == 403
