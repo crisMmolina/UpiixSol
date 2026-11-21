@@ -1,6 +1,7 @@
-// Step 2 · Contenido: subject, preview text and the blocks, with the exact server preview beside them.
-// UPS-103 replaces the block editor with the email canvas; the step's frame stays.
-// This file also holds the DESIGN GATE mock `CanvasMock` (see its comment below); UPS-103 removes it.
+// Step 2 · Contenido (spec 005 §Canvas): subject, preview text and the email canvas, where the sender edits on a
+// picture of the email; "Ver como llega" opens the exact server render (desktop 600 / phone 375).
+// This file also holds the DESIGN GATE mock `CanvasMock` (see its comment below): `/maqueta-correo` still mounts it
+// from index.tsx, outside UPS-103's Paths, so it goes in a follow-up.
 import {
   ArrowDown,
   ArrowLeft,
@@ -10,6 +11,7 @@ import {
   CopySimple,
   CursorClick,
   DotsSixVertical,
+  Eye,
   Image as ImageIcon,
   LinkSimple,
   ListBullets,
@@ -22,7 +24,7 @@ import {
   Trash,
   X,
 } from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 
 import { LOGO_HEIGHT, useSite, Wordmark } from "@/lib/brand";
@@ -31,36 +33,66 @@ import { AcademyTheme, CAMPUS_BRANDING } from "@/lib/theme";
 import { Button } from "@/components/Button";
 import { TextField } from "@/components/Field";
 
-import { BlockEditor } from "./BlockEditor";
 import { MAX_PREHEADER, MAX_SUBJECT, type StepProps } from "./composerState";
 import { NextButton, Stepper, StepFooter, StepHeader } from "./ComposerSteps";
+import { EmailCanvas } from "./EmailCanvas";
 import { EmailPreview } from "./EmailPreview";
 
+/** The exact server render in a native modal dialog (focus trap, Esc), wide enough for the 600 px email. */
+function SeeAsSent({ open, onClose, payload }: { open: boolean; onClose: () => void; payload: object | null }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      aria-label="Así llega el correo"
+      onClose={onClose}
+      onClick={(e) => e.target === ref.current && onClose()}
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(42rem,calc(100vw-2rem))] rounded-card bg-surface p-0 text-ink shadow-lift backdrop:bg-ink/40"
+    >
+      {open && (
+        <div className="grid gap-4 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg">Así llega el correo</h2>
+            <button type="button" onClick={onClose} aria-label="Cerrar" className="grid size-11 place-items-center rounded-full hover:bg-subtle focus-visible:outline-3">
+              <X weight="bold" />
+            </button>
+          </div>
+          <EmailPreview payload={payload} emptyHint="Agrega contenido para ver cómo queda el correo." />
+        </div>
+      )}
+    </dialog>
+  );
+}
+
 export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewPayload, onBack, onNext }: StepProps & { onNext: () => void }) {
+  const [seeing, setSeeing] = useState(false);
   return (
     <div className="grid gap-7">
-      <StepHeader title="Escribe tu correo" lead="Asunto, texto de vista previa y los bloques del mensaje. A la derecha ves cómo llega." />
-      <div className="grid items-start gap-8 lg:grid-cols-2">
-        <div className="grid min-w-0 content-start gap-6">
-          <div className="grid gap-4">
-            <TextField label="Asunto" value={state.subject} maxLength={MAX_SUBJECT} onChange={(e) => dispatch({ type: "patch", patch: { subject: e.target.value.replace(/[\r\n]+/g, " ") } })} />
-            <TextField
-              label="Texto de vista previa (opcional)"
-              value={state.preheader}
-              maxLength={MAX_PREHEADER}
-              hint="Lo que se ve junto al asunto en la bandeja de entrada."
-              onChange={(e) => dispatch({ type: "patch", patch: { preheader: e.target.value.replace(/[\r\n]+/g, " ") } })}
-            />
-          </div>
-          <BlockEditor drafts={state.drafts} onChange={(drafts) => dispatch({ type: "patch", patch: { drafts } })} clubSlug={clubSlug} eventsAcademy={eventsAcademy} />
-        </div>
-        <div className="min-w-0 lg:sticky lg:top-20">
-          <EmailPreview payload={previewPayload} emptyHint="Agrega contenido para ver cómo queda el correo." />
-        </div>
+      <StepHeader title="Escribe tu correo" lead="Haz clic en un bloque para editarlo y usa «+» para agregar más. Así se verá en la bandeja de entrada." />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="Asunto" value={state.subject} maxLength={MAX_SUBJECT} onChange={(e) => dispatch({ type: "patch", patch: { subject: e.target.value.replace(/[\r\n]+/g, " ") } })} />
+        <TextField
+          label="Texto de vista previa (opcional)"
+          value={state.preheader}
+          maxLength={MAX_PREHEADER}
+          hint="Lo que se ve junto al asunto en la bandeja de entrada."
+          onChange={(e) => dispatch({ type: "patch", patch: { preheader: e.target.value.replace(/[\r\n]+/g, " ") } })}
+        />
       </div>
+      <EmailCanvas drafts={state.drafts} onChange={(drafts) => dispatch({ type: "patch", patch: { drafts } })} clubSlug={clubSlug} eventsAcademy={eventsAcademy} previewPayload={previewPayload} />
       <StepFooter onBack={onBack}>
+        <Button variant="secondary" icon={<Eye weight="bold" />} onClick={() => setSeeing(true)} className="max-sm:w-full">
+          Ver como llega
+        </Button>
         <NextButton onClick={onNext} />
       </StepFooter>
+      <SeeAsSent open={seeing} onClose={() => setSeeing(false)} payload={previewPayload} />
     </div>
   );
 }

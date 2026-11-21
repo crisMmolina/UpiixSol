@@ -29,15 +29,15 @@ export type Draft = { id: string } & (
   | { kind: "divider" }
 );
 
-/** What the "Agregar" row offers. */
-export const KINDS: { kind: DraftKind; label: string }[] = [
-  { kind: "heading", label: "Título" },
-  { kind: "paragraph", label: "Párrafo" },
-  { kind: "list", label: "Lista" },
-  { kind: "button", label: "Botón" },
-  { kind: "event", label: "Evento" },
-  { kind: "image", label: "Imagen" },
-  { kind: "divider", label: "Separador" },
+/** What the canvas inserter offers: name and a one-line description. */
+export const KINDS: { kind: DraftKind; label: string; hint: string }[] = [
+  { kind: "heading", label: "Título", hint: "Un encabezado grande" },
+  { kind: "paragraph", label: "Párrafo", hint: "Texto con negritas, cursivas y enlaces" },
+  { kind: "list", label: "Lista", hint: "Con viñetas o numerada" },
+  { kind: "button", label: "Botón", hint: "Un enlace destacado" },
+  { kind: "event", label: "Evento", hint: "Tarjeta con fecha y calendario" },
+  { kind: "image", label: "Imagen", hint: "Sube un cartel o una foto" },
+  { kind: "divider", label: "Separador", hint: "Una línea entre dos partes" },
 ];
 
 export const KIND_LABEL: Record<DraftKind, string> = {
@@ -50,8 +50,11 @@ export const KIND_LABEL: Record<DraftKind, string> = {
   divider: "Separador",
 };
 
+// Ids only need to be unique within one email, but a restored draft (or a template) already carries ids from an
+// earlier page load: a per-load prefix keeps new ones from colliding with them.
+const LOAD = Math.random().toString(36).slice(2, 7);
 let counter = 0;
-const nextId = () => `b${++counter}`;
+export const nextId = () => `b${LOAD}${++counter}`;
 
 export function newDraft(kind: DraftKind): Draft {
   const id = nextId();
@@ -69,6 +72,45 @@ export function newDraft(kind: DraftKind): Draft {
       return { id, kind, url: "", alt: "", link: "" };
     case "divider":
       return { id, kind };
+  }
+}
+
+/** A copy of a block with its own id (the canvas "Duplicar"). */
+export function duplicateDraft(draft: Draft): Draft {
+  return { ...draft, id: nextId() };
+}
+
+/** `drafts` with the block at `from` moved to `to` (both indexes of the current list). */
+export function moveDraft(drafts: Draft[], from: number, to: number): Draft[] {
+  if (from === to || to < 0 || to >= drafts.length) return drafts;
+  const next = [...drafts];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+export const isHttpUrl = (url: string) => /^https?:\/\/[^\s/?#]+[^\s]*$/i.test(url.trim());
+
+/** What is missing in a block, in Spanish, shown next to it on the canvas (spec 004's rules); null when complete. */
+export function blockProblem(draft: Draft): string | null {
+  switch (draft.kind) {
+    case "heading":
+    case "paragraph":
+      return draft.text.trim() ? null : "Escribe el texto o elimina el bloque.";
+    case "list":
+      return draft.text.trim() ? null : "Escribe al menos un elemento o elimina el bloque.";
+    case "button":
+      if (!draft.label.trim() || !draft.url.trim()) return "Falta el texto o el enlace del botón.";
+      return isHttpUrl(draft.url) ? null : "El enlace debe empezar con http:// o https://";
+    case "event":
+      if (draft.mode === "campus") return draft.eventId === null ? "Elige un evento del calendario o escríbelo." : null;
+      if (endBeforeStart(draft)) return "La hora de fin debe ser posterior a la de inicio.";
+      return draft.title.trim() && draft.start && draft.end ? null : "Completa el título, el inicio y el fin del evento.";
+    case "image":
+      if (!draft.url) return "Sube una imagen o elimina el bloque.";
+      return draft.alt.trim() ? null : "Escribe el texto alternativo de la imagen.";
+    case "divider":
+      return null;
   }
 }
 

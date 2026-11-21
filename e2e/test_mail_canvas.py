@@ -41,6 +41,7 @@ def open_canvas(site: Site) -> Page:
     sign_in(site, SUPERADMIN, "/")
     page = site.page
     page.goto(site.url("/admin?tab=correos&paso=contenido"))
+    expect(canvas(page)).to_be_visible()  # signed in and settled before the reload
     page.evaluate(f"localStorage.removeItem('{DRAFT_KEY}')")
     page.reload()
     expect(canvas(page)).to_be_visible()
@@ -68,13 +69,22 @@ def properties(page: Page):  # noqa: ANN201
     return page.get_by_label("Propiedades del bloque")
 
 
+def close_sheet(page: Page) -> None:
+    """On phones the properties are a bottom sheet over the email: close it before touching what it covers."""
+    close = page.get_by_role("button", name="Cerrar propiedades")
+    if page.viewport_size and page.viewport_size["width"] < 1024 and close.count():
+        close.click()
+
+
 def insert_at_end(page: Page, kind: str) -> None:
+    close_sheet(page)
     page.get_by_role("button", name="Agregar bloque al final").click()
     page.get_by_role("menu", name="Tipo de bloque").get_by_role("menuitem", name=kind, exact=True).click()
 
 
 def deselect(page: Page) -> None:
-    page.get_by_label("Asunto").click()
+    """Leave the canvas, as tabbing or clicking elsewhere does."""
+    page.get_by_label("Asunto").focus()
 
 
 def keep(site: Site, name: str, focus=None) -> None:  # noqa: ANN001 - playwright Locator
@@ -115,6 +125,15 @@ def load_template(page: Page, template_id: str) -> None:
     expect(page.get_by_label("Asunto")).to_have_value(template.subject)
 
 
+def click_on(page: Page, target) -> None:  # noqa: ANN001 - playwright Locator
+    """A real click on formatted text: it turns into the textarea under the pointer, so the node goes away mid-click
+    (a locator click would then retry on a detached element)."""
+    target.scroll_into_view_if_needed()
+    box = target.bounding_box()
+    assert box
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+
 def rgb(hex_color: str) -> str:
     value = hex_color.lstrip("#")
     r, g, b = (int(value[i : i + 2], 16) for i in (0, 2, 4))
@@ -125,6 +144,7 @@ def test_canvas_shows_logo_sender_and_theme_like_the_email(site: Site) -> None:
     sign_in(site, SUPERADMIN, "/")
     page = site.page
     page.goto(site.url("/admin?tab=correos&paso=contenido"))
+    expect(canvas(page)).to_be_visible()
     page.evaluate(f"localStorage.removeItem('{DRAFT_KEY}')")
     with page.expect_response(lambda r: r.url.endswith("/api/mail/preview") and r.request.method == "POST") as answer:
         page.reload()
@@ -134,7 +154,7 @@ def test_canvas_shows_logo_sender_and_theme_like_the_email(site: Site) -> None:
     expect(email).to_be_visible()
     expect(email).to_have_css("max-width", f"{theme['spacing']['width']}px")
     expect(email).to_have_css("font-family", re.compile(re.escape(theme["font"].split(",")[0].strip())))
-    expect(canvas(page).get_by_text(f"{theme['sender']['label']}", exact=False)).to_be_visible()
+    expect(canvas(page).get_by_text(theme["sender"]["label"]).first).to_be_visible()
     expect(canvas(page).get_by_text(theme["sender"]["name"]).first).to_be_visible()
     if theme["site_logo_url"]:
         expect(canvas(page).get_by_role("img", name=theme["site_name"]).first).to_have_attribute("src", theme["site_logo_url"])
@@ -160,9 +180,9 @@ def test_click_block_edits_in_place(site: Site) -> None:
     expect(title).to_be_focused()
     page.keyboard.type("Primera clase de robótica")
     deselect(page)
-    expect(block(page, 2).get_by_role("heading", name="Primera clase de robótica")).to_be_visible()
+    expect(block(page, 2).locator("h3", has_text="Primera clase de robótica")).to_be_visible()
     expect(block(page, 2)).not_to_have_attribute("data-selected", "true")
-    block(page, 2).get_by_role("heading", name="Primera clase de robótica").click()
+    click_on(page, block(page, 2).locator("h3", has_text="Primera clase de robótica"))
     expect(block(page, 2)).to_have_attribute("data-selected", "true")
     expect(title).to_be_focused()
     expect(title).to_have_value("Primera clase de robótica")
@@ -174,13 +194,13 @@ def test_click_block_edits_in_place(site: Site) -> None:
     page.keyboard.press("Enter")
     page.keyboard.type("Cargador")
     deselect(page)
-    expect(block(page, 3).get_by_role("listitem")).to_have_count(2)
+    expect(block(page, 3).locator("li")).to_have_count(2)
 
 
 def test_inline_toolbar_bold_italic_link(site: Site) -> None:
     page = open_canvas(site)
     text = block(page, 1).get_by_label("Texto del párrafo")
-    text.click()
+    block(page, 1).click()
     page.keyboard.type("Trae tu laptop")
     expect(toolbar(page)).to_be_visible()
     text.evaluate("el => el.setSelectionRange(8, 14)")  # "laptop"
@@ -199,8 +219,8 @@ def test_inline_toolbar_bold_italic_link(site: Site) -> None:
     deselect(page)
     expect(block(page, 1).locator("strong")).to_have_text("laptop")
     expect(block(page, 1).locator("em")).to_have_text("Trae")
-    expect(block(page, 1).get_by_role("link", name="salón")).to_have_attribute("href", "https://www.upiixsol.com/")
-    block(page, 1).locator("strong").click()
+    expect(block(page, 1).locator("a", has_text="salón")).to_have_attribute("href", "https://www.upiixsol.com/")
+    click_on(page, block(page, 1).locator("strong"))
     expect(toolbar(page)).to_be_visible()
     keep(site, "lienzo-texto", block(page, 1))
 
@@ -236,15 +256,22 @@ def test_drag_and_keyboard_reorder(site: Site) -> None:
     page.keyboard.type("Luego el título")
     expect(block(page, 2)).to_have_attribute("aria-label", "Bloque 2: Título")
     if site.name == "desktop":  # native drag needs a mouse; phones use Alt+arrows or the toolbar
-        block(page, 2).get_by_label("Arrastrar para mover").drag_to(block(page, 1))
+        handle = block(page, 2).get_by_label("Arrastrar para mover")
+        block(page, 2).hover()
+        start, target = handle.bounding_box(), block(page, 1).bounding_box()
+        assert start and target
+        page.mouse.move(start["x"] + start["width"] / 2, start["y"] + start["height"] / 2)
+        page.mouse.down()
+        page.mouse.move(target["x"] + target["width"] / 2, target["y"] + 8, steps=8)
+        page.mouse.up()
         expect(block(page, 1)).to_have_attribute("aria-label", "Bloque 1: Título")
         expect(block(page, 2)).to_have_attribute("aria-label", "Bloque 2: Párrafo")
-        block(page, 2).get_by_label("Texto del párrafo").click()
+        block(page, 2).click()
     else:
-        block(page, 2).get_by_label("Texto del título").click()
+        block(page, 2).click()
         toolbar(page).get_by_role("button", name="Mover arriba").click()
         expect(block(page, 1)).to_have_attribute("aria-label", "Bloque 1: Título")
-        block(page, 2).get_by_label("Texto del párrafo").click()
+        block(page, 2).click()
     page.keyboard.press("Alt+ArrowUp")
     expect(block(page, 1)).to_have_attribute("aria-label", "Bloque 1: Párrafo")
     expect(block(page, 1)).to_have_attribute("data-selected", "true")
@@ -271,7 +298,7 @@ def test_duplicate_and_delete_with_undo(site: Site) -> None:
     expect(blocks(page)).to_have_count(2)
     expect(block(page, 2).get_by_label("Texto del párrafo")).to_have_value("La copia")
     # Without undo the notice leaves after 5 s and the block stays gone.
-    block(page, 2).get_by_label("Texto del párrafo").click()
+    block(page, 2).click()
     toolbar(page).get_by_role("button", name="Eliminar bloque").click()
     expect(notice).to_be_visible()
     expect(notice).to_have_count(0, timeout=7_000)
@@ -301,7 +328,8 @@ def test_button_event_image_open_properties_panel(site: Site) -> None:
     expect(properties(page).get_by_label("Texto alternativo de la imagen")).to_be_visible()
     expect(properties(page).get_by_role("button", name="Elegir imagen")).to_be_visible()
     # A text block has no panel: it is edited on the email.
-    block(page, 1).get_by_label("Texto del párrafo").click()
+    close_sheet(page)
+    block(page, 1).click()
     expect(properties(page).get_by_label("Texto alternativo de la imagen")).to_have_count(0)
 
 
@@ -349,6 +377,7 @@ def test_limits_and_errors_next_to_the_block(site: Site) -> None:
     deselect(page)
     expect(block(page, 2).get_by_text("Falta el texto o el enlace del botón.")).to_be_visible()
     insert_at_end(page, "Evento")
+    close_sheet(page)
     page.get_by_role("button", name="Agregar bloque al final").click()
     evento = page.get_by_role("menuitem", name="Evento", exact=True)
     expect(evento).to_be_disabled()
