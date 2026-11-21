@@ -2108,3 +2108,23 @@ Every commit and PR goes out under the human's identity, **without** `Co-Authore
   - Spanish (Mexico), AA, keyboard, 1280 and 390; `.uak-shots/UPS-108/` and a design-critic SHIP.
 - **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_delivery.py'`
 - **Next step:** stubs for the e2e Tests names and `uak red UPS-108`; then the detail, then the tabs, then "Usar de nuevo".
+
+## UPS-109 · Web: "Enviado por", "Club" and "Rol" use the same menu style as "Agregar destinatarios" (no native selects)
+
+- **Type:** feature
+- **Priority:** P1
+- **Estimate:** 150 min
+- **Rubric / Spec:** victor 2026-11-21 (screenshot of the native "Enviado por" list): "todos deben tener el mismo formato, el otro se ve bonito", the other being the "Agregar destinatarios" menu (`AudienceSources.tsx`, rounded card, shadow, menu items). Specs 005/006 §Non-functional. Skills: product-ui, stack-frontend. Human owner: victor.
+- **Depends on:** UPS-104
+- **Uses contract:** None
+- **Related:** UPS-107
+- **Paths:** web/src/features/mail/MenuSelect.tsx, web/src/features/mail/SendStep.tsx, web/src/features/mail/AudienceSources.tsx, e2e/test_mail_select.py, e2e/test_mail.py, e2e/test_mail_recipients.py, e2e/test_mail_composer.py, e2e/test_mail_club.py
+- **Freeze-Allowed:** no
+- **Tests:** test_sender_picker_uses_the_menu_style, test_club_and_role_pickers_use_the_menu_style, test_menu_select_keyboard_arrows_enter_escape, test_menu_select_shows_the_current_choice_with_a_check, test_menu_select_at_390_wide
+- **Acceptance:**
+  - `MenuSelect` (in `web/src/features/mail/`, no new dependency): a button showing the label and current value that opens the same popover as "Agregar destinatarios" (same classes: rounded-2xl card, border-line, bg-surface, shadow-lift, menu item hover/focus), the current option marked with a check; ARIA listbox (`aria-haspopup="listbox"`, `role="option"`, `aria-selected`), keyboard ↑/↓, Home/End, Enter, Escape, closes on outside click; reduced motion; fits 390 px.
+  - Used for "Enviado por" (`SendStep.tsx`), "Club" and "Rol" (`AudienceSources.tsx`); no `<select>` left in the mail composer. Behavior unchanged (same values, the board option still off for a club audience).
+  - e2e tests that pick options with `select_option` change only to click the new menu. A human runs first: `UAK_HUMAN=victor bash .uak/bin/uak allow UPS-109 --tests --reason 'victor: native selects become the app menu style'`.
+  - Spanish (Mexico), AA, keyboard, 1280 and 390; `.uak-shots/UPS-109/` and a design-critic SHIP.
+- **Verify:** `bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_select.py e2e/test_mail.py e2e/test_mail_recipients.py e2e/test_mail_composer.py e2e/test_mail_club.py'`
+- **Next step:** after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-109`; then `MenuSelect`, then the three pickers.
