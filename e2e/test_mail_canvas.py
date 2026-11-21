@@ -233,7 +233,8 @@ def test_plus_inserter_adds_selected_focused_block(site: Site) -> None:
     for name in ("Título", "Párrafo", "Lista", "Botón", "Evento", "Imagen", "Separador"):
         expect(menu.get_by_role("menuitem", name=name, exact=True)).to_be_visible()
     expect(menu.get_by_role("menuitem").first).to_be_focused()
-    keep(site, "lienzo-insertar", menu)
+    page.wait_for_timeout(500)  # the menu scrolls itself into view
+    page.screenshot(path=SHOTS / f"{'1280' if site.name == 'desktop' else '390'}-lienzo-insertar.png")
     page.keyboard.press("Escape")
     expect(menu).to_have_count(0)
     expect(page.get_by_role("button", name="Agregar bloque al final")).to_be_focused()
