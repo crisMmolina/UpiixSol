@@ -486,6 +486,8 @@ export type Block =
       place?: string | null;
       description?: string | null;
       link?: string | null;
+      /** Template slot: drawn as a sample card, refused on create/send until replaced. */
+      placeholder?: boolean;
     }
   | { kind: "image"; url: string; alt: string; link?: string | null }
   | { kind: "divider" };
@@ -496,4 +498,42 @@ export type Blocks = Block[];
 export interface PreviewOut {
   html: string;
   text: string;
+  /** Present when the server sends the canvas theme (spec 005). */
+  theme?: MailCanvasTheme;
+}
+
+/** A saved or built-in email template (spec 005; `GET /api/mail/templates`). Built-in ids are
+ * `builtin:<slug>` and read-only. An event block with `placeholder: true` is a slot to fill. */
+export interface MailTemplate {
+  id: string | number;
+  kind: "builtin" | "saved";
+  scope: "site" | "academy";
+  name: string;
+  description: string | null;
+  subject: string;
+  preheader: string | null;
+  blocks: Block[];
+}
+
+/** `theme` of the preview response (app/services/mail_render.py `canvas_theme`): what the canvas needs to
+ * look like the email. */
+export interface MailCanvasTheme {
+  site_name: string;
+  site_logo_url: string | null;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    ink: string;
+    muted: string;
+    page: string;
+    card: string;
+    tint: string;
+    line: string;
+    link: string;
+    on_secondary: string;
+  };
+  font: string;
+  spacing: { width: number; gutter: number; radius: number };
+  sender: { label: string; name: string; logo_url: string | null };
 }

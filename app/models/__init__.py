@@ -10,6 +10,7 @@ from app.models.community import Channel, Comment, Post, Reaction
 from app.models.content import BlogPost, Event, HomeContent, Project, Resource
 from app.models.learning import LearningRoute, Lesson, LessonLink, LessonProgress, Module
 from app.models.mail import MailCampaign, MailRecipient, MailSuppression
+from app.models.mail_template import MailTemplate
 from app.models.media import MediaObject
 from app.models.site import SiteSettings
 from app.models.user import RefreshToken, User
@@ -31,6 +32,7 @@ __all__ = [
     "MailCampaign",
     "MailRecipient",
     "MailSuppression",
+    "MailTemplate",
     "MediaObject",
     "Module",
     "Post",

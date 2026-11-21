@@ -90,6 +90,16 @@ class EventCard:
     cover_url: str | None = None
     google_url: str | None = None
     outlook_url: str | None = None
+    sample: bool = False  # a template's event placeholder: no real date, the card shows where it goes
+
+
+SAMPLE_EVENT = EventCard(
+    title="Título del evento",
+    start=datetime(2000, 1, 1, tzinfo=UTC),
+    end=datetime(2000, 1, 1, tzinfo=UTC),
+    place="Lugar del evento",
+    sample=True,
+)
 
 
 @dataclass(frozen=True)
@@ -216,6 +226,8 @@ def _day(moment: datetime) -> str:
 
 def _when(event: EventCard) -> tuple[datetime, str, str]:
     """Local start, the date line and the time line (America/Mexico_City), end date only if it differs."""
+    if event.sample:
+        return event.start, "Día y hora", ""
     start = event.start.astimezone(MEXICO_CITY) if event.start.tzinfo else event.start.replace(tzinfo=UTC)
     end = event.end.astimezone(MEXICO_CITY) if event.end.tzinfo else event.end.replace(tzinfo=UTC)
     start, end = start.astimezone(MEXICO_CITY), end.astimezone(MEXICO_CITY)
@@ -303,6 +315,8 @@ def _link_cell(label: str, href: str, theme: Theme) -> str:
 def _event_view(block: EventBlock, event: EventCard | None) -> EventCard | None:
     if event is not None:
         return event
+    if block.placeholder:
+        return SAMPLE_EVENT
     if block.title and block.start and block.end:
         return EventCard(
             title=block.title,
@@ -317,20 +331,21 @@ def _event_view(block: EventBlock, event: EventCard | None) -> EventCard | None:
 
 def _event(event: EventCard, theme: Theme, ics_url: str | None) -> str:
     start, day_line, time_line = _when(event)
-    month = _MONTHS[start.month - 1][:3].capitalize()
+    month = "Mes" if event.sample else _MONTHS[start.month - 1][:3].capitalize()
+    day = "00" if event.sample else str(start.day)
     badge = (
         f'<td width="64" valign="top" style="width:64px;padding:0 16px 0 0"><table role="presentation" '
         f'width="64" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="{theme.secondary}" '
         f'style="background:{theme.secondary};border-radius:12px;padding:8px 0;font-family:{FONT};'
         f'color:{_on(theme.secondary)}"><div style="font-size:11px;line-height:14px;font-weight:700;'
         f'letter-spacing:0">{month}</div><div style="font-size:28px;line-height:32px;font-weight:800">'
-        f"{start.day}</div></td></tr></table></td>"
+        f"{day}</div></td></tr></table></td>"
     )
     rows = [
         f'<div style="font-size:18px;line-height:24px;font-weight:800;color:{INK}">'
         f"{escape(event.title)}</div>",
         f'<div style="font-size:14px;line-height:22px;color:{MUTED};margin-top:4px">'
-        f"{escape(day_line)}<br>{escape(time_line)}</div>",
+        f"{escape(day_line)}" + (f"<br>{escape(time_line)}" if time_line else "") + "</div>",
     ]
     if event.place:
         rows.append(
@@ -540,7 +555,7 @@ def _render_text(
             view = _event_view(block, event)
             if view is not None:
                 _, day_line, time_line = _when(view)
-                lines = [view.title, day_line, time_line]
+                lines = [line for line in (view.title, day_line, time_line) if line]
                 if view.place:
                     lines.append(f"Lugar: {view.place}")
                 if view.description:
@@ -564,6 +579,48 @@ def _render_text(
     return "\n\n".join(parts) + f"\n\n{footer}\n"
 
 
+def _safe_theme(theme: Theme) -> Theme:
+    return Theme(
+        site_name=theme.site_name,
+        site_logo_url=theme.site_logo_url,
+        primary=_hex(theme.primary, str(DEFAULTS["color_primary"])),
+        secondary=_hex(theme.secondary, str(DEFAULTS["color_secondary"])),
+        accent=_hex(theme.accent, str(DEFAULTS["color_accent"])),
+    )
+
+
+def canvas_theme(sender: Sender, theme: Theme) -> dict[str, object]:
+    """What the composer canvas needs to mirror the email: the same colors, fonts, sizes, sender line and
+    absolute logo URLs the HTML above uses (so the canvas and "Ver como llega" cannot drift apart)."""
+    theme = _safe_theme(theme)
+    return {
+        "site_name": theme.site_name,
+        "site_logo_url": _absolute(theme.site_logo_url) if _usable_image(theme.site_logo_url) else None,
+        "colors": {
+            "primary": theme.primary,
+            "secondary": theme.secondary,
+            "accent": theme.accent,
+            "ink": INK,
+            "muted": MUTED,
+            "page": PAGE,
+            "card": CARD,
+            "tint": TINT,
+            "line": LINE,
+            "link": _readable(theme.secondary),
+            "on_secondary": _on(theme.secondary),
+        },
+        "font": FONT,
+        "spacing": {"width": 600, "gutter": 32, "radius": 16},
+        "sender": {
+            "label": "Enviado por" if sender.name else "Enviado por la mesa directiva de",
+            "name": sender.name or theme.site_name,
+            "logo_url": _absolute(sender.logo_url)
+            if sender.name and _usable_image(sender.logo_url)
+            else None,
+        },
+    }
+
+
 def render_blocks(
     campaign: CampaignLike,
     *,
@@ -575,13 +632,7 @@ def render_blocks(
     ics_url: str | None = None,
 ) -> tuple[str, str]:
     """The HTML and plain-text parts of one email; 422 when the HTML passes 100 KB (Gmail clips it)."""
-    theme = Theme(
-        site_name=theme.site_name,
-        site_logo_url=theme.site_logo_url,
-        primary=_hex(theme.primary, str(DEFAULTS["color_primary"])),
-        secondary=_hex(theme.secondary, str(DEFAULTS["color_secondary"])),
-        accent=_hex(theme.accent, str(DEFAULTS["color_accent"])),
-    )
+    theme = _safe_theme(theme)
     html = _render_html(campaign, sender, theme, recipient_name, unsubscribe_href, event, ics_url)
     if len(html.encode()) > MAX_HTML_BYTES:
         raise AppError(422, "El correo es demasiado largo: acórtalo para que Gmail no lo recorte.")
