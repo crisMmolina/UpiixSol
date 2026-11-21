@@ -10,3 +10,4 @@
 
 ## History
 - 1795237984 | CLAIMED | victor-1 | claim; next: stubs for the e2e Tests names and `uak red UPS-108`; then the detail, then the tabs, then "Usar de nuevo".
+- 1795238000 | CLAIMED | victor-1 | heartbeat; lease until 1795252400
