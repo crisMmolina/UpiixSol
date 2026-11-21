@@ -1,5 +1,7 @@
 // Composer state (spec 005): one reducer for everything the three steps edit, the step names, and the local draft
 // (this browser, this user). Pure functions only, so the steps stay dumb and the draft logic is testable.
+import type { Dispatch } from "react";
+
 import { EMPTY_AUDIENCE, type AcademyChoice, type AudienceDraft, type AudienceKind } from "./AudiencePicker";
 import { newDraft, toBlocks, type Draft } from "./blocks";
 
@@ -111,4 +113,34 @@ export function loadDraft(userId: number): StoredDraft | null {
   }
   clearDraft();
   return null;
+}
+
+// ---- Shared by the steps -------------------------------------------------------------------------------------
+
+export const MAX_SUBJECT = 150;
+export const MAX_PREHEADER = 140;
+export const BOARD = "La mesa directiva de UpiixSol";
+
+export interface StepProps {
+  state: ComposerState;
+  dispatch: Dispatch<ComposerAction>;
+  /** Slug of the club the "Ver el club" button preset links to; null while none applies. */
+  clubSlug: string | null;
+  /** Slug that limits the campus-event picker; null = every club's events; undefined = not known yet. */
+  eventsAcademy: string | null | undefined;
+  /** What the exact preview renders; null while there is nothing to show. */
+  previewPayload: object | null;
+  onBack: () => void;
+}
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** "1 de diciembre": the period end is a UTC midnight, so read it in UTC. */
+export function renewal(iso: string) {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}`;
+}
+
+export function plural(n: number, one: string, many: string) {
+  return `${n} ${n === 1 ? one : many}`;
 }

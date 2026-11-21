@@ -13,11 +13,12 @@ import type { AcademyCardOut, AudiencePreview, Campaign, MailStatus, Page } from
 
 import { toAudience, type AcademyChoice, type AudienceKind } from "./AudiencePicker";
 import { incompleteCount, toBlocks } from "./blocks";
-import { plural, renewal } from "./composerShared";
 import { Stepper } from "./ComposerSteps";
 import {
   clearDraft,
   composerReducer,
+  plural,
+  renewal,
   initialState,
   isDirty,
   loadDraft,

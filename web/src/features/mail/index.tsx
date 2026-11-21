@@ -9,8 +9,8 @@ import type { AcademyOut, MailStatus, Page } from "@/lib/types";
 
 import type { AcademyChoice } from "./AudiencePicker";
 import { BajaPage } from "./BajaPage";
-import { CanvasMock } from "./CanvasMock";
 import { Composer } from "./Composer";
+import { CanvasMock } from "./ContentStep";
 import { History } from "./History";
 
 export { AudiencePicker, toAudience, EMPTY_AUDIENCE } from "./AudiencePicker";

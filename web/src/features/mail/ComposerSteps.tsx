@@ -36,7 +36,7 @@ export function Stepper({ step, onGo }: { step: Step; onGo: (next: Step) => void
                 >
                   {done ? <Check weight="bold" size={16} /> : index + 1}
                 </span>
-                <span aria-hidden className={`hidden text-sm font-semibold sm:inline ${active ? "text-ink" : "text-muted group-hover:text-ink"}`}>
+                <span aria-hidden className={`hidden text-sm sm:inline ${active ? "font-bold text-ink" : "font-medium text-muted group-hover:text-ink"}`}>
                   {STEP_LABEL[id]}
                 </span>
               </button>

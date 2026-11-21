@@ -9,7 +9,7 @@ import { Notice } from "@/components/States";
 import type { MailStatus } from "@/lib/types";
 
 import { AudiencePicker, type AcademyChoice, type AudienceKind } from "./AudiencePicker";
-import { BOARD, renewal, type StepProps } from "./composerShared";
+import { BOARD, renewal, type StepProps } from "./composerState";
 import { StepFooter, StepHeader } from "./ComposerSteps";
 import { EmailPreview } from "./EmailPreview";
 import { ReplyToField } from "./ReplyToField";

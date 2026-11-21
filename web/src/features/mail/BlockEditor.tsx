@@ -87,7 +87,7 @@ export function BlockEditor({
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="font-semibold">Mensaje</h3>
         <p className="text-xs text-muted">
-          Formato: <code>**negritas**</code> · <code>*cursivas*</code> · <code>[texto](https://enlace)</code>
+          {"Negritas con **texto**, cursivas con *texto*, enlaces con [texto](https://…)"}
         </p>
       </div>
       <ul aria-label="Bloques del correo" className="grid divide-y divide-line border-y border-line">
