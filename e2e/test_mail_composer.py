@@ -199,7 +199,10 @@ def test_composer_steps_at_390_wide(site: Site) -> None:
     page.get_by_role("button", name="Siguiente").click()
     page.get_by_label("Asunto").fill("Primera clase de robótica")
     page.get_by_label("Texto del párrafo").first.fill("Trae tu laptop al salón 205 este jueves.")
+    page.get_by_role("button", name="Ver como llega").click()  # UPS-103: step 2's exact render is one click away
     expect(page.frame_locator("iframe[title='Vista previa del correo']").get_by_text("salón 205")).to_be_visible(timeout=10_000)
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Así llega el correo")).to_have_count(0)
     site.shot("composer-step-2")
     keep(site, "2-contenido", "nav[aria-label='Pasos del correo']")
     page.get_by_role("button", name="Siguiente").click()
@@ -211,18 +214,3 @@ def test_composer_steps_at_390_wide(site: Site) -> None:
         action = page.get_by_role("button", name="Revisar y enviar").bounding_box()
         assert action and action["width"] >= 160 and action["height"] >= 44
     forget_draft(page)
-
-
-def test_canvas_mock_shows_toolbar_inserter_and_properties(site: Site) -> None:
-    """Design gate: the static picture of step 2's canvas (UPS-103 builds it for real)."""
-    page = site.page
-    page.goto(site.url("/maqueta-correo"))
-    expect(page.get_by_role("toolbar", name="Formato del texto")).to_be_visible()
-    keep(site, "4-lienzo-texto", ".ring-primary" if site.name == "mobile" else None)
-    page.get_by_role("button", name="Insertar", exact=True).click()
-    expect(page.get_by_role("menu", name="Tipo de bloque").get_by_role("menuitem")).to_have_count(7)
-    keep(site, "5-lienzo-insertar", "[role=menu]" if site.name == "mobile" else None)
-    page.get_by_role("button", name="Botón", exact=True).click()
-    expect(page.get_by_label("Texto del botón").locator("visible=true")).to_have_count(1)
-    keep(site, "6-lienzo-boton", ".ring-primary" if site.name == "mobile" else None)
-    site.shot("canvas-mock")

@@ -10,7 +10,6 @@ import type { AcademyOut, MailStatus, Page } from "@/lib/types";
 import type { AcademyChoice } from "./AudiencePicker";
 import { BajaPage } from "./BajaPage";
 import { Composer } from "./Composer";
-import { CanvasMock } from "./ContentStep";
 import { History } from "./History";
 
 export { AudiencePicker, toAudience, EMPTY_AUDIENCE } from "./AudiencePicker";
@@ -73,5 +72,4 @@ export function ClubMailTab({ academy }: { academy: AcademyChoice }) {
 
 export const routes: RouteObject[] = [
   { path: "/baja", element: <BajaPage /> },
-  { path: "/maqueta-correo", element: <CanvasMock /> }, // UPS-102 design gate; UPS-103 removes it
 ];
