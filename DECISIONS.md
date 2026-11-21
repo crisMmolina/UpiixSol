@@ -147,3 +147,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795233866 | UPS-105 | removed is mix-only in preview; origins are codes all|academy:<id>|role:<r>|picked|outside | Why: old kinds unchanged (exact-dict test); web maps labels
 - 1795234303 | UPS-105 | removed mix-only; create stays non-blind (debt) | Why: old kinds unchanged; blind drafts out of scope
 - 1795235187 | deadline decision/UPS-105-1795234276/1795235176 | BLOCKED_OTHER_TASK | Option: Keep create non-blind (pre-existing draft oracle on typed addresses, now also via mix) and no rate limit on audience/list; flag both to victor as debt; Why: fixing needs blind drafts filtered at send time (changes create/send contract and existing tests, beyond UPS-105); preview has no limit either; no money, accounts, publishing or scope expansion.
+- 1795235248 | UPS-103 | toolbar floats above block as in mock; preview keeps selection (data-keep-selection) | Why: approved UPS-102 mock
