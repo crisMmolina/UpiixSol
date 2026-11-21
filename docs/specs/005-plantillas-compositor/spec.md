@@ -44,3 +44,4 @@ Canvas (step 2)
 - [x] Templates: built-in + save your own · victor 2026-11-18
 - [x] Built-ins: Anuncio, Invitación a evento, Recordatorio, Nueva clase / boletín · victor 2026-11-18
 - [x] Scope: superadmin → UpiixSol templates for everyone; club admin → own club · victor 2026-11-18
+- [x] Templates on send: "Guardar como plantilla" checked by default in step 3 when the content did not come unchanged from a template, plus an "Enviados recientes" gallery section (UPS-104; spec 006 §Decisions) · victor 2026-11-20
