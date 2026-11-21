@@ -135,3 +135,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1794986209 | allow | victor | test change: UPS-102 | Why: victor: composer redesign in three steps (spec 005)
 - 1795070186 | deadline lease/UPS-100/1795000678 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1795070186 | deadline lease/UPS-102/1795000687 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
+- 1795229608 | UPS-102 | Preview in steps 2 and 3, render-only falls back to audience all | Why: UPS-100 not integrated
