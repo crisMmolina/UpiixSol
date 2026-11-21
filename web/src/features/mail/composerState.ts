@@ -3,7 +3,9 @@
 import type { Dispatch } from "react";
 
 import { EMPTY_AUDIENCE, type AudienceDraft } from "./AudiencePicker";
-import { newDraft, toBlocks, type Draft } from "./blocks";
+import type { Block } from "@/lib/types";
+
+import { newDraft, nextId, toBlocks, type Draft } from "./blocks";
 
 export const STEPS = ["plantilla", "contenido", "envio"] as const;
 export type Step = (typeof STEPS)[number];
@@ -19,8 +21,15 @@ export function parseStep(value: string | null): Step {
   return STEPS.find((step) => step === value) ?? "plantilla";
 }
 
+/** Where the content came from: a template (built-in or saved) with the content's signature right after loading it,
+ * so "unchanged" can be told later; or nothing ("blank", or an email reused from the history). */
+export type TemplateOrigin = "blank" | { id: string | number; sig: string };
+
 export interface ComposerState {
-  template: "blank";
+  template: TemplateOrigin;
+  /** Step 3 "Guardar como plantilla" (checked by default) and its name; null follows the subject. */
+  saveOnSend: boolean;
+  templateName: string | null;
   subject: string;
   preheader: string;
   replyTo: string;
@@ -39,6 +48,8 @@ export type ComposerAction =
 export function initialState(): ComposerState {
   return {
     template: "blank",
+    saveOnSend: true,
+    templateName: null,
     subject: "",
     preheader: "",
     replyTo: "",
@@ -113,7 +124,10 @@ export function loadDraft(userId: number): StoredDraft | null {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
-    if (isStoredDraft(parsed) && parsed.userId === userId) return parsed;
+    if (isStoredDraft(parsed) && parsed.userId === userId) {
+      // A draft from before the gallery has no template fields: they take their defaults.
+      return { ...parsed, state: { ...initialState(), ...parsed.state } };
+    }
   } catch {
     /* unreadable: treated as no draft */
   }
@@ -149,4 +163,73 @@ export function renewal(iso: string) {
 
 export function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
+}
+
+
+// ---- Templates (spec 005 §Templates) --------------------------------------------------------------------------
+
+export const MAX_TEMPLATE_NAME = 60;
+export const MAX_TEMPLATE_DESCRIPTION = 140;
+
+const localDateTime = (value: unknown) => (typeof value === "string" ? value.slice(0, 16) : "");
+const str = (value: unknown) => (typeof value === "string" ? value : "");
+
+/** Stored blocks back into editable drafts. A block the editor cannot read is dropped; an event slot
+ * (`placeholder`) or an event without data becomes an empty campus event that asks to be completed. */
+export function blocksToDrafts(blocks: ReadonlyArray<Block | Record<string, unknown>>): Draft[] {
+  const drafts: Draft[] = [];
+  for (const raw of blocks) {
+    const b = raw as Record<string, unknown>;
+    const id = nextId();
+    switch (b.kind) {
+      case "heading":
+      case "paragraph":
+        drafts.push({ id, kind: b.kind, text: str(b.text) });
+        break;
+      case "list":
+        drafts.push({ id, kind: "list", text: Array.isArray(b.items) ? b.items.map(str).join("\n") : "", ordered: b.ordered === true });
+        break;
+      case "button":
+        drafts.push({ id, kind: "button", label: str(b.label), url: str(b.url) });
+        break;
+      case "event": {
+        const empty = { id, kind: "event" as const, eventTitle: "", coverUrl: null, title: "", start: "", end: "", place: "", description: "", link: "" };
+        if (b.placeholder === true) drafts.push({ ...empty, mode: "campus", eventId: null });
+        else if (typeof b.event_id === "number") drafts.push({ ...empty, mode: "campus", eventId: b.event_id });
+        else {
+          drafts.push({ ...empty, mode: "typed", eventId: null, title: str(b.title), start: localDateTime(b.start), end: localDateTime(b.end), place: str(b.place), description: str(b.description), link: str(b.link) });
+        }
+        break;
+      }
+      case "image":
+        drafts.push({ id, kind: "image", url: str(b.url), alt: str(b.alt), link: str(b.link) });
+        break;
+      case "divider":
+        drafts.push({ id, kind: "divider" });
+        break;
+    }
+  }
+  return drafts.length > 0 ? drafts : [newDraft("paragraph")];
+}
+
+/** What identifies the email's content, for "did it come unchanged from a template?". */
+export function contentSignature(state: Pick<ComposerState, "subject" | "preheader" | "drafts">): string {
+  return JSON.stringify([state.subject.trim(), state.preheader.trim(), toBlocks(state.drafts)]);
+}
+
+/** The state patch that loads a template or a sent email into the composer (never touches the audience). */
+export function loadContent(content: { subject: string; preheader: string | null; blocks: ReadonlyArray<Block | Record<string, unknown>> }, origin: string | number | null): Partial<ComposerState> {
+  const loaded = { subject: content.subject, preheader: content.preheader ?? "", drafts: blocksToDrafts(content.blocks) };
+  return { ...loaded, template: origin === null ? "blank" : { id: origin, sig: contentSignature(loaded) }, saveOnSend: true, templateName: null };
+}
+
+/** The content is exactly what a template gave: nothing worth saving again. */
+export function isUnchangedTemplate(state: ComposerState): boolean {
+  return state.template !== "blank" && state.template.sig === contentSignature(state);
+}
+
+/** `name (2)` within the 60-character limit. */
+export function numberedName(name: string, n: number): string {
+  const suffix = ` (${n})`;
+  return `${name.slice(0, MAX_TEMPLATE_NAME - suffix.length).trimEnd()}${suffix}`;
 }

@@ -17,6 +17,8 @@ import { Stepper } from "./ComposerSteps";
 import {
   clearDraft,
   composerReducer,
+  isUnchangedTemplate,
+  MAX_TEMPLATE_NAME,
   plural,
   renewal,
   initialState,
@@ -29,6 +31,7 @@ import {
 } from "./composerState";
 import { ContentStep } from "./ContentStep";
 import { replyToError } from "./ReplyToField";
+import { saveAfterSend } from "./SaveTemplateDialog";
 import { SendStep } from "./SendStep";
 import { TemplateStep } from "./TemplateStep";
 
@@ -74,6 +77,8 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentNote, setSentNote] = useState<string | null>(null);
+  /** Bumped when a save on send finishes, so the gallery shows the new template. */
+  const [templatesKey, setTemplatesKey] = useState(0);
   // Local draft: `ready` once the stored one was checked; `pending` while the sender has not answered the prompt.
   const [ready, setReady] = useState(false);
   const [pending, setPending] = useState<StoredDraft | null>(null);
@@ -176,10 +181,17 @@ export function Composer({
       const campaign = await api<Campaign>(`/mail/campaigns/${created.id}/send`, { method: "POST" });
       setPreview(null);
       clearDraft();
+      // Save on send (spec 006): after the send, so a failed save never blocks it; the outcome is a notice.
+      const name = (state.templateName ?? subject).trim().slice(0, MAX_TEMPLATE_NAME);
+      const saving = state.saveOnSend && !isUnchangedTemplate(state) && name ? saveAfterSend(name, { subject: subject.trim(), preheader: preheader.trim() || undefined, blocks }) : null;
       dispatch({ type: "reset", state: { ...initialState(), replyTo: state.replyTo } });
       goTo("plantilla");
       setSentNote("El envío está en curso. Sigue su avance en el historial.");
       onSent(campaign);
+      if (saving) void saving.then((note) => {
+        setTemplatesKey((n) => n + 1);
+        if (note) setSentNote((current) => `${current ?? ""} ${note}`.trim());
+      });
     } catch (err) {
       setSendError(errorMessage(err));
     } finally {
@@ -216,10 +228,10 @@ export function Composer({
           </div>
         </div>
       )}
-      {step === "plantilla" && <TemplateStep onNext={() => goTo("contenido")} />}
+      {step === "plantilla" && <TemplateStep refreshKey={templatesKey} state={state} dispatch={dispatch} ownClub={Boolean(ownClub)} onNext={() => goTo("contenido")} />}
       {step === "contenido" && (
         <>
-          <ContentStep {...common} onBack={() => goTo("plantilla")} onNext={() => goTo("envio")} />
+          <ContentStep {...common} ownClub={Boolean(ownClub)} onBack={() => goTo("plantilla")} onNext={() => goTo("envio")} />
           <FormMessage message={formError} tone="error" />
         </>
       )}
