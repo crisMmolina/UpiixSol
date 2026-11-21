@@ -173,7 +173,7 @@ def test_draft_cleared_on_send_and_logout(site: Site) -> None:
 def test_send_step_has_audience_sender_reply_to_and_quota(site: Site) -> None:
     page = open_composer(site, f"{ADMIN}&paso=envio")
     expect(page.get_by_role("button", name="Agregar destinatarios")).to_be_visible()
-    expect(page.get_by_label("Enviado por")).to_be_visible()
+    expect(page.get_by_role("button", name="Enviado por", exact=True)).to_be_visible()
     expect(page.get_by_label("Responder a")).to_be_visible()
     expect(page.get_by_text(re.compile(r"Te quedan [\d,]+ de [\d,]+ correos este mes"))).to_be_visible()
     expect(page.get_by_role("button", name="Revisar y enviar")).to_be_visible()

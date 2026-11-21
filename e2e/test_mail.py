@@ -9,7 +9,7 @@ from playwright.sync_api import Page, expect
 
 from e2e.conftest import SEED_PASSWORD, Site
 from e2e.test_flow import sign_in
-from e2e.test_mail_recipients import add_club, add_source
+from e2e.test_mail_recipients import add_club, add_source, pick
 
 SUPERADMIN = "superadmin1@upiixsol.dev"
 CLUB_SUBJECT = "Junta semanal de UpiixIA"
@@ -252,17 +252,19 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
     page = open_mail(site)
     compose(page, "Aviso del club")  # the preview needs content; the sender lives in the last step
     go(page, "Destinatarios")
-    sender = page.get_by_label("Enviado por")
-    expect(sender).to_have_value("")  # the board
-    expect(sender.locator("option", has_text="UpiixIA")).to_have_count(1)
+    sender = page.get_by_role("button", name="Enviado por", exact=True)
+    expect(sender).to_contain_text("La mesa directiva de UpiixSol")  # the board
+    sender.click()
+    expect(page.get_by_role("listbox", name="Enviado por").get_by_role("option", name="UpiixIA")).to_have_count(1)
+    page.keyboard.press("Escape")
     add_club(page)
-    expect(sender.locator("option:checked")).to_have_text("UpiixIA")  # follows the audience's club
+    expect(sender).to_contain_text("UpiixIA")  # follows the audience's club
     expect(page.frame_locator(PREVIEW).get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
     page.get_by_role("button", name="Quitar fuente Club UpiixIA").click()
     add_source(page, "Todo UpiixSol")
-    expect(sender.locator("option:checked")).to_have_text("La mesa directiva de UpiixSol")
+    expect(sender).to_contain_text("La mesa directiva de UpiixSol")
     expect(page.frame_locator(PREVIEW).get_by_text("mesa directiva de UpiixSol").first).to_be_visible(timeout=10_000)
-    sender.select_option(label="UpiixIA")
+    pick(page, "Enviado por", "UpiixIA")
     expect(page.frame_locator(PREVIEW).get_by_text("UpiixIA").first).to_be_visible(timeout=10_000)
     site.shot("mail-sender")
     preview_view(site, "mail-sender")

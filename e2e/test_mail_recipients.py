@@ -44,9 +44,15 @@ def add_source(page: Page, name: str) -> None:
     page.get_by_role("menu", name="Agregar destinatarios").get_by_role("menuitem", name=name, exact=True).click()
 
 
+def pick(page: Page, label: str, option: str) -> None:
+    """Choose an option of a composer menu picker ("Club", "Rol", "Enviado por")."""
+    page.get_by_role("button", name=label, exact=True).click()
+    page.get_by_role("listbox", name=label, exact=True).get_by_role("option", name=option, exact=True).click()
+
+
 def add_club(page: Page) -> None:
     add_source(page, "Un club")
-    page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
+    pick(page, "Club", "UpiixIA")
     page.get_by_role("button", name="Agregar club").click()
 
 
@@ -73,7 +79,7 @@ def test_add_sources_as_chips_with_counts(site: Site) -> None:
     add_club(page)
     expect(chips(page).filter(has_text="UpiixIA")).to_have_text(re.compile(r"UpiixIA · \d+"))
     add_source(page, "Un rol")
-    page.get_by_label("Rol", exact=True).select_option(label="Miembro")
+    pick(page, "Rol", "Miembro")
     page.get_by_role("button", name="Agregar rol").click()
     expect(chips(page)).to_have_count(2)
     expect(chips(page).filter(has_text="Miembro")).to_have_text(re.compile(r"Miembro · \d+"))

@@ -5,7 +5,7 @@ import { CaretDown, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { Button, buttonClasses } from "@/components/Button";
-import { SelectField, TextArea, TextField } from "@/components/Field";
+import { TextArea, TextField } from "@/components/Field";
 import { api, errorMessage } from "@/lib/api";
 import type { AudiencePreview, AudienceSource, Page, Role } from "@/lib/types";
 
@@ -22,6 +22,7 @@ import {
   type PasteResult,
   type Person,
 } from "./AudiencePicker";
+import { MenuSelect } from "./MenuSelect";
 
 type Panel = "academy" | "role" | "people" | "outside" | null;
 const MAX_SOURCES = 10;
@@ -347,14 +348,13 @@ export function AudienceSources({
           {panel === "academy" && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 basis-48">
-                <SelectField label="Club" value={club} onChange={(e) => setClub(e.target.value)}>
-                  <option value="">Elige un club</option>
-                  {academies.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </SelectField>
+                <MenuSelect
+                  label="Club"
+                  value={club}
+                  placeholder="Elige un club"
+                  options={academies.map((a) => ({ value: String(a.id), label: a.name }))}
+                  onChange={setClub}
+                />
               </div>
               <Button
                 type="button"
@@ -372,13 +372,12 @@ export function AudienceSources({
           {panel === "role" && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 basis-48">
-                <SelectField label="Rol" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                  {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABEL[r]}
-                    </option>
-                  ))}
-                </SelectField>
+                <MenuSelect
+                  label="Rol"
+                  value={role}
+                  options={(Object.keys(ROLE_LABEL) as Role[]).map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+                  onChange={(v) => setRole(v as Role)}
+                />
               </div>
               <Button type="button" variant="secondary" disabled={has(`role:${role}`)} onClick={() => addSource({ kind: "role", role })}>
                 Agregar rol
