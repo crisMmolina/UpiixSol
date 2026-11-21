@@ -164,6 +164,7 @@ def test_event_placeholder_asks_to_complete_the_event(site: Site) -> None:
     card(page, "Invitación a evento").click()
     expect(current_step(page)).to_contain_text("Contenido")
     expect(page.get_by_text("Completa el evento").first).to_be_visible()
+    keep(site, "event-placeholder")
     site.shot("template-event-placeholder")
 
 
