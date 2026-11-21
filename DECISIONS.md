@@ -137,3 +137,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795070186 | deadline lease/UPS-102/1795000687 | REQUIRES_RECOVERY | Claim kept; read the summary and use release --expired --read-summary. No work is deleted.
 - 1795229608 | UPS-102 | Preview in steps 2 and 3, render-only falls back to audience all | Why: UPS-100 not integrated
 - 1795229772 | UPS-100 | no edits to mail_campaigns; 500 on placeholder handed to UPS-101 | Why: outside Paths
+- 1795230149 | UPS-102 | Mobile preview stays below editor (test_composer_at_390_wide relies on it); UPS-103 canvas changes it | Why: scope
