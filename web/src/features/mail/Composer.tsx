@@ -1,37 +1,36 @@
-// Composer (specs 003, 004): audience, sender, subject, block editor with live preview, and the review-and-confirm modal.
-import { PaperPlaneTilt } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState } from "react";
+// Composer (specs 003, 004, 005): three steps (Plantilla → Contenido → Destinatarios y envío) over one reducer,
+// the step in the URL (merged into the existing search params), a local draft, and the review-and-confirm modal.
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { useSearchParams } from "react-router";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { SelectField, TextField } from "@/components/Field";
 import { FormMessage } from "@/components/FormMessage";
 import { Modal } from "@/components/Overlay";
-import { Notice } from "@/components/States";
 import { api, errorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import type { AcademyCardOut, AudiencePreview, Campaign, MailStatus, Page } from "@/lib/types";
 
-import { BlockEditor } from "./BlockEditor";
-import { incompleteCount, newDraft, toBlocks, type Draft } from "./blocks";
-import { EmailPreview } from "./EmailPreview";
-import { ReplyToField, replyToError } from "./ReplyToField";
-import { AudiencePicker, EMPTY_AUDIENCE, toAudience, type AcademyChoice, type AudienceDraft, type AudienceKind } from "./AudiencePicker";
-
-const MAX_PREHEADER = 140;
-const BOARD = "La mesa directiva de UpiixSol";
-const MAX_SUBJECT = 150;
-
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-
-/** "1 de diciembre": the period end is a UTC midnight, so read it in UTC. */
-function renewal(iso: string) {
-  const d = new Date(iso);
-  return `${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}`;
-}
-
-function plural(n: number, one: string, many: string) {
-  return `${n} ${n === 1 ? one : many}`;
-}
+import { toAudience, type AcademyChoice, type AudienceKind } from "./AudiencePicker";
+import { incompleteCount, toBlocks } from "./blocks";
+import { Stepper } from "./ComposerSteps";
+import {
+  clearDraft,
+  composerReducer,
+  plural,
+  renewal,
+  initialState,
+  isDirty,
+  loadDraft,
+  parseStep,
+  saveDraft,
+  type Step,
+  type StoredDraft,
+} from "./composerState";
+import { ContentStep } from "./ContentStep";
+import { replyToError } from "./ReplyToField";
+import { SendStep } from "./SendStep";
+import { TemplateStep } from "./TemplateStep";
 
 function ConfirmBody({ preview, status }: { preview: AudiencePreview; status: MailStatus }) {
   const { excluded } = preview;
@@ -62,13 +61,11 @@ export function Composer({
   ownClub?: boolean;
   onSent: (campaign: Campaign) => void;
 }) {
-  const [draft, setDraft] = useState<AudienceDraft>({ ...EMPTY_AUDIENCE, kind: kinds?.[0] ?? "all", academyId: ownClub ? (academies[0]?.id ?? null) : null });
-  const [subject, setSubject] = useState("");
-  const [preheader, setPreheader] = useState("");
-  const [replyTo, setReplyTo] = useState("");
-  const [drafts, setDrafts] = useState<Draft[]>(() => [newDraft("paragraph")]);
-  // undefined = follow the audience's club; null = the board; a number = that club (superadmin only).
-  const [picked, setPicked] = useState<number | null | undefined>(undefined);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const [search, setSearch] = useSearchParams();
+  const step = parseStep(search.get("paso"));
+  const [state, dispatch] = useReducer(composerReducer, undefined, () => initialState(kinds, ownClub, academies));
   const [slugs, setSlugs] = useState<Record<number, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -76,6 +73,22 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentNote, setSentNote] = useState<string | null>(null);
+  // Local draft: `ready` once the stored one was checked; `pending` while the sender has not answered the prompt.
+  const [ready, setReady] = useState(false);
+  const [pending, setPending] = useState<StoredDraft | null>(null);
+
+  /** Only `paso` changes: `tab` (the superadmin panel) and anything else in the URL stay. */
+  function goTo(next: Step) {
+    setSearch(
+      (current) => {
+        const merged = new URLSearchParams(current);
+        merged.set("paso", next);
+        return merged;
+      },
+      { replace: false },
+    );
+    setFormError(null);
+  }
 
   useEffect(() => {
     api<Page<AcademyCardOut>>("/academies", { query: { limit: 50 } })
@@ -86,20 +99,35 @@ export function Composer({
   // Reply-To starts as the server's default (MAIL_REPLY_TO); anything typed before it arrives wins.
   useEffect(() => {
     api<{ reply_to: string | null }>("/mail/reply-to")
-      .then((out) => setReplyTo((current) => current || (out.reply_to ?? "")))
+      .then((out) => dispatch({ type: "defaultReplyTo", value: out.reply_to ?? "" }))
       .catch(() => undefined); // no default is fine: the server falls back to its own
   }, []);
 
-  const audience = toAudience(draft);
-  const off = !status.enabled;
-  const blocks = useMemo(() => toBlocks(drafts), [drafts]);
-  const unfinished = incompleteCount(drafts);
+  // On mount: someone else's draft is deleted (logout, shared computer); ours is offered, never applied silently.
+  useEffect(() => {
+    if (userId === null) return;
+    setPending(loadDraft(userId));
+    setReady(true);
+  }, [userId]);
+
+  // Keep the draft while the sender edits (and not while the prompt is open: the stored one must survive it).
+  const dirty = isDirty(state);
+  useEffect(() => {
+    if (!ready || pending || userId === null) return;
+    const timer = window.setTimeout(() => (dirty ? saveDraft(userId, state) : clearDraft()), 300);
+    return () => window.clearTimeout(timer);
+  }, [ready, pending, userId, state, dirty]);
+
+  const audience = toAudience(state.audience);
+  const blocks = useMemo(() => toBlocks(state.drafts), [state.drafts]);
+  const unfinished = incompleteCount(state.drafts);
 
   // The sender: a club admin's is their club (the server takes it from their account); a superadmin's follows
   // the audience's club until they pick one. The board cannot be picked for a club audience (the server
   // would still send as that club), so that option is off then.
-  const audienceClub = draft.kind === "academy" ? draft.academyId : null;
-  const senderId = ownClub ? (academies[0]?.id ?? null) : (picked ?? audienceClub);
+  const audienceClub = state.audience.kind === "academy" ? state.audience.academyId : null;
+  const senderId = ownClub ? (academies[0]?.id ?? null) : state.sender === "auto" ? audienceClub : state.sender;
+  const { subject, preheader, replyTo } = state;
 
   const payload = {
     subject: subject.trim() || "Sin asunto",
@@ -109,15 +137,16 @@ export function Composer({
     ...(replyTo.trim() && !replyToError(replyTo) ? { reply_to: replyTo.trim() } : {}),
     ...(!ownClub && senderId !== null ? { sender_academy_id: senderId } : {}),
   };
-  const previewPayload = audience && blocks.length > 0 ? payload : null;
+  // Rendering needs no recipients: until they are chosen the preview is drawn for the whole club.
+  const previewPayload = blocks.length > 0 ? { ...payload, audience: audience ?? { kind: "all" } } : null;
 
   async function review() {
     setSentNote(null);
-    if (!subject.trim()) return setFormError("Escribe un asunto.");
-    if (blocks.length === 0) return setFormError("Agrega al menos un bloque con contenido.");
-    if (unfinished > 0) return setFormError("Completa o elimina los bloques vacíos.");
-    if (!audience) return setFormError("Elige a quién enviar el correo.");
-    if (replyToError(replyTo)) return setFormError("Corrige el correo de respuesta.");
+    if (!subject.trim()) return fail("Escribe un asunto.", "contenido");
+    if (blocks.length === 0) return fail("Agrega al menos un bloque con contenido.", "contenido");
+    if (unfinished > 0) return fail("Completa o elimina los bloques vacíos.", "contenido");
+    if (!audience) return fail("Elige a quién enviar el correo.");
+    if (replyToError(replyTo)) return fail("Corrige el correo de respuesta.");
     setFormError(null);
     setChecking(true);
     try {
@@ -130,6 +159,12 @@ export function Composer({
     }
   }
 
+  /** A content problem sends the sender back to the content step, where the message is shown. */
+  function fail(message: string, to?: Step) {
+    if (to && to !== step) goTo(to); // goTo clears the message, so set it after
+    setFormError(message);
+  }
+
   async function confirm() {
     if (!audience || sending) return;
     setSending(true);
@@ -138,11 +173,9 @@ export function Composer({
       const created = await api<Campaign>("/mail/campaigns", { method: "POST", json: payload });
       const campaign = await api<Campaign>(`/mail/campaigns/${created.id}/send`, { method: "POST" });
       setPreview(null);
-      setSubject("");
-      setPreheader("");
-      setDrafts([newDraft("paragraph")]);
-      setPicked(undefined);
-      setDraft({ ...EMPTY_AUDIENCE, kind: draft.kind, academyId: draft.academyId });
+      clearDraft();
+      dispatch({ type: "reset", state: { ...initialState(kinds, ownClub, academies), replyTo: state.replyTo, audience: { ...initialState(kinds, ownClub, academies).audience, kind: state.audience.kind, academyId: state.audience.academyId } } });
+      goTo("plantilla");
       setSentNote("El envío está en curso. Sigue su avance en el historial.");
       onSent(campaign);
     } catch (err) {
@@ -154,47 +187,55 @@ export function Composer({
 
   const tooMany = preview !== null && preview.count > status.remaining;
   const confirmHint = preview === null ? null : preview.count === 0 ? "Nadie recibiría este correo: cambia los destinatarios." : tooMany ? `Supera tu cupo de este mes (${status.remaining}).` : null;
+  const common = {
+    state,
+    dispatch,
+    clubSlug: senderId === null ? null : (slugs[senderId] ?? null),
+    eventsAcademy: ownClub ? (slugs[academies[0]?.id ?? 0] ?? undefined) : null,
+    previewPayload,
+  };
 
   return (
-    <Card className="grid gap-5 p-5 sm:p-6">
-      {off && <Notice tone="alert">El correo está desactivado. Puedes redactar, pero no enviar, hasta que se active.</Notice>}
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <div className="grid min-w-0 content-start gap-5">
-          <AudiencePicker draft={draft} onChange={(next) => { setPicked(undefined); setDraft(next); }} academies={academies} kinds={kinds} ownClub={ownClub} />
-          {ownClub ? (
-            <p className="text-sm">{`Enviado por ${academies[0]?.name ?? ""}`}</p>
-          ) : (
-            <SelectField label="Enviado por" value={senderId ?? ""} onChange={(e) => setPicked(e.target.value ? Number(e.target.value) : null)}>
-              <option value="" disabled={audienceClub !== null}>
-                {BOARD}
-              </option>
-              {academies.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </SelectField>
-          )}
-          <TextField label="Asunto" value={subject} maxLength={MAX_SUBJECT} onChange={(e) => setSubject(e.target.value.replace(/[\r\n]+/g, " "))} />
-          <TextField label="Texto de vista previa (opcional)" value={preheader} maxLength={MAX_PREHEADER} hint="Lo que se ve junto al asunto en la bandeja de entrada." onChange={(e) => setPreheader(e.target.value.replace(/[\r\n]+/g, " "))} />
-          <ReplyToField value={replyTo} onChange={setReplyTo} />
-          <BlockEditor
-            drafts={drafts}
-            onChange={setDrafts}
-            clubSlug={senderId === null ? null : (slugs[senderId] ?? null)}
-            eventsAcademy={ownClub ? (slugs[academies[0]?.id ?? 0] ?? undefined) : null}
-          />
+    <Card className="grid gap-7 p-5 sm:p-8">
+      <Stepper step={step} onGo={goTo} />
+      {pending && (
+        <div role="status" className="flex flex-col gap-3 rounded-2xl border border-line bg-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm">
+            <span className="font-semibold">Tienes un borrador sin enviar.</span>{" "}
+            <span className="text-muted">{`Guardado en este navegador${pending.state.subject.trim() ? `: «${pending.state.subject.trim()}»` : ""}.`}</span>
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => { dispatch({ type: "restore", state: pending.state }); setPending(null); }}>
+              Restaurar borrador
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { clearDraft(); setPending(null); }}>
+              Descartar
+            </Button>
+          </div>
         </div>
-        <div className="min-w-0 lg:sticky lg:top-20">
-          <EmailPreview payload={previewPayload} emptyHint={audience ? "Agrega contenido para ver cómo queda el correo." : "Elige a quién enviar el correo para ver la vista previa."} />
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" icon={<PaperPlaneTilt weight="bold" />} onClick={() => void review()} disabled={off} loading={checking}>
-          Revisar y enviar
-        </Button>
-      </div>
-      <FormMessage message={formError} tone="error" />
+      )}
+      {step === "plantilla" && <TemplateStep onNext={() => goTo("contenido")} />}
+      {step === "contenido" && (
+        <>
+          <ContentStep {...common} onBack={() => goTo("plantilla")} onNext={() => goTo("envio")} />
+          <FormMessage message={formError} tone="error" />
+        </>
+      )}
+      {step === "envio" && (
+        <SendStep
+          {...common}
+          onBack={() => goTo("contenido")}
+          status={status}
+          academies={academies}
+          kinds={kinds}
+          ownClub={ownClub}
+          senderId={senderId}
+          audienceClub={audienceClub}
+          formError={formError}
+          checking={checking}
+          onReview={() => void review()}
+        />
+      )}
       {sentNote && <p role="status" className="text-sm font-semibold text-link">{sentNote}</p>}
 
       <Modal open={preview !== null} onClose={() => !sending && setPreview(null)} title="Revisar envío">

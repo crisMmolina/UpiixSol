@@ -76,16 +76,23 @@ def shot(site: Site, step: str, focus=None) -> None:  # noqa: ANN001 - playwrigh
 
 def open_composer(site: Site, email: str = SUPERADMIN) -> Page:
     path = "/admin?tab=correos" if email == SUPERADMIN else "/panel/academia?tab=correos"
-    sign_in(site, email, path)
+    sign_in(site, email, "/")
     page = site.page
+    page.goto(site.url(f"{path}&paso=envio"))  # the audience first (last step), then the content (UPS-102)
     expect(page.get_by_role("tab", name="Correos")).to_have_attribute("aria-selected", "true")
     if email == SUPERADMIN:
         page.get_by_role("radio", name="Un club").check()
         page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
     else:
         page.get_by_role("radio", name="Mi club").check()
+    go(page, "Contenido")
     page.get_by_label("Asunto").fill("Prueba de bloques")
     return page
+
+
+def go(page: Page, step: str) -> None:
+    """Jump to a step through the stepper (state is kept): `Contenido` or `Destinatarios`."""
+    page.get_by_role("navigation", name="Pasos del correo").get_by_role("button", name=re.compile(step)).click()
 
 
 def add_block(page: Page, kind: str):  # noqa: ANN201 - playwright Locator
@@ -161,8 +168,9 @@ def test_image_block_uploads_and_previews(site: Site, tmp_path: Path) -> None:
     expect(block.get_by_role("img", name="Imagen subida")).to_be_visible(timeout=10_000)
     # Alt text is required: without it the block is unfinished and the send is refused in Spanish.
     page.get_by_label("Texto del párrafo").first.fill("Hola")
+    go(page, "Destinatarios")
     page.get_by_role("button", name="Revisar y enviar").click()
-    expect(page.get_by_text("Completa o elimina los bloques vacíos.")).to_be_visible()
+    expect(page.get_by_text("Completa o elimina los bloques vacíos.")).to_be_visible()  # sent back to the content step
     block.get_by_label("Texto alternativo de la imagen").fill("Cartel del taller")
     block.get_by_label("Enlace de la imagen (opcional)").fill("https://www.upiixsol.com/a/upiixia")
     image = card(page).get_by_role("img", name="Cartel del taller")
@@ -174,6 +182,8 @@ def test_image_block_uploads_and_previews(site: Site, tmp_path: Path) -> None:
 
 def test_reply_to_prefilled_and_editable(site: Site) -> None:
     page = open_composer(site)
+    page.get_by_label("Texto del párrafo").first.fill("Hola")
+    go(page, "Destinatarios")
     reply = page.get_by_label("Responder a")
     expect(reply).to_have_value("mesa@upiixsol.com")
     reply.fill("no-es-un-correo")
@@ -182,7 +192,6 @@ def test_reply_to_prefilled_and_editable(site: Site) -> None:
     expect(page.get_by_text("Escribe un correo válido.").first).to_be_visible()
     reply.fill("junta@upiixsol.com")
     expect(page.get_by_text("Escribe un correo válido.")).to_have_count(0)
-    page.get_by_label("Texto del párrafo").first.fill("Hola")
     expect(card(page).get_by_text("Responde este correo")).to_be_visible(timeout=10_000)
     shot(site, "mail-reply-to", reply)
 
