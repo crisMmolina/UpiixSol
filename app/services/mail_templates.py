@@ -151,13 +151,16 @@ def save_template(db: Session, user: User, data: TemplateIn) -> TemplateOut:
     return _out(row)
 
 
+def _is_row_id(value: str) -> bool:
+    """ASCII digits that fit any driver's integer ("²" or 2**63 would crash the lookup instead of a 404)."""
+    return value.isascii() and value.isdecimal() and len(value) <= 9
+
+
 def _load(db: Session, user: User, template_id: str) -> MailTemplate:
     """A saved template the user may change: 405 for a built-in, 404 if missing, 403 outside their scope."""
     if builtin_by_id(template_id) is not None:
         raise AppError(405, READ_ONLY)
-    row = (
-        db.get(MailTemplate, int(template_id)) if template_id.isascii() and template_id.isdecimal() else None
-    )
+    row = db.get(MailTemplate, int(template_id)) if _is_row_id(template_id) else None
     if row is None:
         raise AppError(404)
     if user.role != Role.superadmin and (row.scope != "academy" or row.academy_id != _scope(user)[1]):

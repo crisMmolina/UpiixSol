@@ -122,6 +122,7 @@ def test_builtins_are_read_only(as_superadmin: TestClient) -> None:
     assert as_superadmin.delete(f"{TEMPLATES}/builtin:no-existe").status_code == 404
     assert as_superadmin.delete(f"{TEMPLATES}/abc").status_code == 404
     assert as_superadmin.delete(f"{TEMPLATES}/²").status_code == 404
+    assert as_superadmin.delete(f"{TEMPLATES}/{2**63}").status_code == 404  # no 500 from the driver
     assert as_superadmin.delete(f"{TEMPLATES}/99999").status_code == 404
 
 
