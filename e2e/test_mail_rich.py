@@ -96,11 +96,24 @@ def go(page: Page, step: str) -> None:
 
 
 def add_block(page: Page, kind: str):  # noqa: ANN201 - playwright Locator
+    """Adds a block with the canvas "+" (UPS-103) and returns its properties panel, where its fields are."""
     items = page.get_by_role("list", name="Bloques del correo").get_by_role("listitem")
     before = items.count()
-    page.get_by_role("button", name=f"Agregar {kind}").click()
+    page.get_by_role("button", name="Agregar bloque al final").click()
+    page.get_by_role("menu", name="Tipo de bloque").get_by_role("menuitem", name=kind, exact=True).click()
     expect(items).to_have_count(before + 1)
-    return items.nth(before)
+    return page.get_by_label("Propiedades del bloque")
+
+
+def see_as_sent(page: Page) -> None:
+    """Step 2's exact server render is behind "Ver como llega" (UPS-103)."""
+    page.get_by_role("button", name="Ver como llega").click()
+    expect(page.get_by_role("dialog", name="Así llega el correo")).to_be_visible()
+
+
+def close_preview(page: Page) -> None:
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Así llega el correo")).to_have_count(0)
 
 
 def card(page: Page):  # noqa: ANN201
@@ -121,13 +134,14 @@ def test_event_block_from_campus_calendar_shows_card_and_calendar_links(site: Si
     expect(block.get_by_role("button", name=re.compile(GLOBAL_EVENT))).to_have_count(0)
     block.get_by_role("button", name=re.compile(CLUB_EVENT)).click()
     expect(block.get_by_role("button", name=re.compile(CLUB_EVENT))).to_have_attribute("aria-pressed", "true")
+    see_as_sent(page)
     expect(card(page).get_by_text(CLUB_EVENT)).to_be_visible(timeout=10_000)
     for label in ("Google Calendar", "Outlook", "Apple / .ics"):
         expect(card(page).get_by_role("link", name=label)).to_be_visible()
     expect(card(page).get_by_role("link", name="Google Calendar")).to_have_attribute(
         "href", re.compile(r"^https://calendar\.google\.com/")
     )
-    shot(site, "mail-event-calendar", block)
+    shot(site, "mail-event-calendar")
     page.screenshot(path=SHOTS / f"{'1280' if site.name == 'desktop' else '390'}.png", full_page=True)
 
 
@@ -141,17 +155,23 @@ def test_event_block_typed_by_hand(site: Site) -> None:
     block.get_by_label("Lugar").fill("Salón 205")
     block.get_by_label("Descripción del evento").fill("Trae tu laptop.")
     block.get_by_label("Enlace del evento").fill("https://www.upiixsol.com/")
+    see_as_sent(page)
     expect(card(page).get_by_text("Primera clase de robótica")).to_be_visible(timeout=10_000)
     expect(card(page).get_by_text("Salón 205")).to_be_visible()
     # Mexico City time as typed, whatever the browser's zone.
     expect(card(page).get_by_text(re.compile(r"3:00\s*(p\.?\s*m\.?|PM)|15:00"))).to_be_visible()
     expect(card(page).get_by_role("link", name="Apple / .ics")).to_be_visible()
+    close_preview(page)
     # An end before the start is said in Spanish and keeps the preview from breaking.
     block.get_by_label("Fin").fill("2030-03-05T14:00")
     expect(block.get_by_text("La hora de fin debe ser posterior a la de inicio.")).to_be_visible()
     block.get_by_label("Fin").fill("2030-03-05T17:00")
     # Only one event per email.
-    expect(page.get_by_role("button", name="Agregar Evento")).to_be_disabled()
+    if site.name == "mobile":
+        page.get_by_role("button", name="Cerrar propiedades").click()  # the bottom sheet covers the end of the email
+    page.get_by_role("button", name="Agregar bloque al final").click()
+    expect(page.get_by_role("menuitem", name="Evento", exact=True)).to_be_disabled()
+    page.keyboard.press("Escape")
     shot(site, "mail-event-typed")
 
 
@@ -171,13 +191,15 @@ def test_image_block_uploads_and_previews(site: Site, tmp_path: Path) -> None:
     go(page, "Destinatarios")
     page.get_by_role("button", name="Revisar y enviar").click()
     expect(page.get_by_text("Completa o elimina los bloques vacíos.")).to_be_visible()  # sent back to the content step
+    page.get_by_role("list", name="Bloques del correo").get_by_role("listitem").nth(1).click()  # the image, again
     block.get_by_label("Texto alternativo de la imagen").fill("Cartel del taller")
     block.get_by_label("Enlace de la imagen (opcional)").fill("https://www.upiixsol.com/a/upiixia")
+    see_as_sent(page)
     image = card(page).get_by_role("img", name="Cartel del taller")
     expect(image).to_be_visible(timeout=10_000)
     expect(card(page).get_by_role("link").filter(has=image)).to_have_attribute("href", "https://www.upiixsol.com/a/upiixia")
     assert image.evaluate("(el) => el.complete && el.naturalWidth > 0")  # noqa: S101 - the upload really loads
-    shot(site, "mail-image", block)
+    shot(site, "mail-image")
 
 
 def test_reply_to_prefilled_and_editable(site: Site) -> None:

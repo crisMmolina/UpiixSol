@@ -82,8 +82,9 @@ def test_sender_selector_for_superadmin_and_fixed_for_club_admin(site: Site) -> 
     page = open_club_mail(site, "contenido")
     page.get_by_label("Asunto").fill("Aviso del club")
     page.get_by_label("Texto del párrafo").first.fill("Hola club")
-    page.get_by_role("button", name="Agregar Botón").click()
-    page.get_by_role("button", name="Ver el club").click()
+    page.get_by_role("button", name="Agregar bloque al final").click()  # UPS-103: the canvas "+"
+    page.get_by_role("menuitem", name="Botón", exact=True).click()
+    page.get_by_label("Propiedades del bloque").get_by_role("button", name="Ver el club").click()
     expect(page.get_by_label("Enlace del botón")).to_have_value("https://www.upiixsol.com/a/upiixia")
     go(page, "Destinatarios")
     expect(page.get_by_label("Enviado por")).to_have_count(0)  # not editable

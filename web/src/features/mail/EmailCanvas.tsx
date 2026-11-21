@@ -180,7 +180,9 @@ export function EmailCanvas({
   useEffect(() => {
     const away = (event: Event) => {
       const target = event.target as Node | null;
-      if (target && target !== document.body && !root.current?.contains(target)) selectRef.current(null);
+      if (!target || target === document.body || root.current?.contains(target)) return;
+      if (target instanceof Element && target.closest("[data-keep-selection]")) return; // "Ver como llega" and its dialog
+      selectRef.current(null);
     };
     document.addEventListener("pointerdown", away);
     document.addEventListener("focusin", away);

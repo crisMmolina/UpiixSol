@@ -50,6 +50,7 @@ function SeeAsSent({ open, onClose, payload }: { open: boolean; onClose: () => v
   return (
     <dialog
       ref={ref}
+      data-keep-selection
       aria-label="Así llega el correo"
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
@@ -87,7 +88,7 @@ export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewP
       </div>
       <EmailCanvas drafts={state.drafts} onChange={(drafts) => dispatch({ type: "patch", patch: { drafts } })} clubSlug={clubSlug} eventsAcademy={eventsAcademy} previewPayload={previewPayload} />
       <StepFooter onBack={onBack}>
-        <Button variant="secondary" icon={<Eye weight="bold" />} onClick={() => setSeeing(true)} className="max-sm:w-full">
+        <Button variant="secondary" icon={<Eye weight="bold" />} onClick={() => setSeeing(true)} className="max-sm:w-full" data-keep-selection>
           Ver como llega
         </Button>
         <NextButton onClick={onNext} />

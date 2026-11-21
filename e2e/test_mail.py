@@ -67,6 +67,31 @@ def blocks(page: Page):  # noqa: ANN201 - playwright Locator
     return page.get_by_role("list", name="Bloques del correo").get_by_role("listitem")
 
 
+def properties(page: Page):  # noqa: ANN201 - playwright Locator
+    """The selected button/event/image's fields (UPS-103): side panel on desktop, bottom sheet on phones."""
+    return page.get_by_label("Propiedades del bloque")
+
+
+def add_block(page: Page, kind: str) -> None:
+    """The canvas "+" at the end of the email (UPS-103), closing a phone's bottom sheet first."""
+    close = page.get_by_role("button", name="Cerrar propiedades")
+    if page.viewport_size and page.viewport_size["width"] < 1024 and close.count():
+        close.click()
+    page.get_by_role("button", name="Agregar bloque al final").click()
+    page.get_by_role("menu", name="Tipo de bloque").get_by_role("menuitem", name=kind, exact=True).click()
+
+
+def see_as_sent(page: Page) -> None:
+    """Step 2's exact server render is behind "Ver como llega" (UPS-103)."""
+    page.get_by_role("button", name="Ver como llega").click()
+    expect(page.get_by_role("dialog", name="Así llega el correo")).to_be_visible()
+
+
+def close_preview(page: Page) -> None:
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog", name="Así llega el correo")).to_have_count(0)
+
+
 def review_and_confirm(page: Page, people: str) -> None:
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
@@ -82,8 +107,10 @@ def test_superadmin_sends_to_a_club_after_preview_and_confirm(site: Site) -> Non
     page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
     go(page, "Contenido")
     compose(page, CLUB_SUBJECT)
+    see_as_sent(page)
     expect(page.frame_locator(PREVIEW).get_by_text("Hola, esta semana")).to_be_visible(timeout=10_000)
     site.shot("mail-composer")
+    close_preview(page)
     go(page, "Destinatarios")
     review_and_confirm(page, r"\d+ personas?")
     history = page.get_by_role("region", name="Historial")
@@ -118,11 +145,12 @@ def test_superadmin_mixes_users_and_outside_addresses(site: Site) -> None:
 def test_composer_builds_title_paragraph_button_and_previews(site: Site) -> None:
     page = open_mail(site)
     page.get_by_label("Asunto").fill("Primera clase")
-    page.get_by_role("button", name="Agregar Título").click()
+    add_block(page, "Título")
     page.get_by_label("Texto del título").fill("Bienvenidos a la primera clase")
     page.get_by_label("Texto del párrafo").first.fill("Trae tu **laptop** al salón 205.")
-    page.get_by_role("button", name="Agregar Botón").click()
-    page.get_by_role("button", name="Ir al campus").click()
+    add_block(page, "Botón")
+    properties(page).get_by_role("button", name="Ir al campus").click()
+    see_as_sent(page)
     frame = page.frame_locator(PREVIEW)
     expect(frame.get_by_text("Bienvenidos a la primera clase")).to_be_visible(timeout=10_000)
     expect(frame.locator("strong", has_text="laptop")).to_be_visible()
@@ -134,6 +162,7 @@ def test_composer_builds_title_paragraph_button_and_previews(site: Site) -> None
 def test_preview_iframe_is_sandboxed(site: Site) -> None:
     page = open_mail(site)
     compose(page, "Aviso", "Hola <script>alert(1)</script>")  # shown as text, never run
+    see_as_sent(page)
     frame = page.locator(PREVIEW)
     expect(frame).to_have_attribute("sandbox", "allow-same-origin")  # UPS-091: no allow-scripts, so no code runs; same-origin only lets the page fit the height
     expect(frame).to_have_attribute("srcdoc", re.compile(r"<html|<!DOCTYPE", re.IGNORECASE), timeout=10_000)
@@ -143,6 +172,7 @@ def test_preview_iframe_is_sandboxed(site: Site) -> None:
 def test_preview_switches_desktop_and_phone(site: Site) -> None:
     page = open_mail(site)
     compose(page, "Aviso")
+    see_as_sent(page)
     frame = page.locator(PREVIEW)
     desktop = page.get_by_role("button", name="Escritorio")
     phone = page.get_by_role("button", name="Teléfono")
@@ -164,31 +194,44 @@ def test_preview_switches_desktop_and_phone(site: Site) -> None:
 def test_blocks_reorder_and_delete(site: Site) -> None:
     page = open_mail(site)
     expect(blocks(page)).to_have_count(1)
-    page.get_by_role("button", name="Agregar Título").click()
-    page.get_by_role("button", name="Agregar Separador").click()
+    add_block(page, "Título")
+    add_block(page, "Separador")
     expect(blocks(page)).to_have_count(3)
     expect(blocks(page).nth(0)).to_have_attribute("aria-label", "Bloque 1: Párrafo")
     expect(blocks(page).nth(1)).to_have_attribute("aria-label", "Bloque 2: Título")
+    # The move buttons are on the selected block's toolbar (UPS-103): click a block to select it. The toolbar floats
+    # over the block above, so leave the selected one first (as clicking anywhere else does).
+    leave = page.get_by_label("Asunto").focus
+    leave()
+    blocks(page).nth(0).click()
     expect(blocks(page).nth(0).get_by_role("button", name="Mover arriba")).to_be_disabled()
+    blocks(page).nth(2).click()
     expect(blocks(page).nth(2).get_by_role("button", name="Mover abajo")).to_be_disabled()
+    leave()
+    blocks(page).nth(1).click()
     blocks(page).nth(1).get_by_role("button", name="Mover arriba").click()
     expect(blocks(page).nth(0)).to_have_attribute("aria-label", "Bloque 1: Título")
     expect(blocks(page).nth(1)).to_have_attribute("aria-label", "Bloque 2: Párrafo")
-    blocks(page).nth(0).get_by_role("button", name="Mover abajo").click()
+    blocks(page).nth(0).get_by_role("button", name="Mover abajo").click()  # the moved block stays selected
     expect(blocks(page).nth(0)).to_have_attribute("aria-label", "Bloque 1: Párrafo")
+    blocks(page).nth(2).click()
     blocks(page).nth(2).get_by_role("button", name="Eliminar bloque").click()
+    leave()
+    blocks(page).nth(0).click()
     blocks(page).nth(0).get_by_role("button", name="Eliminar bloque").click()
     expect(blocks(page)).to_have_count(1)
     expect(blocks(page).nth(0)).to_have_attribute("aria-label", "Bloque 1: Título")
-    # Event and image blocks arrive with UPS-091: offered, not usable yet.
-    expect(page.get_by_role("button", name="Agregar Evento")).to_be_enabled()  # UPS-091
-    expect(page.get_by_role("button", name="Agregar Imagen")).to_be_enabled()  # UPS-091
+    # Event and image blocks (UPS-091) are offered by the "+" inserter.
+    page.get_by_role("button", name="Agregar bloque al final").click()
+    expect(page.get_by_role("menuitem", name="Evento", exact=True)).to_be_enabled()  # UPS-091
+    expect(page.get_by_role("menuitem", name="Imagen", exact=True)).to_be_enabled()  # UPS-091
+    page.keyboard.press("Escape")
 
 
 def test_button_presets_campus_and_club(site: Site) -> None:
     page = open_mail(site)
-    page.get_by_role("button", name="Agregar Botón").click()
-    button = blocks(page).nth(1)
+    add_block(page, "Botón")
+    button = properties(page)  # UPS-103: the button's fields are in the properties panel
     expect(button.get_by_role("button", name="Ver el club")).to_be_disabled()  # no club chosen yet
     button.get_by_role("button", name="Ir al campus").click()
     expect(button.get_by_label("Texto del botón")).to_have_value("Ir al campus")
@@ -197,6 +240,7 @@ def test_button_presets_campus_and_club(site: Site) -> None:
     page.get_by_role("radio", name="Un club").check()
     page.get_by_label("Club", exact=True).select_option(label="UpiixIA")
     go(page, "Contenido")
+    blocks(page).nth(1).click()  # select the button again to open its properties
     button.get_by_role("button", name="Ver el club").click()
     expect(button.get_by_label("Texto del botón")).to_have_value("Ver el club")
     expect(button.get_by_label("Enlace del botón")).to_have_value("https://www.upiixsol.com/a/upiixia")
@@ -231,16 +275,17 @@ def test_no_test_send_button(site: Site) -> None:
 def test_composer_at_390_wide(site: Site) -> None:
     page = open_mail(site)
     compose(page, "Revisión de pantalla")
-    page.get_by_role("button", name="Agregar Título").click()
-    page.get_by_role("button", name="Agregar Botón").click()
-    page.get_by_role("button", name="Agregar Separador").click()
+    add_block(page, "Título")
+    add_block(page, "Botón")
     editor = page.get_by_role("list", name="Bloques del correo").bounding_box()
-    preview = page.locator(PREVIEW).bounding_box()
-    assert editor and preview
+    panel = properties(page).bounding_box()
+    assert editor and panel
     if site.name == "mobile":
-        assert preview["y"] >= editor["y"] + editor["height"] - 1  # below the editor on phones
+        assert panel["y"] + panel["height"] >= (page.viewport_size or {"height": 0})["height"] - 2  # a bottom sheet on phones
     else:
-        assert preview["x"] >= editor["x"] + editor["width"] - 1  # beside the editor on desktop
+        assert panel["x"] >= editor["x"] + editor["width"] - 1  # beside the email on desktop
+    add_block(page, "Separador")
+    see_as_sent(page)
     expect(page.frame_locator(PREVIEW).get_by_text("Hola, esta semana")).to_be_visible(timeout=10_000)
     site.shot("mail-composer-blocks")
 
