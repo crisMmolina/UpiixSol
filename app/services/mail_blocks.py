@@ -146,6 +146,8 @@ class EventBlock(_Block):
     place: str | None = None
     description: str | None = None
     link: str | None = None
+    # A template slot (UPS-100): valid in templates and preview, drawn as a sample card, refused on send.
+    placeholder: bool = False
 
     @field_validator("event_id", mode="before")
     @classmethod
@@ -179,6 +181,12 @@ class EventBlock(_Block):
     @model_validator(mode="after")
     def _id_or_typed(self) -> "EventBlock":
         typed = (self.title, self.start, self.end, self.place, self.description, self.link)
+        if self.placeholder:
+            if self.event_id is not None or any(value is not None for value in typed):
+                raise ValueError(
+                    "Un evento de ejemplo no lleva datos: completa el evento o quita el ejemplo."
+                )
+            return self
         if self.event_id is not None:
             if any(value is not None for value in typed):
                 raise ValueError("Elige un evento del campus o escribe uno, no ambos.")
