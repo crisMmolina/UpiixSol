@@ -144,3 +144,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795232819 | allow | victor | test change: UPS-105 | Why: victor: club admins see the addresses of their club (spec 006)
 - 1795233283 | allow | victor | test change: UPS-107 | Why: victor: combined recipients list replaces the one-kind picker (spec 006)
 - 1795233837 | UPS-103 | CanvasMock kept (index.tsx out of Paths); preview behind 'Ver como llega' native dialog; textarea always mounted under aria-hidden formatted view | Why: Paths gate; Modal is 512 wide
+- 1795233866 | UPS-105 | removed is mix-only in preview; origins are codes all|academy:<id>|role:<r>|picked|outside | Why: old kinds unchanged (exact-dict test); web maps labels
