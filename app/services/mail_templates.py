@@ -155,7 +155,9 @@ def _load(db: Session, user: User, template_id: str) -> MailTemplate:
     """A saved template the user may change: 405 for a built-in, 404 if missing, 403 outside their scope."""
     if builtin_by_id(template_id) is not None:
         raise AppError(405, READ_ONLY)
-    row = db.get(MailTemplate, int(template_id)) if template_id.isdigit() else None
+    row = (
+        db.get(MailTemplate, int(template_id)) if template_id.isascii() and template_id.isdecimal() else None
+    )
     if row is None:
         raise AppError(404)
     if user.role != Role.superadmin and (row.scope != "academy" or row.academy_id != _scope(user)[1]):

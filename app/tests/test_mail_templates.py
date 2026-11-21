@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.main import app
 from app.models import MailTemplate, Role
 from app.services.mail_templates_builtin import BUILTIN_TEMPLATES
-from app.tests.conftest import _client_as, make_academy, make_user
+from app.tests.conftest import _client_as, auth_headers, make_academy, make_user
 
 TEMPLATES = "/api/mail/templates"
 BLOCKS = [{"kind": "heading", "text": "Hola"}, {"kind": "paragraph", "text": "Nos vemos **pronto**"}]
@@ -121,6 +121,7 @@ def test_builtins_are_read_only(as_superadmin: TestClient) -> None:
     assert as_superadmin.delete(url).status_code == 405
     assert as_superadmin.delete(f"{TEMPLATES}/builtin:no-existe").status_code == 404
     assert as_superadmin.delete(f"{TEMPLATES}/abc").status_code == 404
+    assert as_superadmin.delete(f"{TEMPLATES}/²").status_code == 404
     assert as_superadmin.delete(f"{TEMPLATES}/99999").status_code == 404
 
 
@@ -193,7 +194,7 @@ def test_concurrent_duplicate_and_clubless_admin(
     raced = as_admin_ia.post(TEMPLATES, json=_payload("AVISO"))
     assert raced.status_code == 409, raced.text
     assert as_admin_ia.get(TEMPLATES).status_code == 200
-    make_user(db, role=Role.academy_admin, email="sin.club@upiixsol.dev")
-    clubless = next(_client_as(db, "sin.club@upiixsol.dev"))
+    user = make_user(db, role=Role.academy_admin, email="sin.club@upiixsol.dev")
+    clubless = TestClient(app, headers=auth_headers(user))
     assert clubless.get(TEMPLATES).status_code == 403
     assert clubless.post(TEMPLATES, json=_payload("X")).status_code == 403
