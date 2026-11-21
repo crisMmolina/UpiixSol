@@ -46,7 +46,15 @@ from app.services.mail_audience import (
 )
 from app.services.mail_blocks import Blocks, EventBlock, ReplyTo
 from app.services.mail_images import email_copy, email_logo
-from app.services.mail_render import CampaignLike, EventCard, Sender, Theme, render_blocks, theme_for
+from app.services.mail_render import (
+    CampaignLike,
+    EventCard,
+    Sender,
+    Theme,
+    canvas_theme,
+    render_blocks,
+    theme_for,
+)
 from app.services.mailer import (
     MAX_BATCH,
     BatchResult,
@@ -70,6 +78,13 @@ session_factory = SessionLocal
 # ── Contracts ───────────────────────────────────────────────
 
 
+def one_line(value: str) -> str:
+    """CR/LF (and other line or control characters) could inject headers: one line only."""
+    if any(unicodedata.category(char) in ("Cc", "Zl", "Zp") for char in value):
+        raise ValueError("Debe ser una sola línea.")
+    return value
+
+
 class CampaignIn(InModel):
     """Blocks (spec 004) or a legacy `body`, never both. Only a superadmin's sender counts."""
 
@@ -84,10 +99,7 @@ class CampaignIn(InModel):
     @field_validator("subject", "preheader")
     @classmethod
     def _one_line(cls, value: str) -> str:
-        # CR/LF (and other line or control characters) could inject headers: one line only.
-        if any(unicodedata.category(char) in ("Cc", "Zl", "Zp") for char in value):
-            raise ValueError("Debe ser una sola línea.")
-        return value
+        return one_line(value)
 
     @model_validator(mode="after")
     def _one_format(self) -> "CampaignIn":
@@ -96,9 +108,16 @@ class CampaignIn(InModel):
         return self
 
 
+class PreviewIn(CampaignIn):
+    """A preview may skip the audience (render-only, spec 005): template thumbnails and the canvas."""
+
+    audience: Audience | None = None  # type: ignore[assignment]
+
+
 class PreviewOut(BaseModel):
     html: str
     text: str
+    theme: dict[str, Any] | None = None  # canvas_theme (spec 005): what the composer canvas mirrors
 
 
 class CampaignOut(BaseModel):
@@ -238,7 +257,7 @@ def _render_email(
     blocks = Blocks.model_validate(content).root
     block = next((b for b in blocks if isinstance(b, EventBlock)), None)
     calendar, card = None, None
-    if block is not None:
+    if block is not None and not block.placeholder:  # a template slot draws the sample card
         if user is None:
             raise AppError(422, "La campaña no tiene remitente para resolver el evento.")
         calendar = mail_ics.resolve_event(db, user, block)  # 404 / 403 from the DB row
@@ -267,6 +286,15 @@ def _render_email(
     return html, text, calendar
 
 
+PLACEHOLDER_REFUSED = "Completa el evento antes de enviar"
+
+
+def _refuse_placeholder(content: list[dict[str, Any]] | None) -> None:
+    """A template's event slot previews as a sample card but never goes out (spec 005)."""
+    if any(block.get("kind") == "event" and block.get("placeholder") for block in content or []):
+        raise AppError(422, PLACEHOLDER_REFUSED, code="event_placeholder")
+
+
 def _sender_club(db: Session, user: User, data: CampaignIn) -> Academy | None:
     """academy_admin: their own club from the DB row. Superadmin: the one picked, else the audience's club,
     else the board (None); only an active club."""
@@ -283,11 +311,23 @@ def _sender_club(db: Session, user: User, data: CampaignIn) -> Academy | None:
     return club
 
 
-def preview(db: Session, user: User, data: CampaignIn) -> PreviewOut:
-    """Same scope checks and validation as create; renders with a sample name and a dummy unsubscribe link."""
-    check_scope(db, user, data.audience)
+def _render_only_reason(db: Session, user: User) -> str:
+    own = db.get(Academy, user.academy_id) if user.role != Role.superadmin and user.academy_id else None
+    return mail_template.footer_reason(
+        "academy" if own else "all", site_name=get_site(db).name, club_name=own.name if own else None
+    )
+
+
+def preview(db: Session, user: User, data: PreviewIn) -> PreviewOut:
+    """Same scope checks and validation as create; renders with a sample name and a dummy unsubscribe link.
+    Without an audience it only renders (spec 005): the caller's own sender, no recipients involved."""
+    if data.audience is not None:
+        check_scope(db, user, data.audience)
     club = _sender_club(db, user, data)
-    reason = _audience_reason(db, data.audience, get_site(db).name, user)
+    if data.audience is None:
+        reason = _render_only_reason(db, user)
+    else:
+        reason = _audience_reason(db, data.audience, get_site(db).name, user)
     if data.blocks is None:
         html, text = mail_template.render(data.subject, data.body or "", reason, site=get_site(db))
     else:
@@ -306,6 +346,7 @@ def preview(db: Session, user: User, data: CampaignIn) -> PreviewOut:
     return PreviewOut(
         html=html.replace(VARS["name"], SAMPLE_NAME).replace(VARS["unsubscribe"], dummy),
         text=text.replace(VARS["name"], SAMPLE_NAME).replace(VARS["unsubscribe"], dummy),
+        theme=canvas_theme(*email_identity(db, club)),
     )
 
 
@@ -344,6 +385,7 @@ def create_campaign(db: Session, sender: User, data: CampaignIn) -> CampaignOut:
         club = sender.academy_id  # from the DB row, never the request body
     from_club = _sender_club(db, sender, data)
     content = _dump(data.blocks) if data.blocks is not None else None
+    _refuse_placeholder(content)
     token = None
     if content is not None:
         # A dry render: a missing or out-of-scope event, or an email over the size cap, fails now.
@@ -406,6 +448,7 @@ def confirm(db: Session, sender: User, campaign_id: int) -> tuple[MailCampaign, 
     ensure_enabled()
     if campaign.status != "draft":
         return campaign, False  # a repeated confirm: same campaign, nothing new is sent
+    _refuse_placeholder(campaign.content)
     _check_hourly(db, sender, campaign.id)
     _check_quota(db, campaign.id)
     won = db.execute(

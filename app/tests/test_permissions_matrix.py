@@ -294,7 +294,7 @@ MATRIX: list[Rule] = [
                 "audience": {"kind": "academy", "academy_id": w.academy_id},
             }
         ),
-        note="UPS-089: {html, text} of the email; same audience scope as create",
+        note="UPS-089: {html, text} of the email; same audience scope as create; UPS-101: theme, render-only",
     ),
     Rule(
         "POST",
@@ -306,6 +306,30 @@ MATRIX: list[Rule] = [
     Rule("GET", "/api/mail/reply-to", SENDERS, note="UPS-091: default Reply-To the composer prefills"),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/send", OWN, note="the campaign's sender or superadmin"),
     Rule("POST", "/api/mail/campaigns/{campaign_id}/resume", OWN, note="the campaign's sender or superadmin"),
+    # ── Email templates (UPS-101): scope and built-in tests in test_mail_templates.py ──
+    Rule(
+        "POST",
+        "/api/mail/templates",
+        SENDERS,
+        _json(
+            lambda _w: {
+                "name": "Matriz",
+                "subject": "Aviso",
+                "blocks": [{"kind": "paragraph", "text": "Hola"}],
+            }
+        ),
+        note="superadmin: UpiixSol; academy_admin: own club (scope from the DB user)",
+    ),
+    Rule(
+        "PATCH",
+        "/api/mail/templates/{template_id}",
+        OWN,
+        _json(lambda _w: {"name": "Matriz editada"}),
+        note="a club's template: its admins or superadmin; built-ins 405",
+    ),
+    Rule(
+        "DELETE", "/api/mail/templates/{template_id}", OWN, note="a club's template: its admins or superadmin"
+    ),
     # ── Email opt-out (UPS-076): real-token tests in test_mail_unsubscribe.py ──
     Rule(
         "POST",
@@ -428,6 +452,22 @@ def _campaign(db: Session, w: World) -> int:
     return campaign.id
 
 
+def _template(db: Session, w: World) -> int:
+    """A fresh UpiixIA template per rule (UPS-101): its admins and superadmins may rename or delete it."""
+    from app.models import MailTemplate
+
+    row = MailTemplate(
+        scope="academy",
+        academy_id=w.academy_id,
+        name=f"Matriz {utcnow().timestamp()}",
+        subject="Aviso",
+        content=[{"kind": "paragraph", "text": "Hola"}],
+    )
+    db.add(row)
+    db.flush()
+    return row.id
+
+
 def _path(rule: Rule, w: World, db: Session) -> str:
     values: dict[str, Any] = {
         "slug": "upiixia",
@@ -450,6 +490,8 @@ def _path(rule: Rule, w: World, db: Session) -> str:
         values["blog_id"] = _fresh(db, "BlogPost")
     if "{campaign_id}" in rule.path:
         values["campaign_id"] = _campaign(db, w)
+    if "{template_id}" in rule.path:
+        values["template_id"] = _template(db, w)
     return rule.path.format(**values)
 
 
@@ -531,6 +573,7 @@ READ_MATRIX: list[Rule] = [
         note="history: superadmin all, academy_admin own club (UPS-075)",
     ),
     Rule("GET", "/api/mail/campaigns/{campaign_id}", OWN, note="a campaign of the club (UPS-075)"),
+    Rule("GET", "/api/mail/templates", SENDERS, note="built-ins, UpiixSol and own club (UPS-101)"),
 ]
 
 

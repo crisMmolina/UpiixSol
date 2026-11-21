@@ -2,7 +2,7 @@
 
 Generado por `uv run python -m app.tests.test_permissions_matrix` desde `MATRIX` en `app/tests/test_permissions_matrix.py`; el test verifica cada celda contra el backend (IDEA §2.1).
 
-Cobertura: **75/75 endpoints de escritura (100 %)** × 5 roles.
+Cobertura: **78/78 endpoints de escritura (100 %)** × 5 roles.
 
 ✅ permitido · ❌ 403 · 🔒 401 (sin sesión) · 🌐 público
 
@@ -76,10 +76,13 @@ Cobertura: **75/75 endpoints de escritura (100 %)** × 5 roles.
 | DELETE | `/api/comments/{comment_id}` | 🔒 | ✅ | ✅ | ❌ | ✅ | author, or the moderators of its channel (UPS-070) |
 | POST | `/api/mail/audience/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | superadmin: any audience; academy_admin: own club, its enrollees and outside addresses |
 | POST | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ❌ | ✅ | draft; same audience scope as the preview |
-| POST | `/api/mail/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | UPS-089: {html, text} of the email; same audience scope as create |
+| POST | `/api/mail/preview` | 🔒 | ❌ | ✅ | ❌ | ✅ | UPS-089: {html, text} of the email; same audience scope as create; UPS-101: theme, render-only |
 | POST | `/api/mail/images` | 🔒 | ❌ | ✅ | ✅ | ✅ | UPS-088: email image (PNG/JPEG copy under /media/mail); rate-limited per user |
 | POST | `/api/mail/campaigns/{campaign_id}/send` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
 | POST | `/api/mail/campaigns/{campaign_id}/resume` | 🔒 | ❌ | ✅ | ❌ | ✅ | the campaign's sender or superadmin |
+| POST | `/api/mail/templates` | 🔒 | ❌ | ✅ | ✅ | ✅ | superadmin: UpiixSol; academy_admin: own club (scope from the DB user) |
+| PATCH | `/api/mail/templates/{template_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a club's template: its admins or superadmin; built-ins 405 |
+| DELETE | `/api/mail/templates/{template_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a club's template: its admins or superadmin |
 | POST | `/api/mail/unsubscribe` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | token in ?t=, same 200 for unknown tokens; rate-limited per IP |
 | POST | `/api/mail/webhooks/mailgun` | 🌐 | 🌐 | 🌐 | 🌐 | 🌐 | HMAC signature is the credential; really signed payloads in test_mail_webhooks.py |
 | PUT | `/api/mail/preferences` | 🔒 | ✅ | ✅ | ✅ | ✅ | the caller's own address only |
@@ -99,3 +102,4 @@ Cobertura: **75/75 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins; email only for superadmin |
 | GET | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ✅ | ✅ | history: superadmin all, academy_admin own club (UPS-075) |
 | GET | `/api/mail/campaigns/{campaign_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a campaign of the club (UPS-075) |
+| GET | `/api/mail/templates` | 🔒 | ❌ | ✅ | ✅ | ✅ | built-ins, UpiixSol and own club (UPS-101) |
