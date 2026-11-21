@@ -68,19 +68,20 @@ def test_template_name_unique_per_scope_case_insensitive(db: Session):
     db.add(_template("bienvenida", "academy", other.id))  # and in another club
     db.flush()
     for duplicate in (_template("BIENVENIDA"), _template("BIENVENIDA", "academy", club.id)):
-        db.add(duplicate)
-        with pytest.raises(IntegrityError):
+        with (
+            pytest.raises(IntegrityError, match="UNIQUE|uq_mail_templates_scope_academy_name"),
+            db.begin_nested(),
+        ):
+            db.add(duplicate)
             db.flush()
-        db.rollback()
 
 
 def test_template_scope_and_club_must_agree(db: Session):
     club = make_academy(db, "ia", "IA")
     for bad in (_template("A", "site", club.id), _template("B", "academy", None), _template("C", "otro")):
-        db.add(bad)
-        with pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError, match="ck_mail_templates|CHECK"), db.begin_nested():
+            db.add(bad)
             db.flush()
-        db.rollback()
 
 
 def test_builtin_templates_validate_as_blocks():
