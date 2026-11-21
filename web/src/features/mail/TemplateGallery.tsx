@@ -15,17 +15,17 @@ function Card({ selected, onPick, thumb, name, description, children }: { select
         type="button"
         onClick={onPick}
         aria-pressed={selected}
-        className={`grid h-full w-full content-start gap-3 rounded-3xl border-2 p-3 text-left transition duration-200 hover:shadow-lift focus-visible:outline-3 ${selected ? "border-primary bg-subtle" : "border-line bg-surface"}`}
+        className={`grid h-full w-full content-start gap-3 rounded-2xl border-2 p-2.5 text-left sm:rounded-3xl sm:p-3 transition duration-200 hover:shadow-lift focus-visible:outline-3 ${selected ? "border-primary bg-subtle" : "border-line bg-surface"}`}
       >
         <span aria-hidden className="block">
           {thumb}
         </span>
-        <span className="grid gap-1 px-1 pb-1">
-          <span className="font-display text-lg leading-tight font-semibold">{name}</span>
+        <span className="grid gap-1 px-1 pb-1 [&>span:last-child]:line-clamp-3">
+          <span className="font-display text-base leading-tight font-semibold sm:text-lg">{name}</span>
           {description && <span className="text-sm text-muted">{description}</span>}
         </span>
         {selected && (
-          <span aria-hidden className="absolute top-5 left-5 grid size-7 place-items-center rounded-full bg-primary text-on-primary">
+          <span aria-hidden className="absolute top-4 left-4 grid size-7 place-items-center rounded-full bg-primary text-on-primary">
             <Check weight="bold" size={16} />
           </span>
         )}
@@ -42,7 +42,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h3 id={id} className="font-display text-lg font-semibold">
         {title}
       </h3>
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</ul>
+      <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{children}</ul>
     </section>
   );
 }
@@ -73,7 +73,7 @@ export function TemplateGallery({
   const card = (t: MailTemplate) => (
     <Card key={t.id} selected={selected === t.id} onPick={() => onPick(t)} thumb={<TemplateThumbnail name={t.name} subject={t.subject} preheader={t.preheader} blocks={t.blocks} />} name={t.name} description={t.description}>
       {mine(t) && (
-        <div className="absolute top-5 right-5 flex gap-1.5">
+        <div className="absolute top-4 right-4 flex gap-1.5">
           <button type="button" aria-label={`Renombrar ${t.name}`} title="Renombrar" onClick={() => onRename(t)} className={action}>
             <PencilSimple weight="bold" aria-hidden />
           </button>

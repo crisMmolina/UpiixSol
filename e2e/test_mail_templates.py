@@ -50,10 +50,14 @@ def fresh(site: Site, path: str = ADMIN, email: str = SUPERADMIN) -> Page:
     return page
 
 
-def keep(site: Site, name: str) -> None:
+def keep(site: Site, name: str, full: bool = True) -> None:
+    """Shot for the design review (`full`: the whole page; else the viewport, for dialogs and the sticky header)."""
     SHOTS.mkdir(parents=True, exist_ok=True)
-    site.page.wait_for_timeout(500)
-    site.page.screenshot(path=SHOTS / f"{'1280' if site.name == 'desktop' else '390'}-{name}.png", full_page=True)
+    wide = "1280" if site.name == "desktop" else "390"
+    site.page.wait_for_timeout(2000)  # live thumbnails render a moment after the gallery shows
+    site.page.screenshot(path=SHOTS / f"{wide}-{name}.png", full_page=full)
+    if name == "gallery":
+        site.page.screenshot(path=SHOTS / f"{wide}.png", full_page=True)
 
 
 def card(page: Page, name: str):  # noqa: ANN201 - playwright Locator
@@ -158,13 +162,13 @@ def test_save_as_template_and_find_it_in_the_gallery(site: Site) -> None:
     expect(dialog.get_by_text("Se guardará en UpiixSol")).to_be_visible()
     dialog.get_by_label("Nombre de la plantilla").fill("x" * 70)
     assert len(dialog.get_by_label("Nombre de la plantilla").input_value()) == 60
-    dialog.get_by_label("Nombre de la plantilla").fill("Mi plantilla e2e")
+    dialog.get_by_label("Nombre de la plantilla").fill("Boletín mensual")
     dialog.get_by_label("Descripción (opcional)").fill("Para probar el guardado")
-    keep(site, "save-dialog")
+    keep(site, "save-dialog", full=False)
     dialog.get_by_role("button", name="Guardar", exact=True).click()
     expect(page.get_by_role("status").filter(has_text="Plantilla guardada")).to_be_visible()
     go_to_gallery(page)
-    saved = card(page.get_by_role("region", name="Plantillas de UpiixSol"), "Mi plantilla e2e")
+    saved = card(page.get_by_role("region", name="Plantillas de UpiixSol"), "Boletín mensual")
     expect(saved).to_be_visible()
     expect(saved).to_contain_text("Para probar el guardado")
     saved.click()
@@ -175,65 +179,65 @@ def test_save_as_template_and_find_it_in_the_gallery(site: Site) -> None:
 def test_rename_and_delete_own_template(site: Site) -> None:
     page = fresh(site)
     write_email(page, "Para renombrar")
-    save_as_template(page, "Plantilla vieja e2e")
-    save_as_template(page, "Plantilla borrar e2e")
+    save_as_template(page, "Aviso de junta")
+    save_as_template(page, "Borrador de convocatoria")
     go_to_gallery(page)
     expect(page.get_by_role("button", name=re.compile("^(Renombrar|Eliminar) Anuncio"))).to_have_count(0)  # built-ins are read-only
-    page.get_by_role("button", name="Renombrar Plantilla vieja e2e").click()
+    page.get_by_role("button", name="Renombrar Aviso de junta").click()
     dialog = page.get_by_role("dialog", name="Renombrar plantilla")
-    dialog.get_by_label("Nombre de la plantilla").fill("Plantilla nueva e2e")
+    dialog.get_by_label("Nombre de la plantilla").fill("Citatorio general")
     dialog.get_by_role("button", name="Guardar", exact=True).click()
-    expect(card(page, "Plantilla nueva e2e")).to_be_visible()
-    expect(card(page, "Plantilla vieja e2e")).to_have_count(0)
-    page.get_by_role("button", name="Eliminar Plantilla borrar e2e").click()
+    expect(card(page, "Citatorio general")).to_be_visible()
+    expect(card(page, "Aviso de junta")).to_have_count(0)
+    page.get_by_role("button", name="Eliminar Borrador de convocatoria").click()
     confirm = page.get_by_role("dialog", name="Eliminar plantilla")
     confirm.get_by_role("button", name="Cancelar").click()
-    expect(card(page, "Plantilla borrar e2e")).to_be_visible()
-    page.get_by_role("button", name="Eliminar Plantilla borrar e2e").click()
+    expect(card(page, "Borrador de convocatoria")).to_be_visible()
+    page.get_by_role("button", name="Eliminar Borrador de convocatoria").click()
     page.get_by_role("dialog", name="Eliminar plantilla").get_by_role("button", name="Eliminar", exact=True).click()
-    expect(card(page, "Plantilla borrar e2e")).to_have_count(0)
+    expect(card(page, "Borrador de convocatoria")).to_have_count(0)
 
 
 def test_club_admin_sees_site_and_own_club_templates_only(site: Site) -> None:
     page = fresh(site)
     write_email(page, "Plantilla del sitio")
-    save_as_template(page, "Sitio e2e")
+    save_as_template(page, "Bienvenida UpiixSol")
     page = fresh(site, CLUB_PANEL, CLUB_ADMIN)
     write_email(page, "Plantilla del club")
     page.get_by_role("button", name="Guardar como plantilla").click()
     expect(page.get_by_role("dialog", name="Guardar como plantilla").get_by_text("Se guardará en tu club")).to_be_visible()
-    page.get_by_role("dialog", name="Guardar como plantilla").get_by_label("Nombre de la plantilla").fill("Club e2e")
+    page.get_by_role("dialog", name="Guardar como plantilla").get_by_label("Nombre de la plantilla").fill("Convocatoria del club")
     page.get_by_role("dialog", name="Guardar como plantilla").get_by_role("button", name="Guardar", exact=True).click()
     expect(page.get_by_role("status").filter(has_text="Plantilla guardada")).to_be_visible()
     go_to_gallery(page)
     mine = page.get_by_role("region", name="Plantillas de mi club")
-    expect(card(mine, "Club e2e")).to_be_visible()
-    expect(card(mine, "Sitio e2e")).to_have_count(0)
+    expect(card(mine, "Convocatoria del club")).to_be_visible()
+    expect(card(mine, "Bienvenida UpiixSol")).to_have_count(0)
     shared = page.get_by_role("region", name="Plantillas de UpiixSol")
-    expect(card(shared, "Sitio e2e")).to_be_visible()
+    expect(card(shared, "Bienvenida UpiixSol")).to_be_visible()
     expect(card(shared, "Anuncio")).to_be_visible()
-    expect(card(shared, "Club e2e")).to_have_count(0)
+    expect(card(shared, "Convocatoria del club")).to_have_count(0)
     # A club admin cannot rename or delete the UpiixSol ones.
-    expect(page.get_by_role("button", name="Renombrar Sitio e2e")).to_have_count(0)
-    expect(page.get_by_role("button", name="Renombrar Club e2e")).to_be_visible()
+    expect(page.get_by_role("button", name="Renombrar Bienvenida UpiixSol")).to_have_count(0)
+    expect(page.get_by_role("button", name="Renombrar Convocatoria del club")).to_be_visible()
     keep(site, "club-gallery")
 
 
 def test_save_on_send_checked_by_default_and_saved(site: Site) -> None:
     page = fresh(site)
-    write_email(page, "Guardar al enviar e2e")
+    write_email(page, "Cierre de inscripciones")
     next_step(page)
     add_source(page, "Todo UpiixSol")
     box = page.get_by_role("checkbox", name="Guardar como plantilla")
     expect(box).to_be_checked()
-    expect(page.get_by_label("Nombre de la plantilla")).to_have_value("Guardar al enviar e2e")
-    keep(site, "save-on-send")
+    expect(page.get_by_label("Nombre de la plantilla")).to_have_value("Cierre de inscripciones")
+    keep(site, "save-on-send", full=False)
     page.get_by_role("button", name="Revisar y enviar").click()
     dialog = page.get_by_role("dialog", name="Revisar envío")
     dialog.get_by_role("button", name="Enviar ahora").click()
     expect(dialog).to_be_hidden()
     expect(current_step(page)).to_contain_text("Plantilla")
-    expect(card(page.get_by_role("region", name="Plantillas de UpiixSol"), "Guardar al enviar e2e")).to_be_visible()
+    expect(card(page.get_by_role("region", name="Plantillas de UpiixSol"), "Cierre de inscripciones")).to_be_visible()
 
 
 def test_save_on_send_hidden_for_unchanged_template(site: Site) -> None:
@@ -255,6 +259,8 @@ def test_recent_sent_section_reuses_an_email(site: Site) -> None:
     recent = page.get_by_role("region", name="Enviados recientes")
     expect(recent).to_be_visible()
     assert recent.get_by_role("button", name=re.compile("^Usar de nuevo")).count() <= 6
+    recent.scroll_into_view_if_needed()
+    keep(site, "recent-sent", full=False)
     recent.get_by_role("button", name=re.compile("^Usar de nuevo.*Reutilizable e2e")).first.click()
     expect(current_step(page)).to_contain_text("Contenido")
     expect(page.get_by_label("Asunto")).to_have_value("Reutilizable e2e")
