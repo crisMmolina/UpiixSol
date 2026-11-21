@@ -1,12 +1,12 @@
 # worklog/WL-1795243007-victor-2-UPS-104-hack.BEymMm.md · UPS-104
 
 ## Live summary
-- Done: All criteria met; Verify+smoke green; PR #174; design-critic SHIP 51ddfc9; in REVIEW
+- Done: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py e2e/test_mail_canvas.py' exit 0 (54 passed); design-critic SHIP 99e432b; shots 1280 and 390 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]
 - Decision: Composer.tsx edited outside Paths: merge gate sends it to the human
 - Why: save on send and template load hook into its confirm()
 - Failing: none open; e2e composer 390 test flaked twice under load, passes alone
 - Commands: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py'
-- Next: Wait for review of SHA 299cf209; human to amend Paths with Composer.tsx
+- Next: Another agent reviews https://github.com/crisMmolina/UpiixSol/pull/174; run .uak/bin/smoke
 
 ## History
 - 1795243007 | CLAIMED | victor-2 | claim; next: stubs for the e2e Tests names and `uak red UPS-104`; then the gallery, then load, then save/rename/delete.
@@ -37,3 +37,4 @@
 - 1795282140 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA 299cf209; human to amend Paths with Composer.tsx
 - 1795282817 | REVIEW | victor-3 | review; approve; SHA 299cf2099f200250d6acfc2be13f705e5e67f8ec; reviewer victor-3
 - 1795283074 | REVIEW | victor-2 | heartbeat; lease until 1795369474
+- 1795283376 | REVIEW | victor-2 | done; PR https://github.com/crisMmolina/UpiixSol/pull/174; evidence: bash .uak/bin/q bash -c 'npm --prefix web run lint && npm --prefix web run build && uv run pytest -q e2e/test_mail_templates.py e2e/test_mail_composer.py e2e/test_mail_canvas.py' exit 0 (54 passed); design-critic SHIP 99e432b; shots 1280 and 390 · red at ec85f41: FAILED e2e/test_mail_templates.py::test_gallery_shows_builtins_saved_and_blank_with_thumbnails[desktop]; reviewer: -
