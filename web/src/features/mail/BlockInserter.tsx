@@ -38,7 +38,10 @@ export function BlockInserter({
 
   useEffect(() => {
     if (!open) return;
-    root.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
+    const menu = root.current?.querySelector<HTMLElement>("[role=menu]");
+    menu?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus({ preventScroll: true });
+    // The whole menu in view (above a phone's bottom nav: see its scroll margin).
+    menu?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     const away = (event: PointerEvent) => !root.current?.contains(event.target as Node) && setOpen(false);
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
@@ -95,7 +98,7 @@ export function BlockInserter({
           role="menu"
           aria-label="Tipo de bloque"
           onKeyDown={onMenuKey}
-          className={`absolute z-30 mt-2 w-[min(19rem,calc(100vw-3rem))] rounded-2xl border border-line bg-surface p-2 text-ink shadow-lift ${variant === "end" ? "left-1/2 -translate-x-1/2" : "left-1/2 -translate-x-1/2"}`}
+          className="absolute left-1/2 z-30 mt-2 max-h-[min(30rem,calc(100dvh-9rem))] w-[min(19rem,calc(100vw-3rem))] -translate-x-1/2 scroll-mt-20 scroll-mb-24 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-2 text-ink shadow-lift lg:scroll-mb-6"
         >
           {KINDS.map(({ kind, label: name, hint }) => {
             const Icon = ICONS[kind];

@@ -281,6 +281,13 @@ export function EmailCanvas({
   const problemOf = (draft: Draft) => (draft.id !== selectedId && touched.has(draft.id) ? blockProblem(draft) : null);
   const sheetOpen = !wide && selected !== null && HAS_PROPERTIES.has(selected.kind);
 
+  // On phones the sheet takes the bottom of the screen: bring the selected block into the part above it.
+  useEffect(() => {
+    if (!sheetOpen || !selectedId) return;
+    const item = root.current?.querySelector<HTMLElement>(`[data-block="${selectedId}"]`);
+    item?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [sheetOpen, selectedId]);
+
   return (
     <div ref={root} className={`grid items-start gap-6 ${wide ? "grid-cols-[minmax(0,1fr)_19rem]" : ""}`}>
       <section aria-label="Lienzo del correo" className="-mx-5 grid gap-4 px-2 py-6 sm:mx-0 sm:rounded-2xl sm:px-8 sm:py-8" style={{ background: c.page }}>
@@ -361,7 +368,7 @@ export function EmailCanvas({
         eventsAcademy={eventsAcademy}
         cover={cover}
       />
-      {sheetOpen && <div aria-hidden className="h-[45dvh]" />}
+      {sheetOpen && <div aria-hidden className="h-[40dvh]" />}
       <p role="status" className="sr-only">
         {said}
       </p>

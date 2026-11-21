@@ -135,7 +135,7 @@ export function BlockProperties({
           onClose();
         }
       }}
-      className="fixed inset-x-0 bottom-0 z-40 grid max-h-[60dvh] content-start gap-4 overflow-y-auto rounded-t-3xl border-t border-line bg-surface p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lift"
+      className="fixed inset-x-0 bottom-0 z-40 grid max-h-[45dvh] content-start gap-4 overflow-y-auto rounded-t-3xl border-t border-line bg-surface p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lift"
     >
       <span aria-hidden className="mx-auto h-1.5 w-10 rounded-full bg-line" />
       {body}

@@ -75,14 +75,14 @@ export function ContentStep({ state, dispatch, clubSlug, eventsAcademy, previewP
   const [seeing, setSeeing] = useState(false);
   return (
     <div className="grid gap-7">
-      <StepHeader title="Escribe tu correo" lead="Haz clic en un bloque para editarlo y usa «+» para agregar más. Así se verá en la bandeja de entrada." />
+      <StepHeader title="Escribe tu correo" lead="Haz clic en un bloque para editarlo; «+» agrega más." />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="Asunto" value={state.subject} maxLength={MAX_SUBJECT} onChange={(e) => dispatch({ type: "patch", patch: { subject: e.target.value.replace(/[\r\n]+/g, " ") } })} />
         <TextField
           label="Texto de vista previa (opcional)"
           value={state.preheader}
           maxLength={MAX_PREHEADER}
-          hint="Lo que se ve junto al asunto en la bandeja de entrada."
+          placeholder="Se ve junto al asunto en la bandeja de entrada"
           onChange={(e) => dispatch({ type: "patch", patch: { preheader: e.target.value.replace(/[\r\n]+/g, " ") } })}
         />
       </div>

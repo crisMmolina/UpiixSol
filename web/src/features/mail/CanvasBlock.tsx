@@ -324,6 +324,7 @@ export function CanvasBlock({
   return (
     <li
       aria-label={`Bloque ${index + 1}: ${label}`}
+      data-block={draft.id}
       data-selected={selected || undefined}
       onFocus={(e) => !(e.target as HTMLElement).closest("[data-inserter]") && onSelect()}
       onMouseDown={(e) => {
@@ -332,7 +333,7 @@ export function CanvasBlock({
       onKeyDown={onBlockKey}
       onDragOver={drag.onDragOver}
       onDrop={drag.onDrop}
-      className={`group relative px-3 sm:px-[calc(var(--gutter)-12px)] ${drag.dragging ? "opacity-50" : ""}`}
+      className={`group relative scroll-mt-32 px-3 sm:px-[calc(var(--gutter)-12px)] ${drag.dragging ? "opacity-50" : ""}`}
     >
       {drag.over && <span aria-hidden className="absolute inset-x-3 -top-0.5 z-10 h-1 rounded-full bg-primary" />}
       <span
