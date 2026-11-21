@@ -140,3 +140,4 @@ Why: a reversible option after 15 min keeps work moving.
 - 1795230149 | UPS-102 | Mobile preview stays below editor (test_composer_at_390_wide relies on it); UPS-103 canvas changes it | Why: scope
 - 1795230248 | UPS-102 | Screenshots referenced from .uak-shots (gitignored), sent to victor directly | Why: no image hosting for PR body
 - 1795230793 | allow | victor | test change: UPS-103 | Why: victor: email canvas replaces the block form (spec 005)
+- 1795231876 | UPS-101 | Plain array list per plan Contracts; superadmin manages every template; out-of-scope id 403 per spec | Why: Task criteria outrank the generic pagination rule; spec asks for 403
