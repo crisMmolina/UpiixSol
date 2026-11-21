@@ -6,7 +6,7 @@
 - Why: old kinds unchanged; blind drafts out of scope
 - Failing: none
 - Commands: Verify from TASKS.md
-- Next: Wait for review of SHA 9e3cd5e
+- Next: Integrated in main: d2bf415fa708634cc3782d11adf7470f1a2bc1f9 (recorded by victor-1)
 
 ## History
 - 1795233002 | CLAIMED | victor-1 | claim; next: after the human `uak allow`, stubs for the Tests names and `uak red UPS-105`; then the schema and `_compute`, then scope, then the migration, then the list endpoint.
@@ -17,3 +17,4 @@
 - 1795234295 | REVIEW | victor-1 | done; PR https://github.com/crisMmolina/UpiixSol/pull/168; evidence: Verify exit 0 at 9e3cd5e; smoke exit 0; full pytest green 99% cov; security-reviewer no HIGH (MEDIUM pre-existing draft oracle + LOW rate limit recorded as decision) · existing tests changed with a human's approval (victor) · red at ae798a1: FAILED app/tests/test_mail_audience_mix.py::test_mail_audience_mix_migration_round_trips_on_sqlite · existing tests changed with a human's approval (victor) · red at ae798a1: FAILED app/tests/test_mail_audience_mix.py::test_mail_audience_mix_migration_round_trips_on_sqlite; reviewer: -
 - 1795234303 | REVIEW | victor-1 | checkpoint; next: Wait for review of SHA 9e3cd5e
 - 1795234967 | REVIEW | victor-3 | review; approve; SHA 9e3cd5e52f2f7915b3f5b29e0d4807cccbb16d6c; reviewer victor-3
+- 1795235453 | INTEGRATED | victor-1 | integrate; recorded by victor-1; PR https://github.com/crisMmolina/UpiixSol/pull/168; merged d2bf415fa708634cc3782d11adf7470f1a2bc1f9; proof ancestry
