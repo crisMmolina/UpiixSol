@@ -561,3 +561,11 @@ def test_old_audience_kinds_still_work(
     assert response.status_code == 201, response.text
     stored = db.get(MailCampaign, response.json()["id"])
     assert (stored.academy_id, stored.sender_academy_id) == (None, None)
+    # a club source plus anything outside that club is the board's: its admins must not see the campaign
+    outsider = make_user(db, email="outsider@ipn.mx")
+    for extra in ({"emails": ["fuera@gmail.com"]}, {"user_ids": [outsider.id]}):
+        audience = {"kind": "mix", "sources": [{"kind": "academy", "academy_id": robotica.id}], **extra}
+        response = as_superadmin.post(CAMPAIGNS, json={"subject": "A", "body": "B", "audience": audience})
+        assert response.status_code == 201, response.text
+        stored = db.get(MailCampaign, response.json()["id"])
+        assert (stored.academy_id, stored.sender_academy_id) == (None, None), extra

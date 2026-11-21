@@ -182,7 +182,7 @@ def check_scope(db: Session, sender: User, audience: Audience) -> None:
         return
     if isinstance(audience, IndividualAudience):
         wanted = set(audience.user_ids)
-        if wanted <= _pickable(db, club, wanted):
+        if wanted <= pickable(db, club, wanted):
             return
     if isinstance(audience, MixAudience):
         # Per source and per id; exclusions are not checked: removing someone is always safe.
@@ -190,7 +190,7 @@ def check_scope(db: Session, sender: User, audience: Audience) -> None:
             isinstance(source, AcademyAudience) and source.academy_id == club for source in audience.sources
         )
         wanted = set(audience.user_ids)
-        if own_club and wanted <= _pickable(db, club, wanted):
+        if own_club and wanted <= pickable(db, club, wanted):
             return
     raise AppError(403)
 
@@ -203,7 +203,8 @@ def _club_members(academy_id: int | None):
     return or_(User.id.in_(enrolled), and_(User.role == Role.academy_admin, User.academy_id == academy_id))
 
 
-def _pickable(db: Session, academy_id: int, user_ids: set[int]) -> set[int]:
+def pickable(db: Session, academy_id: int, user_ids: set[int]) -> set[int]:
+    """Which of `user_ids` are the club's enrollees or co-admins."""
     found: set[int] = set()
     for chunk in _chunks(sorted(user_ids)):
         found.update(db.scalars(select(User.id).where(User.id.in_(chunk), _club_members(academy_id))))
@@ -240,7 +241,7 @@ def list_audience(db: Session, sender: User, data: AudienceListIn) -> Page[Audie
     rows = _resolve(db, data.audience, blind_typed=not is_super)
     if not is_super:
         campus = {row.user_id for row in rows if row.user_id is not None}
-        allowed = _pickable(db, sender.academy_id, campus) if sender.academy_id is not None else set()
+        allowed = pickable(db, sender.academy_id, campus) if sender.academy_id is not None else set()
         rows = [row for row in rows if row.user_id is None or row.user_id in allowed]
     if data.state is not None:
         rows = [row for row in rows if row.state == data.state]
