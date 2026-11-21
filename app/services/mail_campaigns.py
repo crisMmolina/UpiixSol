@@ -15,6 +15,7 @@ batch writes a fresh token's hash right before the call that carries the token i
 """
 
 import logging
+import re
 import unicodedata
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -138,6 +139,18 @@ class CampaignOut(BaseModel):
     created_at: datetime
     sent_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+class CampaignContent(BaseModel):
+    """What "Usar de nuevo" loads in the composer (spec 006): never the recipients."""
+
+    preheader: str | None = None
+    blocks: list[dict[str, Any]]  # stored blocks as is; old data must not fail output validation
+
+
+class CampaignDetail(CampaignOut):
+    content: CampaignContent
+    details_purged: bool  # the per-person rows were deleted by retention (UPS-081)
 
 
 # ── Guards ──────────────────────────────────────────────────
@@ -701,5 +714,21 @@ def list_campaigns(db: Session, user: User, cursor: str | None, limit: int) -> P
     )
 
 
-def get_campaign(db: Session, user: User, campaign_id: int) -> CampaignOut:
-    return campaign_out(db, _load(db, user, campaign_id))
+_PARAGRAPHS = re.compile(r"\n[ \t]*\n+")  # the same split as mail_template._body_html
+
+
+def _content_blocks(campaign: MailCampaign) -> list[dict[str, Any]]:
+    if campaign.content is not None:
+        return campaign.content
+    body = campaign.body.replace("\r\n", "\n").strip()
+    return [{"kind": "paragraph", "text": p.strip()} for p in _PARAGRAPHS.split(body) if p.strip()]
+
+
+def get_campaign(db: Session, user: User, campaign_id: int) -> CampaignDetail:
+    campaign = _load(db, user, campaign_id)
+    out = campaign_out(db, campaign)
+    return CampaignDetail(
+        **out.model_dump(),
+        content=CampaignContent(preheader=campaign.preheader, blocks=_content_blocks(campaign)),
+        details_purged=campaign.counts_snapshot is not None and not _counts(db, campaign.id),
+    )
