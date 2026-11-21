@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1795232322
+Updated: 1795232819
 AVAILABLE: UPS-068 UPS-103 UPS-104 UPS-105 UPS-106 UPS-107 UPS-108 
 CLAIMED: -
 BLOCKED: UPS-057 
@@ -16,11 +16,11 @@ UPS-101 | REVIEW | victor-1 | until 1795318276
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1795229772 | UPS-100 | no edits to mail_campaigns; 500 on placeholder handed to UPS-101 | Why: outside Paths
 - 1795230149 | UPS-102 | Mobile preview stays below editor (test_composer_at_390_wide relies on it); UPS-103 canvas changes it | Why: scope
 - 1795230248 | UPS-102 | Screenshots referenced from .uak-shots (gitignored), sent to victor directly | Why: no image hosting for PR body
 - 1795230793 | allow | victor | test change: UPS-103 | Why: victor: email canvas replaces the block form (spec 005)
 - 1795231876 | UPS-101 | Plain array list per plan Contracts; superadmin manages every template; out-of-scope id 403 per spec | Why: Task criteria outrank the generic pagination ru
+- 1795232819 | allow | victor | test change: UPS-105 | Why: victor: club admins see the addresses of their club (spec 006)
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.

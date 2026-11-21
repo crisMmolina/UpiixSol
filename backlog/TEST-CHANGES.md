@@ -16,3 +16,4 @@ Append-only. Format: - ID | epoch | human | reason. Why: a test is a spec; chang
 - UPS-099 | 1794984225 | victor | victor: SVG logos now get a PNG email copy
 - UPS-102 | 1794986209 | victor | victor: composer redesign in three steps (spec 005)
 - UPS-103 | 1795230793 | victor | victor: email canvas replaces the block form (spec 005)
+- UPS-105 | 1795232819 | victor | victor: club admins see the addresses of their club (spec 006)
