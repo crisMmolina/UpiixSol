@@ -1,7 +1,7 @@
 # STATE
 
 Phase: execution
-Updated: 1795234967
+Updated: 1795235187
 AVAILABLE: UPS-068 UPS-104 UPS-106 UPS-107 UPS-108 
 CLAIMED: UPS-103 
 BLOCKED: UPS-057 
@@ -17,11 +17,11 @@ UPS-105 | REVIEW | victor-1 | until 1795320703
 
 Blockers: BLOCKED tasks; use status --task ID --summary.
 Current decisions (last 5):
-- 1795232819 | allow | victor | test change: UPS-105 | Why: victor: club admins see the addresses of their club (spec 006)
 - 1795233283 | allow | victor | test change: UPS-107 | Why: victor: combined recipients list replaces the one-kind picker (spec 006)
 - 1795233837 | UPS-103 | CanvasMock kept (index.tsx out of Paths); preview behind 'Ver como llega' native dialog; textarea always mounted under aria-hidden formatted view | Why: Pa
 - 1795233866 | UPS-105 | removed is mix-only in preview; origins are codes all|academy:<id>|role:<r>|picked|outside | Why: old kinds unchanged (exact-dict test); web maps labels
 - 1795234303 | UPS-105 | removed mix-only; create stays non-blind (debt) | Why: old kinds unchanged; blind drafts out of scope
+- 1795235187 | deadline decision/UPS-105-1795234276/1795235176 | BLOCKED_OTHER_TASK | Option: Keep create non-blind (pre-existing draft oracle on typed addresses, now also via mix)
 
 Global next step: available P0; else review PRs, tests, demo, rehearsal.
 Why: bounded snapshot to resume without rereading history.
