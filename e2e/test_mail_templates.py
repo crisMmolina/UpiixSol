@@ -51,13 +51,23 @@ def fresh(site: Site, path: str = ADMIN, email: str = SUPERADMIN) -> Page:
 
 
 def keep(site: Site, name: str, full: bool = True) -> None:
-    """Shot for the design review (`full`: the whole page; else the viewport, for dialogs and the sticky header)."""
+    """Shot for the design review. `full` makes the viewport as tall as the page (so every frame is on screen and the
+    fixed bottom bar sits at the end instead of over the content); else the current viewport, for dialogs."""
     SHOTS.mkdir(parents=True, exist_ok=True)
+    page = site.page
     wide = "1280" if site.name == "desktop" else "390"
-    site.page.wait_for_timeout(2000)  # live thumbnails render a moment after the gallery shows
-    site.page.screenshot(path=SHOTS / f"{wide}-{name}.png", full_page=full)
+    original = page.viewport_size
+    assert original is not None
+    if full:
+        page.evaluate("window.scrollTo(0, 0)")
+        page.set_viewport_size({"width": original["width"], "height": min(8000, page.evaluate("document.documentElement.scrollHeight"))})
+    if page.locator("[data-thumb]").count():  # live thumbnails render a moment after the gallery shows
+        page.wait_for_function("[...document.querySelectorAll('[data-thumb]')].every(e => e.dataset.thumb === 'loaded')", timeout=30_000)
+    page.wait_for_timeout(1000)
+    page.screenshot(path=SHOTS / f"{wide}-{name}.png")
     if name == "gallery":
-        site.page.screenshot(path=SHOTS / f"{wide}.png", full_page=True)
+        page.screenshot(path=SHOTS / f"{wide}.png")
+    page.set_viewport_size(original)
 
 
 def card(page: Page, name: str):  # noqa: ANN201 - playwright Locator

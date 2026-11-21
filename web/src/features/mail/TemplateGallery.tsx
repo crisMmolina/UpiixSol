@@ -20,7 +20,7 @@ function Card({ selected, onPick, thumb, name, description, children }: { select
         <span aria-hidden className="block">
           {thumb}
         </span>
-        <span className="grid gap-1 px-1 pb-1 [&>span:last-child]:line-clamp-3">
+        <span className="grid gap-1 px-1 pb-1 [&>span:last-child]:line-clamp-4">
           <span className="font-display text-base leading-tight font-semibold sm:text-lg">{name}</span>
           {description && <span className="text-sm text-muted">{description}</span>}
         </span>

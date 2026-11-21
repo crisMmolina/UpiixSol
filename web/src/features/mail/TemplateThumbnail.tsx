@@ -22,14 +22,14 @@ function render(key: string, payload: object): Promise<string> {
 /** A wireframe, for while the render loads or when it fails. */
 export function Wireframe() {
   return (
-    <span aria-hidden className="grid h-full content-start gap-3 rounded-xl border border-line bg-surface p-5">
+    <span aria-hidden className="grid h-full min-w-0 content-start gap-3 overflow-hidden rounded-xl border border-line bg-surface p-3 sm:p-5">
       <span className="h-1.5 w-full rounded-full bg-primary" />
-      <span className="mx-auto mt-2 h-4 w-24 rounded-full bg-primary/60" />
+      <span className="mx-auto mt-2 h-4 w-1/3 rounded-full bg-primary/60" />
       <span className="mt-3 h-4 w-3/4 rounded-full bg-line" />
       <span className="h-2.5 w-full rounded-full bg-subtle" />
       <span className="h-2.5 w-11/12 rounded-full bg-subtle" />
       <span className="h-2.5 w-2/3 rounded-full bg-subtle" />
-      <span className="mt-2 h-8 w-28 rounded-full border-2 border-dashed border-line" />
+      <span className="mt-2 h-8 w-3/5 rounded-full border-2 border-dashed border-line" />
     </span>
   );
 }
@@ -38,6 +38,7 @@ export function TemplateThumbnail({ name, subject, preheader, blocks }: { name: 
   const box = useRef<HTMLSpanElement>(null);
   const [scale, setScale] = useState(0.4);
   const [html, setHtml] = useState<string | null>(null);
+  const [shown, setShown] = useState(false);
   const payload = { subject, blocks, ...(preheader ? { preheader } : {}) };
   const key = JSON.stringify(payload);
 
@@ -60,18 +61,22 @@ export function TemplateThumbnail({ name, subject, preheader, blocks }: { name: 
   }, [key]);
 
   return (
-    <span ref={box} className="relative block aspect-[3/4] w-full overflow-hidden rounded-xl border border-line bg-white">
-      {html === null ? (
-        <Wireframe />
-      ) : (
+    <span ref={box} data-thumb={shown ? "loaded" : "loading"} className="relative block aspect-[3/4] w-full overflow-hidden rounded-xl border border-line bg-white">
+      {!shown && (
+        <span className="absolute inset-0">
+          <Wireframe />
+        </span>
+      )}
+      {html !== null && (
         <iframe
+          onLoad={() => setShown(true)}
           title={`Miniatura de ${name}`}
           sandbox=""
           srcDoc={html}
           tabIndex={-1}
           scrolling="no"
           style={{ width: EMAIL_WIDTH, height: EMAIL_HEIGHT, transform: `scale(${scale})` }}
-          className="pointer-events-none absolute top-0 left-0 max-w-none origin-top-left border-0"
+          className={`pointer-events-none absolute top-0 left-0 max-w-none origin-top-left border-0 ${shown ? "" : "opacity-0"}`}
         />
       )}
     </span>
