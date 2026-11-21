@@ -6,7 +6,7 @@
 - Why: no image hosting for PR body
 - Failing: none
 - Commands: Verify; smoke
-- Next: Wait for review of SHA e089d827 and victor's OK on the direction before UPS-103
+- Next: Integrated in main: c25f5fa1df4823b3cd2976b9f426fe279fb4006e
 
 ## History
 - 1794986231 | CLAIMED | victor-2 | claim; next: after the human `uak allow`, stubs for the e2e Tests names and `uak red UPS-102`; then the reducer, then the stepper, then the draft.
@@ -19,3 +19,4 @@
 - 1795230248 | REVIEW | victor-2 | checkpoint; next: Wait for review of SHA e089d827 and victor's OK on the direction before UPS-103
 - 1795230252 | REVIEW | victor-2 | heartbeat; lease until 1795316652
 - 1795230693 | REVIEW | victor-3 | review; approve; SHA e089d8276c91aec572dcb4042559dcaf9066e590; reviewer victor-3
+- 1795231324 | INTEGRATED | victor-2 | merge; smoke and Verify PASS (smoke: full); commit c25f5fa1df4823b3cd2976b9f426fe279fb4006e; reviewer victor-3
