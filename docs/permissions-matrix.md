@@ -103,4 +103,5 @@ Cobertura: **79/79 endpoints de escritura (100 %)** × 5 roles.
 | GET | `/api/mail/recipients` | 🔒 | ❌ | ✅ | ✅ | ✅ | own club's enrollees and co-admins, with their address (UPS-105) |
 | GET | `/api/mail/campaigns` | 🔒 | ❌ | ✅ | ✅ | ✅ | history: superadmin all, academy_admin own club (UPS-075) |
 | GET | `/api/mail/campaigns/{campaign_id}` | 🔒 | ❌ | ✅ | ❌ | ✅ | a campaign of the club (UPS-075) |
+| GET | `/api/mail/campaigns/{campaign_id}/recipients` | 🔒 | ❌ | ✅ | ❌ | ✅ | delivery detail with addresses: a campaign of the club (UPS-106) |
 | GET | `/api/mail/templates` | 🔒 | ❌ | ✅ | ✅ | ✅ | built-ins, UpiixSol and own club (UPS-101) |

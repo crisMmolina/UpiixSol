@@ -462,6 +462,33 @@ export interface Campaign {
   sent_at: DateTime | null;
 }
 
+/** GET /api/mail/campaigns/{id} (UPS-106): what "Usar de nuevo" loads, never the recipients. */
+export interface CampaignContent {
+  preheader: string | null;
+  /** Stored blocks as is; legacy text campaigns come as one paragraph block per paragraph. */
+  blocks: Array<Record<string, unknown>>;
+}
+
+/** GET /api/mail/campaigns/{id} */
+export interface CampaignDetail extends Campaign {
+  content: CampaignContent;
+  /** The per-person rows were deleted a year after the send (counts stay). */
+  details_purged: boolean;
+}
+
+/** GET /api/mail/campaigns/{id}/recipients?status=&q=&cursor=&limit≤50 → Page<DeliveryRow> */
+export interface DeliveryRow {
+  user_id: number | null;
+  name: string;
+  email: string;
+  status: MailRecipientStatus;
+  /** Raw Mailgun reason or send error, shown as a hint (bounced and failed only). */
+  reason_code: string | null;
+  /** Spanish reason (bounced and failed only). */
+  reason: string | null;
+  updated_at: DateTime;
+}
+
 /** GET /api/mail/status */
 export interface MailStatus {
   enabled: boolean;
