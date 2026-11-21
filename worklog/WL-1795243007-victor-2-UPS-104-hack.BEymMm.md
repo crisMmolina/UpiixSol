@@ -14,3 +14,4 @@
 - 1795243909 | CLAIMED | victor-2 | checkpoint; next: fix send tests, shots, design-critic, ship
 - 1795244282 | CLAIMED | victor-2 | heartbeat; lease until 1795258682
 - 1795244290 | CLAIMED | victor-2 | checkpoint; next: debug stuck busy Guardar on 2nd save (NameForm: setBusy not reset on success while Modal stays mounted/closing; likely onClose then reopen reuses form), rerun both viewports, then lint, shots .uak-shots/UPS-104 (tests write them), design-critic, /uak-ship
+- 1795251831 | CLAIMED | victor-2 | heartbeat; lease until 1795266231
