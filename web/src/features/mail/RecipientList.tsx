@@ -55,7 +55,7 @@ function Row({
   const outside = member.user_id === null;
   const name = member.name || member.email;
   return (
-    <li className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2 ${member.state === "removed" ? "opacity-70" : ""}`}>
+    <li className={`flex items-center gap-x-3 py-2 ${member.state === "removed" ? "opacity-70" : ""}`}>
       {!cannot && !outside ? (
         <label className="grid size-11 shrink-0 cursor-pointer place-items-center">
           <input
@@ -70,15 +70,15 @@ function Row({
         <span aria-hidden className="size-11 shrink-0 max-sm:hidden" />
       )}
       <Face member={member} />
-      <div className="grid min-w-0 flex-1 basis-40">
+      <div className="grid min-w-0 flex-1">
         <span className="truncate text-sm font-semibold">
           {outside ? member.email : name}
-          {member.nickname && <span className="ml-1 font-normal text-muted">@{member.nickname}</span>}
+          {member.nickname && <span className="ml-1 font-normal text-muted max-sm:hidden">@{member.nickname}</span>}
         </span>
         {!outside && <span className="truncate text-xs text-muted">{member.email}</span>}
+        <span className="truncate text-xs text-muted">{member.origins.map((tag) => origin(tag, academies, ownClub)).join(" · ")}</span>
         {cannot && member.reason && <span className="text-xs font-semibold text-danger">{REASON[member.reason]}</span>}
       </div>
-      <span className="text-xs text-muted">{member.origins.map((tag) => origin(tag, academies, ownClub)).join(" · ")}</span>
       {outside && (
         <button type="button" aria-label={`Quitar ${member.email}`} onClick={() => onRemoveEmail(member.email)} className="grid size-11 place-items-center rounded-full hover:bg-subtle">
           <X size={16} weight="bold" aria-hidden />

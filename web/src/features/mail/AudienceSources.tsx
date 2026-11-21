@@ -343,7 +343,7 @@ export function AudienceSources({
         </ul>
       )}
       {panel !== null && (
-        <div className="grid gap-4 rounded-2xl border border-line bg-subtle/50 p-4">
+        <div className="grid gap-4 border-l-2 border-line pl-4">
           {panel === "academy" && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 basis-48">
@@ -388,7 +388,7 @@ export function AudienceSources({
           {panel === "people" && <PersonSearch draft={draft} onChange={onChange} />}
           {panel === "outside" && <OutsidePanel draft={draft} onChange={onChange} />}
           <div>
-            <Button type="button" variant="ghost" onClick={() => setPanel(null)}>
+            <Button type="button" variant="secondary" onClick={() => setPanel(null)}>
               Listo
             </Button>
           </div>
